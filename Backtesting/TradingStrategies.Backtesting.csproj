@@ -60,6 +60,7 @@
     <Compile Include="Indicators\BollingerFilter.cs" />
     <Compile Include="Strategies\CoupStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Strategies\TestStrategy.cs" />
     <Compile Include="Utility\InvalidParameterValueException.cs" />
     <Compile Include="Utility\LotsFactors.cs" />
     <Compile Include="Utility\TradeChecker.cs" />
