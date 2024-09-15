@@ -35,9 +35,14 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Fidelity.Components, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\Fidelity.Components.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -49,6 +54,10 @@
     </Reference>
     <Reference Include="WealthLab.Indicators">
       <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Indicators.dll</HintPath>
+    </Reference>
+    <Reference Include="WealthLab.Visualizers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -66,6 +75,12 @@
     <Compile Include="Utility\TradeChecker.cs" />
     <Compile Include="Utility\LogicDouble.cs" />
     <Compile Include="Utility\ScaleCalculations.cs" />
+    <Compile Include="Visualizers\LiteTradesVisualizer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Visualizers\TestTradesVisualizer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
