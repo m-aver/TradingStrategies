@@ -3,7 +3,7 @@
 namespace TradingStrategies.Backtesting.Utility
 {
     [StructLayout(LayoutKind.Auto)]
-    internal struct LotsFactors
+    public struct LotsFactors
     {
         public double BuyFactor { get; }
         public double SellFactor { get; }
