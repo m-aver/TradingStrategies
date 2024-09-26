@@ -6,23 +6,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using WealthLab;
 using WealthLab.Visualizers;
 using Fidelity.Components;
 using System.Linq;
 using System.Collections.Concurrent;
 
-namespace WealthLab.Optimizers.Community
+namespace TradingStrategies.Backtesting.Optimizers
 {
     static class MainModuleInstance
     {
         private static object _instance;
         private static PropertyInfo _dataSources;
 
-        /// <summary>
-        /// Ctor
-        /// </summary>
         static MainModuleInstance()
         {
             Initialize();
@@ -31,58 +27,58 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Get Wealth-Lab Dev/Pro exe assembly
         /// </summary>
-        /// <returns></returns>
         private static Assembly GetWLAssembly()
         {
-            Assembly wl = null;
+            Assembly wlAssembly = null;
 
-            foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                if (a.FullName.Contains("WealthLabDev") || a.FullName.Contains("WealthLabPro"))
+                if (assembly.FullName.Contains("WealthLabDev") || 
+                    assembly.FullName.Contains("WealthLabPro"))
                 {
-                    wl = a;
+                    wlAssembly = assembly;
                     break;
                 }
             }
 
-            if (wl == null) throw new Exception("Wealth-Lab not found.");
+            if (wlAssembly == null) 
+                throw new Exception("Wealth-Lab not found.");
 
-            return wl;
+            return wlAssembly;
         }
 
         /// <summary>
         /// Set Main Module Instance
         /// </summary>
-        /// <param name="assembly"></param>
-        /// <returns></returns>
         private static void SetMainModuleInstance()
         {
             Type mainModuleType = null;
 
-            foreach (Type t in GetWLAssembly().GetTypes())
+            foreach (Type wlAssemblyType in GetWLAssembly().GetTypes())
             {
-                Type[] interfaces = t.GetInterfaces();
+                Type[] interfaces = wlAssemblyType.GetInterfaces();
 
                 bool wlpDetected = false;
-                int c = 0;
-                foreach (Type i in interfaces)
+                int cnt = 0;
+                foreach (Type wlInterface in interfaces)
                 {
-                    if (i == typeof(WealthLab.IAuthenticationHost) ||
-                        (i == typeof(WealthLab.IConnectionStatus)) ||
-                        (i == typeof(WealthLab.IMenuItemAdder)))
-                        c++;
+                    if (wlInterface == typeof(WealthLab.IAuthenticationHost) ||
+                        (wlInterface == typeof(WealthLab.IConnectionStatus)) ||
+                        (wlInterface == typeof(WealthLab.IMenuItemAdder)))
+                        cnt++;
 
-                    if (c >= 3)
+                    if (cnt >= 3)
                         wlpDetected = true;
                 }
-                if (t.FullName == "WealthLabPro.MainModule" || wlpDetected)
+                if (wlAssemblyType.FullName == "WealthLabPro.MainModule" || wlpDetected)
                 {
-                    mainModuleType = t;
+                    mainModuleType = wlAssemblyType;
                     break;
                 }
             }
 
-            if (mainModuleType == null) throw new Exception("MainModule not found.");
+            if (mainModuleType == null) 
+                throw new Exception("MainModule not found.");
 
             FieldInfo fiInstance = null;
 
@@ -95,14 +91,12 @@ namespace WealthLab.Optimizers.Community
                 }
             }
 
-            if (fiInstance == null) throw new Exception("MainModule.Instance not found.");
+            if (fiInstance == null) 
+                throw new Exception("MainModule.Instance not found.");
 
             _instance = fiInstance.GetValue(null);
         }
 
-        /// <summary>
-        /// Initialize
-        /// </summary>
         private static void Initialize()
         {
             SetMainModuleInstance();
@@ -114,29 +108,28 @@ namespace WealthLab.Optimizers.Community
         /// </summary>
         private static void SetDataSourcesInfos()
         {
-            foreach (PropertyInfo field in _instance.GetType().GetProperties())
+            foreach (PropertyInfo property in _instance.GetType().GetProperties())
             {
-                if (field.PropertyType == typeof(DataSourceManager))
+                if (property.PropertyType == typeof(DataSourceManager))
                 {
-                    _dataSources = field;
+                    _dataSources = property;
                 }
             }
 
-            if ((_dataSources == null)) throw new Exception("DataSourceManager field not found.");
+            if ((_dataSources == null)) 
+                throw new Exception("DataSourceManager field not found.");
         }
 
         /// <summary>
         /// DataSourceManager
         /// </summary>
-        /// <param name="dataSetName"></param>
-        /// <param name="symbol"></param>
-        /// <returns></returns>
         public static DataSourceManager GetDataSources()
         {
             return (DataSourceManager)_dataSources.GetValue(_instance, new object[] { });
         }
     }
 
+    // for debug
     internal class ParamInfo
     {
         public double MaPeriod { get; set; }
@@ -149,10 +142,10 @@ namespace WealthLab.Optimizers.Community
     /// <summary>
     /// Implements Multithreaded Optimization
     /// </summary>
-    public class ExhaustiveMultiThreadedOptimizer : Optimizer
+    public class ParallelExhaustiveOptimizer : Optimizer
     {
         private int numThreads;
-        private Tuple<TradingSystemExecutor, WealthScript, StrategyScorecard>[] executors;
+        private (TradingSystemExecutor tse, WealthScript ws, StrategyScorecard ss)[] executors;
         private SystemPerformance[] results;
         private CountdownEvent countDown;
         private List<StrategyParameter> paramValues;
@@ -163,31 +156,13 @@ namespace WealthLab.Optimizers.Community
         private Dictionary<string, Bars> dataSetBars = new Dictionary<string, Bars>();
         private SettingsManager settingsManager;
 
-        //TODO
+        public override string Description => "Parallel Optimizer (Exhaustive)";
+        public override string FriendlyName => Description;
+
+        //for debug
         public override void RunCompleted(OptimizationResultList results)
         {
             base.RunCompleted(results);
-
-            var data = this.results.Where(x => x != null).Select((x, idx) => new ParamInfo()
-            {
-                NetProfit = x.Results.NetProfit,
-            });
-        }
-
-        /// <summary>
-        /// Returns the optimizer's description shown in the UI
-        /// </summary>
-        public override string Description
-        {
-            get { return "Parallel Optimizer (Exhaustive)"; }
-        }
-
-        /// <summary>
-        /// Returns the optimizer's description shown in the UI
-        /// </summary>
-        public override string FriendlyName
-        {
-            get { return Description; }
         }
 
         /// <summary>
@@ -206,8 +181,8 @@ namespace WealthLab.Optimizers.Community
             get
             {
                 double runs = 1.0;
-                foreach (StrategyParameter p in WealthScript.Parameters)
-                    runs *= NumberOfRunsPerParameter(p);
+                foreach (StrategyParameter parameter in WealthScript.Parameters)
+                    runs *= NumberOfRunsPerParameter(parameter);
                 runs = Math.Max(Math.Floor(runs / numThreads), 1);
                 if (runs > int.MaxValue)
                     runs = int.MaxValue; // otherwise the progress bar is broken
@@ -218,37 +193,40 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Returns the number of runs required for a single strategy parameter
         /// </summary>
-        /// <param name="p"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private double NumberOfRunsPerParameter(StrategyParameter p)
+        private double NumberOfRunsPerParameter(StrategyParameter parameter)
         {
-            if ((p.Start < p.Stop && p.Step > 0) || (p.Start > p.Stop && p.Step < 0))
-                return Math.Max(Math.Floor((p.Stop - p.Start + p.Step) / p.Step), 1);
+            if ((parameter.Start < parameter.Stop && parameter.Step > 0) || 
+                (parameter.Start > parameter.Stop && parameter.Step < 0))
+            {
+                return Math.Max(
+                    Math.Floor((parameter.Stop - parameter.Start + parameter.Step) / parameter.Step), 
+                    1);
+            }
+
             return 1;
         }
 
         /// <summary>
         /// Callback for the executor to get external symbols
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="a"></param>
-        private void OnLoadSymbol(Object sender, LoadSymbolEventArgs a)
+        private void OnLoadSymbol(Object sender, LoadSymbolEventArgs args)
         {
-            if (barsCache.ContainsKey(a.Symbol))
-                a.SymbolData = barsCache[a.Symbol];
+            if (barsCache.ContainsKey(args.Symbol))
+            {
+                args.SymbolData = barsCache[args.Symbol];
+            }
             else
             {
                 lock (this.WealthScript)
                 {
                     // check no other thread got here first
-                    if (!barsCache.ContainsKey(a.Symbol))
+                    if (!barsCache.ContainsKey(args.Symbol))
                     {
-                        this.WealthScript.SetContext(a.Symbol, false);
-                        barsCache[a.Symbol] = this.WealthScript.Bars;
+                        this.WealthScript.SetContext(args.Symbol, false);
+                        barsCache[args.Symbol] = this.WealthScript.Bars;
                         this.WealthScript.RestoreContext();
                     }
-                    a.SymbolData = barsCache[a.Symbol];
+                    args.SymbolData = barsCache[args.Symbol];
                 }
             }
         }
@@ -256,30 +234,30 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Callback for the executor to get external symbols
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="a"></param>
-        private void OnLoadSymbolFromDataSet(Object sender, LoadSymbolFromDataSetEventArgs a)
+        private void OnLoadSymbolFromDataSet(Object sender, LoadSymbolFromDataSetEventArgs args)
         {
-            if (barsCache.ContainsKey(a.Symbol))
-                a.Bars = barsCache[a.Symbol];
+            if (barsCache.ContainsKey(args.Symbol))
+            {
+                args.Bars = barsCache[args.Symbol];
+            }
             else
             {
                 lock (this.WealthScript)
                 {
                     // check no other thread got here first
-                    if (!barsCache.ContainsKey(a.Symbol))
+                    if (!barsCache.ContainsKey(args.Symbol))
                     {
-                        this.WealthScript.SetContext(a.Symbol, false);
-                        barsCache[a.Symbol] = this.WealthScript.Bars;
+                        this.WealthScript.SetContext(args.Symbol, false);
+                        barsCache[args.Symbol] = this.WealthScript.Bars;
                         this.WealthScript.RestoreContext();
                     }
-                    a.Bars = barsCache[a.Symbol];
+                    args.Bars = barsCache[args.Symbol];
                 }
             }
         }
 
         /// <summary>
-        /// The very first run for this optimization.  Sets up everything for the entire optimization
+        /// The very first run for this optimization. Sets up everything for the entire optimization
         /// </summary>
         public override void FirstRun()
         {
@@ -316,17 +294,18 @@ namespace WealthLab.Optimizers.Community
             }
             this.countDown = new CountdownEvent(numThreads);
             this.results = new SystemPerformance[numThreads];
-            this.executors = new Tuple<TradingSystemExecutor, WealthScript, StrategyScorecard>[numThreads];
+            this.executors = new (TradingSystemExecutor, WealthScript, StrategyScorecard)[numThreads];
             Parallel.For(0, numThreads, i =>
             {
-                this.executors[i] = new Tuple<TradingSystemExecutor, WealthScript, StrategyScorecard>(
+                this.executors[i] = (
                     CreateExecutor(this.Strategy, ps, sm, this.WealthScript),
                     stm.GetWealthScriptObject(this.Strategy),
-                    GetSelectedScoreCard(sm));
-                this.executors[i].Item1.ExternalSymbolRequested += this.OnLoadSymbol;
-                this.executors[i].Item1.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
+                    GetSelectedScoreCard(sm)
+                );
+                this.executors[i].tse.ExternalSymbolRequested += this.OnLoadSymbol;
+                this.executors[i].tse.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
                 this.results[i] = null;
-                SynchronizeWealthScriptParameters(this.executors[i].Item2, this.WealthScript);
+                SynchronizeWealthScriptParameters(this.executors[i].ws, this.WealthScript);
             });
             this.paramValues = new List<StrategyParameter>(this.WealthScript.Parameters.Count);
             for (int i = 0; i < this.WealthScript.Parameters.Count; i++)
@@ -354,55 +333,54 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Implements parallel runs - each logical "next run" results in multiple parallel runs
         /// </summary>
-        /// <param name="sp"></param>
-        /// <param name="or"></param>
-        /// <returns></returns>
         public override bool NextRun(SystemPerformance sp, OptimizationResult or)
         {
             if (!this.supported)
                 return false;
+
             this.countDown.Reset();
             for (int i = 0; i < numThreads; i++)
             {
                 if (GetNextRunParameters())
                 {
                     for (int j = 0; j < this.paramValues.Count; j++)
-                        this.executors[i].Item2.Parameters[j].Value = this.paramValues[j].Value;
+                        this.executors[i].ws.Parameters[j].Value = this.paramValues[j].Value;
                     ThreadPool.QueueUserWorkItem((e) =>
                     {
+                        var threadNum = (int)e;
                         for (int retry = 0; ;)
                         {
                             try
                             {
                                 //lock (this)   //for debug
                                 {
-                                    ExecuteOne((int)e);
+                                    ExecuteOne(threadNum);
 
-                                    var curParams = this.executors[(int)e].Item2.Parameters;
+                                    var curParams = this.executors[threadNum].ws.Parameters;
                                     var info = new ParamInfo()
                                     {
                                         MaPeriod = curParams.Single(x => x.Name == "maPeriod").Value,
                                         MaPercent = curParams.Single(x => x.Name == "maPercent").Value,
                                         SigmoidOffset = curParams.Single(x => x.Name == "sigmoidOffset").Value,
                                         SigmoidStretch = curParams.Single(x => x.Name == "sigmoidStretch").Value,
-                                        NetProfit = this.executors[(int)e].Item1.Performance.Results.NetProfit,
+                                        NetProfit = this.executors[threadNum].tse.Performance.Results.NetProfit,
                                     };
                                     paramInfos.Enqueue(info);
 
-                                if ((int)e == 0)
-                                {
-                                    // have the main thread display this result in the result list UI
-                                    for (int k = 0; k < this.executors[(int)e].Item2.Parameters.Count; k++)
-                                        this.WealthScript.Parameters[k].Value = this.executors[(int)e].Item2.Parameters[k].Value;
+                                    if (threadNum == 0)
+                                    {
+                                        // have the main thread display this result in the result list UI
+                                        for (int k = 0; k < this.executors[threadNum].ws.Parameters.Count; k++)
+                                            this.WealthScript.Parameters[k].Value = this.executors[threadNum].ws.Parameters[k].Value;
+                                    }
+                                    else
+                                    {
+                                        // have this thread display this result in the result list UI
+                                        AddResultsToUI(threadNum);
+                                    }
+                                    this.countDown.Signal();
+                                    break;
                                 }
-                                else
-                                {
-                                    // have this thread display this result in the result list UI
-                                    AddResultsToUI((int)e);
-                                }
-                                this.countDown.Signal();
-                                break;
-                            }
                             }
                             catch (Exception)
                             {
@@ -410,7 +388,7 @@ namespace WealthLab.Optimizers.Community
                                 if (retry < 10)
                                     continue;
                                 // couldn't get results for this run
-                                this.results[(int)e] = null;
+                                this.results[threadNum] = null;
                                 this.countDown.Signal();
                                 break;
                             }
@@ -437,8 +415,8 @@ namespace WealthLab.Optimizers.Community
 
         private void ExecuteOne(int sys)
         {
-            var ws = this.executors[sys].Item2;
-            var ts = this.executors[sys].Item1;
+            var ws = this.executors[sys].ws;
+            var ts = this.executors[sys].tse;
             var allBars = dataSetBars.Select(x => x.Value).ToList();
 
             //new executer for each run - most valuable fix
@@ -451,25 +429,21 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Adds a single set of results to the UI
         /// </summary>
-        /// <param name="index"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddResultsToUI(int index)
         {
-            ListViewItem lvi = new ListViewItem();
-            lvi.SubItems[0].Text = this.WealthScript.Bars.Symbol;
+            ListViewItem row = new ListViewItem();
+            row.SubItems[0].Text = this.WealthScript.Bars.Symbol;
             for (int i = 0; i < this.paramValues.Count; i++)
-                lvi.SubItems.Add(this.executors[index].Item2.Parameters[i].Value.ToString());
-            this.executors[index].Item3.PopulateScorecard(lvi, this.results[index]);
-            ((ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0]).Invoke(new Action(() =>
-            ((ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0]).Items.Add(lvi)));
+                row.SubItems.Add(this.executors[index].ws.Parameters[i].Value.ToString());
+            this.executors[index].ss.PopulateScorecard(row, this.results[index]);
+
+            var optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
+            optimizationResultListView.Invoke(new Action(() => optimizationResultListView.Items.Add(row)));
         }
 
         /// <summary>
         /// Synchronizes strategy parameters between scripts
         /// </summary>
-        /// <param name="wsTarget"></param>
-        /// <param name="wsSource"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
         {
             wsTarget.Parameters.Clear();
@@ -484,29 +458,26 @@ namespace WealthLab.Optimizers.Community
                     wsSource.Parameters[i].Description));
                 wsTarget.Parameters[i].DefaultValue = wsSource.Parameters[i].DefaultValue;
             }
-
         }
 
         /// <summary>
         /// Increments strategy parameter values for the next optimization run baesd on exhaustive optimization
         /// </summary>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool GetNextRunParameters() { return GetNextRunParameters(0); }
+        private bool GetNextRunParameters() => GetNextRunParameters(0);
 
         /// <summary>
         /// Increments strategy parameter values for the next optimization run baesd on exhaustive optimization - recursive implementation
         /// </summary>
-        /// <returns></returns>
         private bool GetNextRunParameters(int currentParam)
         {
             if (currentParam >= paramValues.Count)
                 return false; // we're done
             paramValues[currentParam].Value += paramValues[currentParam].Step;
-            if ((paramValues[currentParam].Value > paramValues[currentParam].Stop
-                && paramValues[currentParam].Step > 0) ||
-                (paramValues[currentParam].Value < paramValues[currentParam].Stop
-                && paramValues[currentParam].Step < 0))
+            if ((paramValues[currentParam].Value > paramValues[currentParam].Stop && 
+                paramValues[currentParam].Step > 0) 
+                ||
+                (paramValues[currentParam].Value < paramValues[currentParam].Stop && 
+                paramValues[currentParam].Step < 0))
             {
                 paramValues[currentParam].Value = paramValues[currentParam].Start;
                 return GetNextRunParameters(currentParam + 1);
@@ -517,12 +488,7 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Creates a trading executor to be used for optimization runs
         /// </summary>
-        /// <param name="s"></param>
-        /// <param name="sm"></param>
-        /// <param name="ws"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static TradingSystemExecutor CreateExecutor(Strategy s, PositionSize ps, SettingsManager sm, WealthScript ws)
+        private static TradingSystemExecutor CreateExecutor(Strategy strategy, PositionSize ps, SettingsManager settings, WealthScript ws)
         {
             FundamentalsLoader fundamentalsLoader = new FundamentalsLoader();
             fundamentalsLoader.DataHost = MainModuleInstance.GetDataSources();
@@ -534,52 +500,52 @@ namespace WealthLab.Optimizers.Community
 
             // Store user-selected position size GUI dialog settings into a variable
             executor.PosSize = ps;
-            if (sm.Settings.Count > 0)
+            if (settings.Settings.Count > 0)
             {
-                executor.ApplyCommission = sm.Get("ApplyCommissions", false);
-                executor.ApplyInterest = sm.Get("ApplyInterest", false);
-                executor.ApplyDividends = sm.Get("ApplyDividends", false);
-                executor.CashRate = sm.Get("CashRate", 0d);
-                executor.EnableSlippage = sm.Get("EnableSlippage", false);
-                executor.LimitDaySimulation = sm.Get("LimitDaySimulation", false);
-                executor.LimitOrderSlippage = sm.Get("LimitOrderSlippage", false);
-                executor.MarginRate = sm.Get("MarginRate", 0d);
-                executor.NoDecimalRoundingForLimitStopPrice = sm.Get("NoDecimalRoundingForLimitStopPrice", false);
-                executor.PricingDecimalPlaces = sm.Get("PricingDecimalPlaces", 2);
-                executor.ReduceQtyBasedOnVolume = sm.Get("ReduceQtyBasedOnVolume", false);
-                executor.RedcuceQtyPct = sm.Get("ReduceQtyPct", 0d);
-                executor.RoundLots = sm.Get("RoundLots", false);
-                executor.RoundLots50 = sm.Get("RoundLots50", false);
-                executor.SlippageTicks = sm.Get("SlippageTicks", 0);
-                executor.SlippageUnits = sm.Get("SlippageUnits", 0d);
-                executor.WorstTradeSimulation = sm.Get("WorstTradeSimulation", false);
+                executor.ApplyCommission = settings.Get("ApplyCommissions", false);
+                executor.ApplyInterest = settings.Get("ApplyInterest", false);
+                executor.ApplyDividends = settings.Get("ApplyDividends", false);
+                executor.CashRate = settings.Get("CashRate", 0d);
+                executor.EnableSlippage = settings.Get("EnableSlippage", false);
+                executor.LimitDaySimulation = settings.Get("LimitDaySimulation", false);
+                executor.LimitOrderSlippage = settings.Get("LimitOrderSlippage", false);
+                executor.MarginRate = settings.Get("MarginRate", 0d);
+                executor.NoDecimalRoundingForLimitStopPrice = settings.Get("NoDecimalRoundingForLimitStopPrice", false);
+                executor.PricingDecimalPlaces = settings.Get("PricingDecimalPlaces", 2);
+                executor.ReduceQtyBasedOnVolume = settings.Get("ReduceQtyBasedOnVolume", false);
+                executor.RedcuceQtyPct = settings.Get("ReduceQtyPct", 0d);
+                executor.RoundLots = settings.Get("RoundLots", false);
+                executor.RoundLots50 = settings.Get("RoundLots50", false);
+                executor.SlippageTicks = settings.Get("SlippageTicks", 0);
+                executor.SlippageUnits = settings.Get("SlippageUnits", 0d);
+                executor.WorstTradeSimulation = settings.Get("WorstTradeSimulation", false);
                 executor.FundamentalsLoader = fundamentalsLoader;
 
                 var parentExecutor = ExtractExecutor(ws);
                 executor.BarsLoader = parentExecutor.BarsLoader;
                 executor.DataSet = parentExecutor.DataSet;
 
-                string CommissionOption = sm.Get("Commission", string.Empty);
-                if (!string.IsNullOrEmpty(CommissionOption))
+                string commissionOption = settings.Get("Commission", string.Empty);
+                if (!string.IsNullOrEmpty(commissionOption))
                 {
-                    AssemblyLoader al = new AssemblyLoader();
-                    al.Path = Application.StartupPath;
-                    al.BaseClass = "Commission";
-                    Commission c = null;
+                    AssemblyLoader assemblyLoader = new AssemblyLoader();
+                    assemblyLoader.Path = Application.StartupPath;
+                    assemblyLoader.BaseClass = "Commission";
+                    Commission commission = null;
                     string selectedCommission = null;
                     AssemblyName whichAssembly = null;
-                    Type tt = null;
-                    if (al.Assemblies.Count > 0)
+                    Type targetType = null;
+                    if (assemblyLoader.Assemblies.Count > 0)
                     {
-                        foreach (System.Reflection.Assembly a in al.Assemblies)
+                        foreach (Assembly asm in assemblyLoader.Assemblies)
                         {
-                            foreach (System.Type t in al.TypesInAssembly(a))
+                            foreach (Type type in assemblyLoader.TypesInAssembly(asm))
                             {
-                                if (t.Name.Trim() == CommissionOption.Trim())
+                                if (type.Name.Trim() == commissionOption.Trim())
                                 {
-                                    selectedCommission = t.Name;
-                                    whichAssembly = a.GetName();
-                                    tt = t;
+                                    selectedCommission = type.Name;
+                                    whichAssembly = asm.GetName();
+                                    targetType = type;
                                     break;
                                 }
                             }
@@ -588,10 +554,10 @@ namespace WealthLab.Optimizers.Community
                     if ((selectedCommission != null) & (whichAssembly != null))
                     {
                         Assembly asm = Assembly.Load(whichAssembly);
-                        c = (Commission)asm.CreateInstance(whichAssembly.Name + "." + tt.Name);
+                        commission = (Commission)asm.CreateInstance(whichAssembly.Name + "." + targetType.Name);
                     }
-                    if (c != null)
-                        executor.Commission = c;
+                    if (commission != null)
+                        executor.Commission = commission;
                 }
             }
             return executor;
@@ -613,19 +579,17 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Returns the PositionSize object of a Strategy being executed
         /// </summary>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static PositionSize GetPositionSize(WealthScript wsObj)
         {
-            foreach (Form f in Application.OpenForms)
+            foreach (Form form in Application.OpenForms)
             {
-                if (f.Name == "ChartForm")
+                if (form.Name == "ChartForm")
                 {
-                    WealthScript ws = (WealthScript)f.GetType().GetProperty("WealthScript").GetValue(f, null);
+                    WealthScript ws = (WealthScript)form.GetType().GetProperty("WealthScript").GetValue(form, null);
                     if ((ws != null) && (ws.Equals(wsObj)))
                     {
-                        PropertyInfo p = f.GetType().GetProperty("PositionSize");
-                        PositionSize ps = (PositionSize)p.GetValue(f, null);
+                        PropertyInfo pi = form.GetType().GetProperty("PositionSize");
+                        PositionSize ps = (PositionSize)pi.GetValue(form, null);
                         return ps;
                     }
                 }
@@ -636,9 +600,6 @@ namespace WealthLab.Optimizers.Community
         /// <summary>
         /// Returns a new instance of the configured scorecard
         /// </summary>
-        /// <param name="sm"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static StrategyScorecard GetSelectedScoreCard(SettingsManager sm)
         {
             if (sm.Settings.ContainsKey("Optimization.Scorecard"))
