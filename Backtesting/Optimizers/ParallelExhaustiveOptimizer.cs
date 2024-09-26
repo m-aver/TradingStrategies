@@ -10,6 +10,8 @@ using System.Runtime.CompilerServices;
 using WealthLab;
 using WealthLab.Visualizers;
 using Fidelity.Components;
+using System.Linq;
+using System.Collections.Concurrent;
 
 namespace WealthLab.Optimizers.Community
 {
@@ -135,6 +137,15 @@ namespace WealthLab.Optimizers.Community
         }
     }
 
+    internal class ParamInfo
+    {
+        public double MaPeriod { get; set; }
+        public double MaPercent { get; set; }
+        public double SigmoidOffset { get; set; }
+        public double SigmoidStretch { get; set; }
+        public double NetProfit { get; set; }
+    }
+
     /// <summary>
     /// Implements Multithreaded Optimization
     /// </summary>
@@ -147,6 +158,21 @@ namespace WealthLab.Optimizers.Community
         private List<StrategyParameter> paramValues;
         private bool supported;
         private Dictionary<string, Bars> barsCache;
+
+        private ConcurrentQueue<ParamInfo> paramInfos = new ConcurrentQueue<ParamInfo>();
+        private Dictionary<string, Bars> dataSetBars = new Dictionary<string, Bars>();
+        private SettingsManager settingsManager;
+
+        //TODO
+        public override void RunCompleted(OptimizationResultList results)
+        {
+            base.RunCompleted(results);
+
+            var data = this.results.Where(x => x != null).Select((x, idx) => new ParamInfo()
+            {
+                NetProfit = x.Results.NetProfit,
+            });
+        }
 
         /// <summary>
         /// Returns the optimizer's description shown in the UI
@@ -262,6 +288,7 @@ namespace WealthLab.Optimizers.Community
             this.barsCache = new Dictionary<string, Bars>(numThreads);
             StrategyManager stm = new StrategyManager();
             SettingsManager sm = new SettingsManager();
+            settingsManager = sm;
             sm.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
             sm.FileName = "WealthLabConfig.txt";
             sm.LoadSettings();
@@ -315,6 +342,13 @@ namespace WealthLab.Optimizers.Community
             }
             for (int i = 0; i < this.paramValues.Count; i++)
                 this.WealthScript.Parameters[i].Value = this.paramValues[i].Value;
+
+            //extract all data set bars
+            foreach (var symbol in tse.DataSet.Symbols)
+            {
+                var bars = tse.BarsLoader.GetData(tse.DataSet, symbol);
+                dataSetBars.Add(symbol, bars);
+            }
         }
 
         /// <summary>
@@ -340,8 +374,21 @@ namespace WealthLab.Optimizers.Community
                         {
                             try
                             {
-                                this.executors[(int)e].Item1.Execute(this.executors[(int)e].Item2, this.WealthScript.Bars);
-                                this.results[(int)e] = this.executors[(int)e].Item1.Performance;
+                                //lock (this)   //for debug
+                                {
+                                    ExecuteOne((int)e);
+
+                                    var curParams = this.executors[(int)e].Item2.Parameters;
+                                    var info = new ParamInfo()
+                                    {
+                                        MaPeriod = curParams.Single(x => x.Name == "maPeriod").Value,
+                                        MaPercent = curParams.Single(x => x.Name == "maPercent").Value,
+                                        SigmoidOffset = curParams.Single(x => x.Name == "sigmoidOffset").Value,
+                                        SigmoidStretch = curParams.Single(x => x.Name == "sigmoidStretch").Value,
+                                        NetProfit = this.executors[(int)e].Item1.Performance.Results.NetProfit,
+                                    };
+                                    paramInfos.Enqueue(info);
+
                                 if ((int)e == 0)
                                 {
                                     // have the main thread display this result in the result list UI
@@ -355,6 +402,7 @@ namespace WealthLab.Optimizers.Community
                                 }
                                 this.countDown.Signal();
                                 break;
+                            }
                             }
                             catch (Exception)
                             {
@@ -385,6 +433,19 @@ namespace WealthLab.Optimizers.Community
             }
             this.countDown.Wait();
             return true;
+        }
+
+        private void ExecuteOne(int sys)
+        {
+            var ws = this.executors[sys].Item2;
+            var ts = this.executors[sys].Item1;
+            var allBars = dataSetBars.Select(x => x.Value).ToList();
+
+            //new executer for each run - most valuable fix
+            ts = CreateExecutor(this.Strategy, GetPositionSize(this.WealthScript), settingsManager, this.WealthScript);
+
+            ts.Execute(new Strategy(), ws, null, allBars);
+            this.results[sys] = ts.Performance;
         }
 
         /// <summary>
@@ -465,6 +526,8 @@ namespace WealthLab.Optimizers.Community
         {
             FundamentalsLoader fundamentalsLoader = new FundamentalsLoader();
             fundamentalsLoader.DataHost = MainModuleInstance.GetDataSources();
+            BarsLoader barsLoader = new BarsLoader();
+            barsLoader.DataHost = fundamentalsLoader.DataHost;
 
             // this code is based on the PortfolioEquityEx from Community.Components 
             TradingSystemExecutor executor = new TradingSystemExecutor();
@@ -491,6 +554,11 @@ namespace WealthLab.Optimizers.Community
                 executor.SlippageUnits = sm.Get("SlippageUnits", 0d);
                 executor.WorstTradeSimulation = sm.Get("WorstTradeSimulation", false);
                 executor.FundamentalsLoader = fundamentalsLoader;
+
+                var parentExecutor = ExtractExecutor(ws);
+                executor.BarsLoader = parentExecutor.BarsLoader;
+                executor.DataSet = parentExecutor.DataSet;
+
                 string CommissionOption = sm.Get("Commission", string.Empty);
                 if (!string.IsNullOrEmpty(CommissionOption))
                 {
@@ -527,6 +595,19 @@ namespace WealthLab.Optimizers.Community
                 }
             }
             return executor;
+        }
+
+        private static TradingSystemExecutor ExtractExecutor(WealthScript script)
+        {
+            var type = script.GetType();
+            while (type != typeof(WealthScript))
+                type = type.BaseType;
+
+            var tsField = type
+                .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+                .First(x => x.FieldType == typeof(TradingSystemExecutor));
+            var tsExecutor = tsField.GetValue(script) as TradingSystemExecutor;
+            return tsExecutor;
         }
 
         /// <summary>
