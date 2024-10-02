@@ -307,20 +307,14 @@ namespace TradingStrategies.Backtesting.Optimizers
                 this.results[i] = null;
                 SynchronizeWealthScriptParameters(this.executors[i].ws, this.WealthScript);
             });
-            this.paramValues = new List<StrategyParameter>(this.WealthScript.Parameters.Count);
-            for (int i = 0; i < this.WealthScript.Parameters.Count; i++)
-            {
-                this.paramValues.Add(new StrategyParameter(
-                    this.WealthScript.Parameters[i].Name,
-                    this.WealthScript.Parameters[i].Start, // set the value to start
-                    this.WealthScript.Parameters[i].Start,
-                    this.WealthScript.Parameters[i].Stop,
-                    this.WealthScript.Parameters[i].Step,
-                    this.WealthScript.Parameters[i].Description));
-                this.paramValues[i].DefaultValue = this.WealthScript.Parameters[i].DefaultValue;
-            }
-            for (int i = 0; i < this.paramValues.Count; i++)
-                this.WealthScript.Parameters[i].Value = this.paramValues[i].Value;
+            this.paramValues = this.WealthScript.Parameters
+                .Select(p =>
+                {
+                    // set the value to start
+                    p.Value = p.Start;
+                    return CopyParameter(p);
+                })
+                .ToList();
 
             //extract all data set bars
             foreach (var symbol in tse.DataSet.Symbols)
@@ -341,10 +335,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             this.countDown.Reset();
             for (int i = 0; i < numThreads; i++)
             {
-                if (GetNextRunParameters())
+                if (SetNextRunParameters())
                 {
                     for (int j = 0; j < this.paramValues.Count; j++)
                         this.executors[i].ws.Parameters[j].Value = this.paramValues[j].Value;
+
                     ThreadPool.QueueUserWorkItem((e) =>
                     {
                         var threadNum = (int)e;
@@ -356,22 +351,14 @@ namespace TradingStrategies.Backtesting.Optimizers
                                 {
                                     ExecuteOne(threadNum);
 
-                                    var curParams = this.executors[threadNum].ws.Parameters;
-                                    var info = new ParamInfo()
-                                    {
-                                        MaPeriod = curParams.Single(x => x.Name == "maPeriod").Value,
-                                        MaPercent = curParams.Single(x => x.Name == "maPercent").Value,
-                                        SigmoidOffset = curParams.Single(x => x.Name == "sigmoidOffset").Value,
-                                        SigmoidStretch = curParams.Single(x => x.Name == "sigmoidStretch").Value,
-                                        NetProfit = this.executors[threadNum].tse.Performance.Results.NetProfit,
-                                    };
-                                    paramInfos.Enqueue(info);
-
                                     if (threadNum == 0)
                                     {
                                         // have the main thread display this result in the result list UI
                                         for (int k = 0; k < this.executors[threadNum].ws.Parameters.Count; k++)
                                             this.WealthScript.Parameters[k].Value = this.executors[threadNum].ws.Parameters[k].Value;
+                                        //TODO
+                                        //здесь вроде как мы ставим параметры для исполнения скрипта главным потоком
+                                        //кажется это дублирующая нагрузка после выполнения скрипта на тех же параметрах в ExecuteOne
                                     }
                                     else
                                     {
@@ -407,6 +394,8 @@ namespace TradingStrategies.Backtesting.Optimizers
                     if (i == 0)
                         return false; // catch the boundary condition
                     break;
+                    //вот здесь как будто бы можно заранее выйти из цикла тредов, не освободив полностью countdown
+                    //если в последнем трае необработанных параметров осталось меньше чем число тредов
                 }
             }
             this.countDown.Wait();
@@ -416,12 +405,13 @@ namespace TradingStrategies.Backtesting.Optimizers
         private void ExecuteOne(int sys)
         {
             var ws = this.executors[sys].ws;
-            var ts = this.executors[sys].tse;
-            var allBars = dataSetBars.Select(x => x.Value).ToList();
+            //var ts = this.executors[sys].tse;
+            var allBars = dataSetBars.Values.ToList();
 
             //new executer for each run - most valuable fix
-            ts = CreateExecutor(this.Strategy, GetPositionSize(this.WealthScript), settingsManager, this.WealthScript);
-
+            //TODO: тут рефлексия на рефлексии при каждом запуске, нужно оптимизировать
+            //TODO: с using получились совсем иные результаты
+            var ts = CreateExecutor(this.Strategy, GetPositionSize(this.WealthScript), settingsManager, this.WealthScript);
             ts.Execute(new Strategy(), ws, null, allBars);
             this.results[sys] = ts.Performance;
         }
@@ -447,32 +437,44 @@ namespace TradingStrategies.Backtesting.Optimizers
         private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
         {
             wsTarget.Parameters.Clear();
-            for (int i = 0; i < wsSource.Parameters.Count; i++)
+
+            foreach (var parameter in wsSource.Parameters)
             {
-                wsTarget.Parameters.Add(new StrategyParameter(
-                    wsSource.Parameters[i].Name,
-                    wsSource.Parameters[i].Value,
-                    wsSource.Parameters[i].Start,
-                    wsSource.Parameters[i].Stop,
-                    wsSource.Parameters[i].Step,
-                    wsSource.Parameters[i].Description));
-                wsTarget.Parameters[i].DefaultValue = wsSource.Parameters[i].DefaultValue;
+                wsTarget.Parameters.Add(
+                    CopyParameter(parameter));
             }
         }
 
-        /// <summary>
-        /// Increments strategy parameter values for the next optimization run baesd on exhaustive optimization
-        /// </summary>
-        private bool GetNextRunParameters() => GetNextRunParameters(0);
+        private static StrategyParameter CopyParameter(StrategyParameter old)
+        {
+            return new StrategyParameter(
+                old.Name,
+                old.Value,
+                old.Start,
+                old.Stop,
+                old.Step,
+                old.Description)
+            {
+                DefaultValue = old.DefaultValue
+            };
+        }
 
         /// <summary>
-        /// Increments strategy parameter values for the next optimization run baesd on exhaustive optimization - recursive implementation
+        /// Increments strategy parameter values for the next optimization run based on exhaustive optimization
         /// </summary>
-        private bool GetNextRunParameters(int currentParam)
+        private bool SetNextRunParameters() => SetNextRunParameters(0);
+
+        /// <summary>
+        /// Increments strategy parameter values for the next optimization run based on exhaustive optimization - recursive implementation
+        /// </summary>
+        private bool SetNextRunParameters(int currentParam)
         {
             if (currentParam >= paramValues.Count)
                 return false; // we're done
+
             paramValues[currentParam].Value += paramValues[currentParam].Step;
+            //TODO: тут при неточном сложении даблов можно выйти за границу необсчитав последний параметр
+
             if ((paramValues[currentParam].Value > paramValues[currentParam].Stop && 
                 paramValues[currentParam].Step > 0) 
                 ||
@@ -480,7 +482,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 paramValues[currentParam].Step < 0))
             {
                 paramValues[currentParam].Value = paramValues[currentParam].Start;
-                return GetNextRunParameters(currentParam + 1);
+                return SetNextRunParameters(currentParam + 1);
             }
             return true;
         }
