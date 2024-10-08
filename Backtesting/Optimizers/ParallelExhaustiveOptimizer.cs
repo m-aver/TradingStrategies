@@ -522,10 +522,12 @@ namespace TradingStrategies.Backtesting.Optimizers
             //хотя CreateExecutor же с исходными работает
             //но может он лочиться при выполнении перестанет хотябы
 
+            var strategy = CopyStrategy(this.Strategy);
+
             perfomance[sys].Add(($"executor_{currentRun}", watch.ElapsedMilliseconds));
 
             watch.Restart();
-            ts.Execute(new Strategy(), ws, null, allBars);
+            ts.Execute(strategy, ws, null, allBars);
             perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
 
             this.results[sys] = ts.Performance;
@@ -605,52 +607,16 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private TradingSystemExecutor CopyExecutor(TradingSystemExecutor source)
         {
-            //var dataHost = source.FundamentalsLoader.DataHost;
-            //var barsLoader = new BarsLoader()
-            //{
-            //    DataHost = dataHost,
-            //};
+            var target = new TradingSystemExecutor();
 
-            //эта штука внутри сильно тормозит на рефлексии
-            //вроде обычно копирование поле из source дает такие же результаты, но работает быстрее
-            //var fundamentalsLoader = new FundamentalsLoader()
-            //{
-            //    DataHost = dataHost
-            //};
+            target.ApplySettings(source);
 
-            //FundamentalsLoader fundamentalsLoader = new FundamentalsLoader();
-            //fundamentalsLoader.DataHost = MainModuleInstance.GetDataSources();
-
-            var target = new TradingSystemExecutor()
-            {
-                ApplyCommission = source.ApplyCommission,
-                ApplyInterest = source.ApplyInterest,
-                ApplyDividends = source.ApplyDividends,
-                CashRate = source.CashRate,
-                EnableSlippage = source.EnableSlippage,
-                LimitDaySimulation = source.LimitDaySimulation,
-                LimitOrderSlippage = source.LimitOrderSlippage,
-                MarginRate = source.MarginRate,
-                NoDecimalRoundingForLimitStopPrice = source.NoDecimalRoundingForLimitStopPrice,
-                PricingDecimalPlaces = source.PricingDecimalPlaces,
-                ReduceQtyBasedOnVolume = source.ReduceQtyBasedOnVolume,
-                RedcuceQtyPct = source.RedcuceQtyPct,
-                RoundLots = source.RoundLots,
-                RoundLots50 = source.RoundLots50,
-                SlippageTicks = source.SlippageTicks,
-                SlippageUnits = source.SlippageUnits,
-                WorstTradeSimulation = source.WorstTradeSimulation,
-
-                FundamentalsLoader = source.FundamentalsLoader,
-                BarsLoader = source.BarsLoader,
-                DataSet = source.DataSet,
-                Commission = source.Commission,
-                //PosSize = source.PosSize,
-                PosSize = CopyPositionSize(source.PosSize),
-
-                BenchmarkBuyAndHoldON = false,
-                    
-            };
+            target.FundamentalsLoader = source.FundamentalsLoader;
+            target.BarsLoader = source.BarsLoader;
+            target.DataSet = source.DataSet;
+            target.Commission = source.Commission;
+            target.PosSize = CopyPositionSize(source.PosSize);
+            target.BenchmarkBuyAndHoldON = false;
 
             return target;
         }
@@ -681,6 +647,48 @@ namespace TradingStrategies.Backtesting.Optimizers
             //var target = PositionSize.Parse(source.ToString());
 
             return target;
+        }
+
+        private static Strategy CopyStrategy(Strategy source)
+        {
+            var target = new Strategy()
+            {
+                ID = Guid.NewGuid(),
+
+                Name = source.Name,
+                Code = source.Code,
+                Description = source.Description,
+                Author = source.Author,
+                CreationDate = source.CreationDate,
+                LastModified = source.LastModified,
+                StrategyType = source.StrategyType,
+                AccountNumber = source.AccountNumber,
+                NetworkDrivePath = source.NetworkDrivePath,
+                FileName = source.FileName,
+                Folder = source.Folder,
+                WealthScriptType = source.WealthScriptType,
+                URL = source.URL,
+                ParameterValues = source.ParameterValues,
+                DataSetName = source.DataSetName,
+                Symbol = source.Symbol,
+                DataScale = source.DataScale,
+                PositionSize = source.PositionSize,
+                DataRange = source.DataRange,
+                Indicators = source.Indicators,
+                Rules = source.Rules,
+                SinglePosition = source.SinglePosition,
+                References = source.References,
+                StartingEquity = source.StartingEquity,
+                MarginFactor = source.MarginFactor,
+                Origin = source.Origin,
+                CombinedStrategyChildren = source.CombinedStrategyChildren,
+                PanelSize = source.PanelSize,
+                PreferredValues = source.PreferredValues,
+                Tag = source.Tag,
+                UsePreferredValues = source.UsePreferredValues,
+            };
+
+            return source;
         }
 
         /// <summary>
