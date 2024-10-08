@@ -401,52 +401,52 @@ namespace TradingStrategies.Backtesting.Optimizers
                         {
                             watch.Start();
 
-                        var threadNum = (int)e;
-                        for (int retry = 0; ;)
-                        {
-                            try
+                            var threadNum = (int)e;
+                            for (int retry = 0; ;)
                             {
-                                //lock (this)   //for debug
+                                try
                                 {
-                                        //Busy();
-                                    ExecuteOne(threadNum);
-
-                                    if (threadNum == 0)
+                                    //lock (this)   //for debug
                                     {
-                                        // have the main thread display this result in the result list UI
-                                        for (int k = 0; k < this.executors[threadNum].ws.Parameters.Count; k++)
-                                            this.WealthScript.Parameters[k].Value = this.executors[threadNum].ws.Parameters[k].Value;
-                                        //TODO
-                                        //здесь вроде как мы ставим параметры для исполнения скрипта главным потоком
-                                        //кажется это дублирующая нагрузка после выполнения скрипта на тех же параметрах в ExecuteOne
+                                        //Busy();
+                                        ExecuteOne(threadNum);
+
+                                        if (threadNum == 0)
+                                        {
+                                            // have the main thread display this result in the result list UI
+                                            for (int k = 0; k < this.executors[threadNum].ws.Parameters.Count; k++)
+                                                this.WealthScript.Parameters[k].Value = this.executors[threadNum].ws.Parameters[k].Value;
+                                            //TODO
+                                            //здесь вроде как мы ставим параметры для исполнения скрипта главным потоком
+                                            //кажется это дублирующая нагрузка после выполнения скрипта на тех же параметрах в ExecuteOne
                                             // --
                                             //кажется можно еще в два раза увеличить перфоманс, если не ждать треды
                                             //чтобы родные запуски за пределами оптимизера выполнялись параллельно тредам
-                                    }
-                                    else
-                                    {
+                                        }
+                                        else
+                                        {
                                             var uiWatch = new Stopwatch();
                                             uiWatch.Start();
-                                        // have this thread display this result in the result list UI
-                                        AddResultsToUI(threadNum);
+                                            // have this thread display this result in the result list UI
+                                            AddResultsToUI(threadNum);
                                             perfomance[threadNum].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
-                                    }
-                                    this.countDown.Signal();
+                                        }
+                                        this.countDown.Signal();
                                         //Busy();
+                                        break;
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    retry++;
+                                    if (retry < 10)
+                                        continue;
+                                    // couldn't get results for this run
+                                    this.results[threadNum] = null;
+                                    this.countDown.Signal();
                                     break;
                                 }
                             }
-                            catch (Exception)
-                            {
-                                retry++;
-                                if (retry < 10)
-                                    continue;
-                                // couldn't get results for this run
-                                this.results[threadNum] = null;
-                                this.countDown.Signal();
-                                break;
-                            }
-                        }
                         }
                         finally
                         {
