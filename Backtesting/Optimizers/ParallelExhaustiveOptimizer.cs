@@ -28,6 +28,10 @@ using System.Collections.Concurrent;
 //но общее время выполнения осталось таким же (1:10)
 //мб сборщик мусора замедляет перфоманс
 
+//судя по профайлеру большую часть цп сжирает SynchronizedBarIterator в SystemResults
+//может получится как-то подменить его реализацию через рефлексию или IL
+//еще из перфоманса пока не понятно почему утилизируется в среднем только 50% цп
+
 namespace TradingStrategies.Backtesting.Optimizers
 {
     static class MainModuleInstance
@@ -340,17 +344,33 @@ namespace TradingStrategies.Backtesting.Optimizers
                 .ToList();
 
             //extract all data set bars
+            int i = 0;
             foreach (var symbol in tse.DataSet.Symbols)
             {
                 var bars = tse.BarsLoader.GetData(tse.DataSet, symbol);
                 dataSetBars.Add(symbol, bars);
+
+                //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
+                //судя по профайлеру на этом тратится очень много ресурсов, изначально там формируется большая строка
+                //TODO: есть еще мысль что много ресурсов тратится на итерировании по одной и той же коллекции баров в нескольких потоках, мб кэш процессора постоянно миссит
+                bars
+                    .GetType()
+                    .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Single(x => x.Name == "_uniqueDesc")
+                    .SetValue(bars, i.ToString());
+                i++;
             }
             //parentExecutor = ExtractExecutor(this.WealthScript);
             //parentExecutor = CopyExecutor(ExtractExecutor(this.WealthScript));
             //parentExecutor = CopyExecutor(CreateExecutor(this.Strategy, ps, sm, this.WealthScript));
             parentExecutor = CreateExecutor(this.Strategy, ps, sm, this.WealthScript);
 
+            //оптимизация главного цикла
+            var mainExecutor = ExtractExecutor(this.WealthScript);
+            mainExecutor.BenchmarkBuyAndHoldON = false;
+
             perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>()).ToArray();  //with main thread
+            this.countDown.Signal(countDown.InitialCount);  //освобождаем перед первым вызовом
         }
 
         private void Busy()
@@ -380,6 +400,8 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// </summary>
         public bool NextRunInternal(SystemPerformance sp, OptimizationResult or)
         {
+            this.countDown.Wait();
+
             if (!this.supported)
                 return false;
 
@@ -392,6 +414,16 @@ namespace TradingStrategies.Backtesting.Optimizers
                 {
                     for (int j = 0; j < this.paramValues.Count; j++)
                         this.executors[i].ws.Parameters[j].Value = this.paramValues[j].Value;
+
+                    if (i == 0)
+                    {
+                        // have the main thread display this result in the result list UI
+                        for (int k = 0; k < this.executors[i].ws.Parameters.Count; k++)
+                            this.WealthScript.Parameters[k].Value = this.executors[i].ws.Parameters[k].Value;
+                        
+                        countDown.Signal();
+                        continue;
+                    }
 
                     ThreadPool.QueueUserWorkItem((e) =>
                     {
@@ -411,26 +443,12 @@ namespace TradingStrategies.Backtesting.Optimizers
                                         //Busy();
                                         ExecuteOne(threadNum);
 
-                                        if (threadNum == 0)
-                                        {
-                                            // have the main thread display this result in the result list UI
-                                            for (int k = 0; k < this.executors[threadNum].ws.Parameters.Count; k++)
-                                                this.WealthScript.Parameters[k].Value = this.executors[threadNum].ws.Parameters[k].Value;
-                                            //TODO
-                                            //здесь вроде как мы ставим параметры для исполнения скрипта главным потоком
-                                            //кажется это дублирующая нагрузка после выполнения скрипта на тех же параметрах в ExecuteOne
-                                            // --
-                                            //кажется можно еще в два раза увеличить перфоманс, если не ждать треды
-                                            //чтобы родные запуски за пределами оптимизера выполнялись параллельно тредам
-                                        }
-                                        else
-                                        {
-                                            var uiWatch = new Stopwatch();
-                                            uiWatch.Start();
-                                            // have this thread display this result in the result list UI
-                                            AddResultsToUI(threadNum);
-                                            perfomance[threadNum].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
-                                        }
+                                        var uiWatch = new Stopwatch();
+                                        uiWatch.Start();
+                                        // have this thread display this result in the result list UI
+                                        AddResultsToUI(threadNum);
+                                        perfomance[threadNum].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
+
                                         this.countDown.Signal();
                                         //Busy();
                                         break;
@@ -476,7 +494,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             perfomance[mainThread].Add(($"all_runThreads_{currentRun}", mainWatch.ElapsedMilliseconds));
             mainWatch.Restart();
 
-            this.countDown.Wait();
+            //this.countDown.Wait();
 
             perfomance[mainThread].Add(($"all_countDown_{currentRun}", mainWatch.ElapsedMilliseconds));
             return true;
@@ -682,6 +700,12 @@ namespace TradingStrategies.Backtesting.Optimizers
             // this code is based on the PortfolioEquityEx from Community.Components 
             TradingSystemExecutor executor = new TradingSystemExecutor();
 
+            //BuildEquityCurves жрет много цп, похоже вызывает графику и использует какую-то медленную кострукция - SynchronizedBarsIterator
+            //но без нее не строятся SystemResults
+            //хоть бери и пиши свой TradingSystemExecutor
+            //executor.BuildEquityCurves = false;
+            executor.BenchmarkBuyAndHoldON = false;
+
             // Store user-selected position size GUI dialog settings into a variable
             executor.PosSize = ps;
             if (settings.Settings.Count > 0)
@@ -705,7 +729,6 @@ namespace TradingStrategies.Backtesting.Optimizers
                 executor.WorstTradeSimulation = settings.Get("WorstTradeSimulation", false);
                 executor.FundamentalsLoader = fundamentalsLoader;
 
-                var parentExecutor = ExtractExecutor(ws);
                 executor.BarsLoader = parentExecutor.BarsLoader;
                 executor.DataSet = parentExecutor.DataSet;
 
