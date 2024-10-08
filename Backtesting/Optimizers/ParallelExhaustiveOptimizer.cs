@@ -49,7 +49,7 @@ namespace TradingStrategies.Backtesting.Optimizers
 
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                if (assembly.FullName.Contains("WealthLabDev") || 
+                if (assembly.FullName.Contains("WealthLabDev") ||
                     assembly.FullName.Contains("WealthLabPro"))
                 {
                     wlAssembly = assembly;
@@ -57,7 +57,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 }
             }
 
-            if (wlAssembly == null) 
+            if (wlAssembly == null)
                 throw new Exception("Wealth-Lab not found.");
 
             return wlAssembly;
@@ -93,7 +93,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 }
             }
 
-            if (mainModuleType == null) 
+            if (mainModuleType == null)
                 throw new Exception("MainModule not found.");
 
             FieldInfo fiInstance = null;
@@ -107,7 +107,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 }
             }
 
-            if (fiInstance == null) 
+            if (fiInstance == null)
                 throw new Exception("MainModule.Instance not found.");
 
             _instance = fiInstance.GetValue(null);
@@ -132,7 +132,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 }
             }
 
-            if ((_dataSources == null)) 
+            if ((_dataSources == null))
                 throw new Exception("DataSourceManager field not found.");
         }
 
@@ -218,11 +218,11 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// </summary>
         private double NumberOfRunsPerParameter(StrategyParameter parameter)
         {
-            if ((parameter.Start < parameter.Stop && parameter.Step > 0) || 
+            if ((parameter.Start < parameter.Stop && parameter.Step > 0) ||
                 (parameter.Start > parameter.Stop && parameter.Step < 0))
             {
                 return Math.Max(
-                    Math.Floor((parameter.Stop - parameter.Start + parameter.Step) / parameter.Step), 
+                    Math.Floor((parameter.Stop - parameter.Start + parameter.Step) / parameter.Step),
                     1);
             }
 
