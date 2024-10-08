@@ -472,16 +472,17 @@ namespace TradingStrategies.Backtesting.Optimizers
             if (currentParam >= paramValues.Count)
                 return false; // we're done
 
-            paramValues[currentParam].Value += paramValues[currentParam].Step;
-            //TODO: тут при неточном сложении даблов можно выйти за границу необсчитав последний параметр
+            var current = paramValues[currentParam];
 
-            if ((paramValues[currentParam].Value > paramValues[currentParam].Stop && 
-                paramValues[currentParam].Step > 0) 
+            current.Value += current.Step;
+
+            if ((current.Value >= (current.Stop + current.Step) &&
+                current.Step > 0)
                 ||
-                (paramValues[currentParam].Value < paramValues[currentParam].Stop && 
-                paramValues[currentParam].Step < 0))
+                (current.Value <= (current.Stop - current.Step) &&
+                current.Step < 0))
             {
-                paramValues[currentParam].Value = paramValues[currentParam].Start;
+                current.Value = current.Start;
                 return SetNextRunParameters(currentParam + 1);
             }
             return true;
