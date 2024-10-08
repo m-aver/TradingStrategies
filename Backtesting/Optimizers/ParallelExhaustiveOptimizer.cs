@@ -12,6 +12,22 @@ using Fidelity.Components;
 using System.Linq;
 using System.Collections.Concurrent;
 
+//перфоманс
+//создание экзекутора через CreateExecutor занимает чуть больше времени чем выполнение скрипта (>20-30%) (много рефлексии, обязательно оптимизировать)
+//при этом в параллельном режиме создание экзекутора и выполнение скрипта занимает в 3 раза больше времени, чем в последовательном (цикл в одном треде)
+//100/70мс в последовательном и 300/200мс в параллельном
+//в последовательном режиме с множеством тредов и lock цифры примерно такие же как с циклом, мб чуть больше
+//в параллельном главный поток висит окло 500 мс на блокировке, в момент запуска тредов ЦП под 100%, пожалуй все треды действительно идут параллельно
+//возможно где-то в недрах велслаба лочимся на каких-нибудь блокировках, поэтому такая разница между режимами 
+//при добавлении фейковой нагрузки через Busy, утилизация ЦП поперла вверх, хотя не всегда в момент нагрузки была 100. очень похоже что все таки где-то внутри есть блокировки на которых скрипт троттлится (lock нагрузку не жрет)
+//выполнение метода AddResultsToUi происходит мгновенно, тут оптимизация не нужна
+
+//точки останова в коде стратегии очень сильно замедляют дебаг
+
+//странный эффект, с CopyExecutor видно про стопвотчу что создание экзекутора стало занимать раза в 2 меньше времени
+//но общее время выполнения осталось таким же (1:10)
+//мб сборщик мусора замедляет перфоманс
+
 namespace TradingStrategies.Backtesting.Optimizers
 {
     static class MainModuleInstance
@@ -155,6 +171,13 @@ namespace TradingStrategies.Backtesting.Optimizers
         private ConcurrentQueue<ParamInfo> paramInfos = new ConcurrentQueue<ParamInfo>();
         private Dictionary<string, Bars> dataSetBars = new Dictionary<string, Bars>();
         private SettingsManager settingsManager;
+        private TradingSystemExecutor parentExecutor;
+
+        //for watches
+        private int mainThread => numThreads + 1 - 1;
+        private int currentRun = 0;
+        private Stopwatch mainWatch = new Stopwatch();
+        private List<(string stage, long milliseconds)>[] perfomance;
 
         public override string Description => "Parallel Optimizer (Exhaustive)";
         public override string FriendlyName => Description;
@@ -322,15 +345,45 @@ namespace TradingStrategies.Backtesting.Optimizers
                 var bars = tse.BarsLoader.GetData(tse.DataSet, symbol);
                 dataSetBars.Add(symbol, bars);
             }
+            //parentExecutor = ExtractExecutor(this.WealthScript);
+            //parentExecutor = CopyExecutor(ExtractExecutor(this.WealthScript));
+            //parentExecutor = CopyExecutor(CreateExecutor(this.Strategy, ps, sm, this.WealthScript));
+            parentExecutor = CreateExecutor(this.Strategy, ps, sm, this.WealthScript);
+
+            perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>()).ToArray();  //with main thread
+        }
+
+        private void Busy()
+        {
+            var start = DateTime.Now;
+            var end = start + TimeSpan.FromSeconds(1);
+            while (DateTime.Now < end) { }
+        }
+
+        public override bool NextRun(SystemPerformance sp, OptimizationResult or)
+        {
+            perfomance[mainThread].Add(($"all_end_{currentRun}", mainWatch.ElapsedMilliseconds));
+
+            currentRun++;
+            mainWatch.Restart();
+
+            var x = NextRunInternal(sp, or);
+
+            mainWatch.Restart();
+            perfomance[mainThread].Add(($"all_start_{currentRun}", mainWatch.ElapsedMilliseconds));
+
+            return x;
         }
 
         /// <summary>
         /// Implements parallel runs - each logical "next run" results in multiple parallel runs
         /// </summary>
-        public override bool NextRun(SystemPerformance sp, OptimizationResult or)
+        public bool NextRunInternal(SystemPerformance sp, OptimizationResult or)
         {
             if (!this.supported)
                 return false;
+
+            mainWatch.Restart();
 
             this.countDown.Reset();
             for (int i = 0; i < numThreads; i++)
@@ -342,6 +395,12 @@ namespace TradingStrategies.Backtesting.Optimizers
 
                     ThreadPool.QueueUserWorkItem((e) =>
                     {
+                        //Busy();
+                        var watch = new Stopwatch();
+                        try
+                        {
+                            watch.Start();
+
                         var threadNum = (int)e;
                         for (int retry = 0; ;)
                         {
@@ -349,6 +408,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                             {
                                 //lock (this)   //for debug
                                 {
+                                        //Busy();
                                     ExecuteOne(threadNum);
 
                                     if (threadNum == 0)
@@ -359,13 +419,20 @@ namespace TradingStrategies.Backtesting.Optimizers
                                         //TODO
                                         //здесь вроде как мы ставим параметры для исполнения скрипта главным потоком
                                         //кажется это дублирующая нагрузка после выполнения скрипта на тех же параметрах в ExecuteOne
+                                            // --
+                                            //кажется можно еще в два раза увеличить перфоманс, если не ждать треды
+                                            //чтобы родные запуски за пределами оптимизера выполнялись параллельно тредам
                                     }
                                     else
                                     {
+                                            var uiWatch = new Stopwatch();
+                                            uiWatch.Start();
                                         // have this thread display this result in the result list UI
                                         AddResultsToUI(threadNum);
+                                            perfomance[threadNum].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
                                     }
                                     this.countDown.Signal();
+                                        //Busy();
                                     break;
                                 }
                             }
@@ -379,6 +446,13 @@ namespace TradingStrategies.Backtesting.Optimizers
                                 this.countDown.Signal();
                                 break;
                             }
+                        }
+                        }
+                        finally
+                        {
+                            watch.Stop();
+                            perfomance[(int)e].Add(($"all_{currentRun}", watch.ElapsedMilliseconds));
+                            //Busy();
                         }
                     }, i);
                 }
@@ -398,12 +472,20 @@ namespace TradingStrategies.Backtesting.Optimizers
                     //если в последнем трае необработанных параметров осталось меньше чем число тредов
                 }
             }
+
+            perfomance[mainThread].Add(($"all_runThreads_{currentRun}", mainWatch.ElapsedMilliseconds));
+            mainWatch.Restart();
+
             this.countDown.Wait();
+
+            perfomance[mainThread].Add(($"all_countDown_{currentRun}", mainWatch.ElapsedMilliseconds));
             return true;
         }
 
         private void ExecuteOne(int sys)
         {
+            var watch = new Stopwatch();
+
             var ws = this.executors[sys].ws;
             //var ts = this.executors[sys].tse;
             var allBars = dataSetBars.Values.ToList();
@@ -411,8 +493,23 @@ namespace TradingStrategies.Backtesting.Optimizers
             //new executer for each run - most valuable fix
             //TODO: тут рефлексия на рефлексии при каждом запуске, нужно оптимизировать
             //TODO: с using получились совсем иные результаты
-            var ts = CreateExecutor(this.Strategy, GetPositionSize(this.WealthScript), settingsManager, this.WealthScript);
+
+            watch.Start();
+            //var ts = CreateExecutor(this.Strategy, GetPositionSize(this.WealthScript), settingsManager, this.WealthScript);
+            var ts = CopyExecutor(parentExecutor);
+            //при последовательной обработке с CopyExecutor нет проблем, при параллельной результаты хаотичные
+            //но число сделок одинаково, видимо при расчете результатов где-то возникают коллизии
+
+            //мб попробовать бары копировать
+            //хотя CreateExecutor же с исходными работает
+            //но может он лочиться при выполнении перестанет хотябы
+
+            perfomance[sys].Add(($"executor_{currentRun}", watch.ElapsedMilliseconds));
+
+            watch.Restart();
             ts.Execute(new Strategy(), ws, null, allBars);
+            perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
+
             this.results[sys] = ts.Performance;
         }
 
@@ -488,6 +585,86 @@ namespace TradingStrategies.Backtesting.Optimizers
             return true;
         }
 
+        private TradingSystemExecutor CopyExecutor(TradingSystemExecutor source)
+        {
+            //var dataHost = source.FundamentalsLoader.DataHost;
+            //var barsLoader = new BarsLoader()
+            //{
+            //    DataHost = dataHost,
+            //};
+
+            //эта штука внутри сильно тормозит на рефлексии
+            //вроде обычно копирование поле из source дает такие же результаты, но работает быстрее
+            //var fundamentalsLoader = new FundamentalsLoader()
+            //{
+            //    DataHost = dataHost
+            //};
+
+            //FundamentalsLoader fundamentalsLoader = new FundamentalsLoader();
+            //fundamentalsLoader.DataHost = MainModuleInstance.GetDataSources();
+
+            var target = new TradingSystemExecutor()
+            {
+                ApplyCommission = source.ApplyCommission,
+                ApplyInterest = source.ApplyInterest,
+                ApplyDividends = source.ApplyDividends,
+                CashRate = source.CashRate,
+                EnableSlippage = source.EnableSlippage,
+                LimitDaySimulation = source.LimitDaySimulation,
+                LimitOrderSlippage = source.LimitOrderSlippage,
+                MarginRate = source.MarginRate,
+                NoDecimalRoundingForLimitStopPrice = source.NoDecimalRoundingForLimitStopPrice,
+                PricingDecimalPlaces = source.PricingDecimalPlaces,
+                ReduceQtyBasedOnVolume = source.ReduceQtyBasedOnVolume,
+                RedcuceQtyPct = source.RedcuceQtyPct,
+                RoundLots = source.RoundLots,
+                RoundLots50 = source.RoundLots50,
+                SlippageTicks = source.SlippageTicks,
+                SlippageUnits = source.SlippageUnits,
+                WorstTradeSimulation = source.WorstTradeSimulation,
+
+                FundamentalsLoader = source.FundamentalsLoader,
+                BarsLoader = source.BarsLoader,
+                DataSet = source.DataSet,
+                Commission = source.Commission,
+                //PosSize = source.PosSize,
+                PosSize = CopyPositionSize(source.PosSize),
+
+                BenchmarkBuyAndHoldON = false,
+                    
+            };
+
+            return target;
+        }
+
+        //с этой штукой CopyExecutor перестал показывать хаотичные результаты
+        //и теперь работает также как и с CreateExecutor
+        //не удивительно, при каждом вызове SetShareSize с последующим входом в позицию через WealthScript перезаписываются свойства этого объекта PositionSize внутри TradingSystemExecutor, и высчитывается число Shares на этой Position
+        //только вот CopyExecutor как будто работает даже медленее чем CreateExecutor
+        private static PositionSize CopyPositionSize(PositionSize source)
+        {
+            var target = new PositionSize()
+            {
+                Mode = source.Mode,
+                RawProfitDollarSize = source.RawProfitDollarSize,
+                RawProfitShareSize = source.RawProfitShareSize,
+                StartingCapital = source.StartingCapital,
+                DollarSize = source.DollarSize,
+                ShareSize = source.ShareSize,
+                PctSize = source.PctSize,
+                RiskSize = source.RiskSize,
+                SimuScriptName = source.SimuScriptName,
+                PosSizerConfig = source.PosSizerConfig,
+                MarginFactor = source.MarginFactor,
+                OverrideShareSize = source.OverrideShareSize,
+            };
+
+            //это видимо оффициальный способ
+            //var target = PositionSize.Parse(source.ToString());
+
+            return target;
+        }
+
         /// <summary>
         /// Creates a trading executor to be used for optimization runs
         /// </summary>
@@ -495,8 +672,12 @@ namespace TradingStrategies.Backtesting.Optimizers
         {
             FundamentalsLoader fundamentalsLoader = new FundamentalsLoader();
             fundamentalsLoader.DataHost = MainModuleInstance.GetDataSources();
-            BarsLoader barsLoader = new BarsLoader();
-            barsLoader.DataHost = fundamentalsLoader.DataHost;
+            //BarsLoader barsLoader = new BarsLoader();
+            //barsLoader.DataHost = fundamentalsLoader.DataHost;
+
+            var parentExecutor = ExtractExecutor(ws);
+            //добавление контейнера уменьшило нагрузку на цп и очень сильно увеличило потребление оперативы, но результаты оказались такие же рандомные (для CopyExecutor)
+            //new TradingSystemExecutor(parentExecutor.Container);
 
             // this code is based on the PortfolioEquityEx from Community.Components 
             TradingSystemExecutor executor = new TradingSystemExecutor();
