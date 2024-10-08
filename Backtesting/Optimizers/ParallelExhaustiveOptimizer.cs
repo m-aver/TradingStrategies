@@ -732,40 +732,8 @@ namespace TradingStrategies.Backtesting.Optimizers
                 executor.BarsLoader = parentExecutor.BarsLoader;
                 executor.DataSet = parentExecutor.DataSet;
 
-                string commissionOption = settings.Get("Commission", string.Empty);
-                if (!string.IsNullOrEmpty(commissionOption))
-                {
-                    AssemblyLoader assemblyLoader = new AssemblyLoader();
-                    assemblyLoader.Path = Application.StartupPath;
-                    assemblyLoader.BaseClass = "Commission";
-                    Commission commission = null;
-                    string selectedCommission = null;
-                    AssemblyName whichAssembly = null;
-                    Type targetType = null;
-                    if (assemblyLoader.Assemblies.Count > 0)
-                    {
-                        foreach (Assembly asm in assemblyLoader.Assemblies)
-                        {
-                            foreach (Type type in assemblyLoader.TypesInAssembly(asm))
-                            {
-                                if (type.Name.Trim() == commissionOption.Trim())
-                                {
-                                    selectedCommission = type.Name;
-                                    whichAssembly = asm.GetName();
-                                    targetType = type;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if ((selectedCommission != null) & (whichAssembly != null))
-                    {
-                        Assembly asm = Assembly.Load(whichAssembly);
-                        commission = (Commission)asm.CreateInstance(whichAssembly.Name + "." + targetType.Name);
-                    }
-                    if (commission != null)
-                        executor.Commission = commission;
-                }
+                //now it completely matches with default optimizer results for my strategy
+                executor.Commission = parentExecutor.Commission;
             }
             return executor;
         }
