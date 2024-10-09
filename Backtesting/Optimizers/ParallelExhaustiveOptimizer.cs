@@ -176,6 +176,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         private Dictionary<string, Bars> dataSetBars = new Dictionary<string, Bars>();
         private SettingsManager settingsManager;
         private TradingSystemExecutor parentExecutor;
+        private ListView optimizationResultListView;
 
         //for watches
         private int mainThread => numThreads + 1 - 1;
@@ -283,6 +284,9 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
+        //TODO: оптимизировать и разгрести FirstRun
+        //TODO: перенести в Initialize то, что должно вызываться только один раз
+
         /// <summary>
         /// The very first run for this optimization. Sets up everything for the entire optimization
         /// </summary>
@@ -369,11 +373,13 @@ namespace TradingStrategies.Backtesting.Optimizers
             var mainExecutor = ExtractExecutor(this.WealthScript);
             mainExecutor.BenchmarkBuyAndHoldON = false;
 
+            optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
+
             perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>()).ToArray();  //with main thread
             this.countDown.Signal(countDown.InitialCount);  //освобождаем перед первым вызовом
         }
 
-        private void Busy()
+        private static void Busy()
         {
             var start = DateTime.Now;
             var end = start + TimeSpan.FromSeconds(1);
@@ -408,19 +414,21 @@ namespace TradingStrategies.Backtesting.Optimizers
             mainWatch.Restart();
 
             this.countDown.Reset();
+
             for (int i = 0; i < numThreads; i++)
             {
+                var executors = this.executors[i];
+
                 if (SetNextRunParameters())
                 {
                     for (int j = 0; j < this.paramValues.Count; j++)
-                        this.executors[i].ws.Parameters[j].Value = this.paramValues[j].Value;
+                        executors.ws.Parameters[j].Value = this.paramValues[j].Value;
 
                     if (i == 0)
                     {
-                        // have the main thread display this result in the result list UI
-                        for (int k = 0; k < this.executors[i].ws.Parameters.Count; k++)
-                            this.WealthScript.Parameters[k].Value = this.executors[i].ws.Parameters[k].Value;
-                        
+                        // set params to execute by main thread after NextRun
+                        for (int k = 0; k < executors.ws.Parameters.Count; k++)
+                            this.WealthScript.Parameters[k].Value = executors.ws.Parameters[k].Value;
                         countDown.Signal();
                         continue;
                     }
@@ -428,48 +436,28 @@ namespace TradingStrategies.Backtesting.Optimizers
                     ThreadPool.QueueUserWorkItem((e) =>
                     {
                         //Busy();
-                        var watch = new Stopwatch();
+                        var watch = Stopwatch.StartNew();
+
+                        var threadNum = (int)e;
                         try
                         {
-                            watch.Start();
-
-                            var threadNum = (int)e;
-                            for (int retry = 0; ;)
+                            //lock (this)   //for debug
                             {
-                                try
-                                {
-                                    //lock (this)   //for debug
-                                    {
-                                        //Busy();
-                                        ExecuteOne(threadNum);
+                                ExecuteOne(threadNum);
 
-                                        var uiWatch = new Stopwatch();
-                                        uiWatch.Start();
-                                        // have this thread display this result in the result list UI
-                                        AddResultsToUI(threadNum);
-                                        perfomance[threadNum].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
-
-                                        this.countDown.Signal();
-                                        //Busy();
-                                        break;
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    retry++;
-                                    if (retry < 10)
-                                        continue;
-                                    // couldn't get results for this run
-                                    this.results[threadNum] = null;
-                                    this.countDown.Signal();
-                                    break;
-                                }
+                                AddResultsToUI(threadNum);
                             }
+                        }
+                        catch
+                        {
+                            this.results[threadNum] = null;
                         }
                         finally
                         {
+                            this.countDown.Signal();
+
                             watch.Stop();
-                            perfomance[(int)e].Add(($"all_{currentRun}", watch.ElapsedMilliseconds));
+                            perfomance[threadNum].Add(($"all_{currentRun}", watch.ElapsedMilliseconds));
                             //Busy();
                         }
                     }, i);
@@ -502,35 +490,22 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private void ExecuteOne(int sys)
         {
-            var watch = new Stopwatch();
+            var watch = Stopwatch.StartNew();
 
-            var ws = this.executors[sys].ws;
-            //var ts = this.executors[sys].tse;
+            var executors = this.executors[sys];
+
             var allBars = dataSetBars.Values.ToList();
-
             //new executer for each run - most valuable fix
-            //TODO: тут рефлексия на рефлексии при каждом запуске, нужно оптимизировать
-            //TODO: с using получились совсем иные результаты
-
-            watch.Start();
-            //var ts = CreateExecutor(this.Strategy, GetPositionSize(this.WealthScript), settingsManager, this.WealthScript);
             var ts = CopyExecutor(parentExecutor);
-            //при последовательной обработке с CopyExecutor нет проблем, при параллельной результаты хаотичные
-            //но число сделок одинаково, видимо при расчете результатов где-то возникают коллизии
-
-            //мб попробовать бары копировать
-            //хотя CreateExecutor же с исходными работает
-            //но может он лочиться при выполнении перестанет хотябы
 
             var strategy = CopyStrategy(this.Strategy);
 
             perfomance[sys].Add(($"executor_{currentRun}", watch.ElapsedMilliseconds));
-
             watch.Restart();
-            ts.Execute(strategy, ws, null, allBars);
-            perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
 
+            ts.Execute(strategy, executors.ws, null, allBars);
             this.results[sys] = ts.Performance;
+            perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
         }
 
         /// <summary>
@@ -538,14 +513,22 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// </summary>
         private void AddResultsToUI(int index)
         {
+            var uiWatch = Stopwatch.StartNew();
+
+            var executors = this.executors[index];
+
             ListViewItem row = new ListViewItem();
             row.SubItems[0].Text = this.WealthScript.Bars.Symbol;
-            for (int i = 0; i < this.paramValues.Count; i++)
-                row.SubItems.Add(this.executors[index].ws.Parameters[i].Value.ToString());
-            this.executors[index].ss.PopulateScorecard(row, this.results[index]);
+            foreach (var parameter in executors.ws.Parameters)
+                row.SubItems.Add(parameter.Value.ToString());
 
-            var optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
-            optimizationResultListView.Invoke(new Action(() => optimizationResultListView.Items.Add(row)));
+            executors.ss.PopulateScorecard(row, executors.result);
+
+            optimizationResultListView.Invoke(
+                new Action<ListView, ListViewItem>((view, newRow) => view.Items.Add(newRow)),
+                optimizationResultListView, row);
+
+            perfomance[index].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
         }
 
         /// <summary>
@@ -565,12 +548,12 @@ namespace TradingStrategies.Backtesting.Optimizers
         private static StrategyParameter CopyParameter(StrategyParameter old)
         {
             return new StrategyParameter(
-                old.Name,
-                old.Value,
-                old.Start,
-                old.Stop,
-                old.Step,
-                old.Description)
+                name: old.Name,
+                value: old.Value,
+                start: old.Start,
+                stop: old.Stop,
+                step: old.Step,
+                description: old.Description)
             {
                 DefaultValue = old.DefaultValue
             };
@@ -621,10 +604,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
-        //с этой штукой CopyExecutor перестал показывать хаотичные результаты
-        //и теперь работает также как и с CreateExecutor
-        //не удивительно, при каждом вызове SetShareSize с последующим входом в позицию через WealthScript перезаписываются свойства этого объекта PositionSize внутри TradingSystemExecutor, и высчитывается число Shares на этой Position
-        //только вот CopyExecutor как будто работает даже медленее чем CreateExecutor
         private static PositionSize CopyPositionSize(PositionSize source)
         {
             var target = new PositionSize()
@@ -698,20 +677,12 @@ namespace TradingStrategies.Backtesting.Optimizers
         {
             FundamentalsLoader fundamentalsLoader = new FundamentalsLoader();
             fundamentalsLoader.DataHost = MainModuleInstance.GetDataSources();
-            //BarsLoader barsLoader = new BarsLoader();
-            //barsLoader.DataHost = fundamentalsLoader.DataHost;
 
             var parentExecutor = ExtractExecutor(ws);
-            //добавление контейнера уменьшило нагрузку на цп и очень сильно увеличило потребление оперативы, но результаты оказались такие же рандомные (для CopyExecutor)
-            //new TradingSystemExecutor(parentExecutor.Container);
 
             // this code is based on the PortfolioEquityEx from Community.Components 
             TradingSystemExecutor executor = new TradingSystemExecutor();
 
-            //BuildEquityCurves жрет много цп, похоже вызывает графику и использует какую-то медленную кострукция - SynchronizedBarsIterator
-            //но без нее не строятся SystemResults
-            //хоть бери и пиши свой TradingSystemExecutor
-            //executor.BuildEquityCurves = false;
             executor.BenchmarkBuyAndHoldON = false;
 
             // Store user-selected position size GUI dialog settings into a variable
@@ -791,6 +762,11 @@ namespace TradingStrategies.Backtesting.Optimizers
                     return new BasicScorecard();
             }
             return new ExtendedScorecard();
+        }
+
+        ~ParallelExhaustiveOptimizer()
+        {
+            countDown.Dispose();
         }
     }
 }
