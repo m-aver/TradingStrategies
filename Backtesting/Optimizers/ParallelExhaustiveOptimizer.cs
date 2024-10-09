@@ -11,6 +11,7 @@ using WealthLab.Visualizers;
 using Fidelity.Components;
 using System.Linq;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 //перфоманс
 //создание экзекутора через CreateExecutor занимает чуть больше времени чем выполнение скрипта (>20-30%) (много рефлексии, обязательно оптимизировать)
@@ -404,6 +405,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// <summary>
         /// Implements parallel runs - each logical "next run" results in multiple parallel runs
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool NextRunInternal(SystemPerformance sp, OptimizationResult or)
         {
             this.countDown.Wait();
@@ -488,6 +490,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ExecuteOne(int sys)
         {
             var watch = Stopwatch.StartNew();
@@ -511,6 +514,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// <summary>
         /// Adds a single set of results to the UI
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddResultsToUI(int index)
         {
             var uiWatch = Stopwatch.StartNew();
@@ -562,11 +566,13 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// <summary>
         /// Increments strategy parameter values for the next optimization run based on exhaustive optimization
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool SetNextRunParameters() => SetNextRunParameters(0);
 
         /// <summary>
         /// Increments strategy parameter values for the next optimization run based on exhaustive optimization - recursive implementation
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool SetNextRunParameters(int currentParam)
         {
             if (currentParam >= paramValues.Count)
@@ -588,6 +594,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private TradingSystemExecutor CopyExecutor(TradingSystemExecutor source)
         {
             var target = new TradingSystemExecutor();
@@ -604,6 +611,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static PositionSize CopyPositionSize(PositionSize source)
         {
             var target = new PositionSize()
@@ -628,6 +636,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Strategy CopyStrategy(Strategy source)
         {
             var target = new Strategy()
