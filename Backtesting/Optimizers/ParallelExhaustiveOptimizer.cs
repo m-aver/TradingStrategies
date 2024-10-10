@@ -37,6 +37,10 @@ using System.Runtime.CompilerServices;
 //как-то подменить ResultsLong и ResultsShort
 //чтобы велслаб не обсчитывал их на равне с общим Results если нет нужды
 
+//я тут обрадовался что переиспользование экзекуторов дает сильный прирост в производительности
+//но на самом деле я просто выключил ThrottleStop с режимом уменьшения тактовой частоты цп, видимо перезагружал комп
+//с ним результаты примерно теже
+
 namespace TradingStrategies.Backtesting.Optimizers
 {
     static class MainModuleInstance
