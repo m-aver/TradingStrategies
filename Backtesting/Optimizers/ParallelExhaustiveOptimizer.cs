@@ -170,27 +170,27 @@ namespace TradingStrategies.Backtesting.Optimizers
 
     internal class ExecutionScope
     {
-        public TradingSystemExecutor tse  { get; set; }
-        public WealthScript ws { get; set; }
-        public StrategyScorecard ss { get; set; }
-        public SystemPerformance result { get; set; }
-        public Strategy strategy { get; set; }
-        public List<Bars> barsSet { get; set; }
+        public TradingSystemExecutor Executor  { get; set; }
+        public WealthScript Script { get; set; }
+        public StrategyScorecard Scorecard { get; set; }
+        public SystemPerformance Result { get; set; }
+        public Strategy Strategy { get; set; }
+        public List<Bars> BarsSet { get; set; }
 
         public ExecutionScope(
-            TradingSystemExecutor tse, 
-            WealthScript ws, 
-            StrategyScorecard ss, 
+            TradingSystemExecutor executor, 
+            WealthScript script, 
+            StrategyScorecard scorecard, 
             SystemPerformance result, 
             Strategy strategy, 
             List<Bars> barsSet)
         {
-            this.tse = tse;
-            this.ws = ws;
-            this.ss = ss;
-            this.result = result;
-            this.strategy = strategy;
-            this.barsSet = barsSet;
+            this.Executor = executor;
+            this.Script = script;
+            this.Scorecard = scorecard;
+            this.Result = result;
+            this.Strategy = strategy;
+            this.BarsSet = barsSet;
         }
     }
 
@@ -372,11 +372,8 @@ namespace TradingStrategies.Backtesting.Optimizers
 
                 //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
                 //судя по профайлеру на этом тратится очень много ресурсов, изначально там формируется большая строка
-                //TODO: есть еще мысль что много ресурсов тратится на итерировании по одной и той же коллекции баров в нескольких потоках, мб кэш процессора постоянно миссит
-                bars
-                    .GetType()
-                    .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Single(x => x.Name == "_uniqueDesc")
+                typeof(Bars)
+                    .GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic)
                     .SetValue(bars, i.ToString());
                 i++;
             }
@@ -401,9 +398,9 @@ namespace TradingStrategies.Backtesting.Optimizers
                         //    })
                         //    .ToList()
                     );
-                    this.executors[i].tse.ExternalSymbolRequested += this.OnLoadSymbol;
-                    this.executors[i].tse.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
-                    SynchronizeWealthScriptParameters(this.executors[i].ws, this.WealthScript);
+                    this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
+                    this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
+                    SynchronizeWealthScriptParameters(this.executors[i].Script, this.WealthScript);
                 });
             this.paramValues = this.WealthScript.Parameters
                 .Select(p =>
@@ -416,7 +413,10 @@ namespace TradingStrategies.Backtesting.Optimizers
 
             optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
 
-            perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>()).ToArray();  //with main thread
+            var runs = (int)NumberOfRuns;
+            const int metricsCount = 10; 
+            perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>(runs * metricsCount)).ToArray();  //with main thread
+
             this.countDown.Signal(countDown.InitialCount);  //освобождаем перед первым вызовом
         }
 
@@ -437,7 +437,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             var x = NextRunInternal(sp, or);
 
             mainWatch.Restart();
-            perfomance[mainThread].Add(($"all_start_{currentRun}", mainWatch.ElapsedMilliseconds));
 
             return x;
         }
@@ -449,6 +448,8 @@ namespace TradingStrategies.Backtesting.Optimizers
         public bool NextRunInternal(SystemPerformance sp, OptimizationResult or)
         {
             this.countDown.Wait();
+
+            perfomance[mainThread].Add(($"all_countDown_{currentRun}", mainWatch.ElapsedMilliseconds));
 
             if (!this.supported)
                 return false;
@@ -463,21 +464,20 @@ namespace TradingStrategies.Backtesting.Optimizers
 
                 if (SetNextRunParameters())
                 {
-                    for (int j = 0; j < this.paramValues.Count; j++)
-                        executors.ws.Parameters[j].Value = this.paramValues[j].Value;
-
                     if (i == 0)
                     {
                         // set params to execute by main thread after NextRun
-                        for (int k = 0; k < executors.ws.Parameters.Count; k++)
-                            this.WealthScript.Parameters[k].Value = executors.ws.Parameters[k].Value;
+                        for (int j = 0; j < this.paramValues.Count; j++)
+                            this.WealthScript.Parameters[j].Value = this.paramValues[j].Value;
                         countDown.Signal();
                         continue;
                     }
 
+                    for (int j = 0; j < this.paramValues.Count; j++)
+                        executors.Script.Parameters[j].Value = this.paramValues[j].Value;
+
                     ThreadPool.QueueUserWorkItem((e) =>
                     {
-                        //Busy();
                         var watch = Stopwatch.StartNew();
 
                         var threadNum = (int)e;
@@ -492,16 +492,15 @@ namespace TradingStrategies.Backtesting.Optimizers
                         }
                         catch
                         {
-                            executors.result = null;
+                            executors.Result = null;
                         }
                         finally
                         {
-                            executors.tse.Clear();
+                            executors.Executor.Clear();
                             this.countDown.Signal();
 
                             watch.Stop();
                             perfomance[threadNum].Add(($"all_{currentRun}", watch.ElapsedMilliseconds));
-                            //Busy();
                         }
                     }, i);
                 }
@@ -511,23 +510,17 @@ namespace TradingStrategies.Backtesting.Optimizers
                     this.supported = false;
                     for (int j = i; j < numThreads; j++)
                     {
-                        this.executors[j].result = null;
+                        this.executors[j].Result = null;
                         this.countDown.Signal();
                     }
                     if (i == 0)
                         return false; // catch the boundary condition
                     break;
-                    //вот здесь как будто бы можно заранее выйти из цикла тредов, не освободив полностью countdown
-                    //если в последнем трае необработанных параметров осталось меньше чем число тредов
                 }
             }
 
             perfomance[mainThread].Add(($"all_runThreads_{currentRun}", mainWatch.ElapsedMilliseconds));
-            mainWatch.Restart();
 
-            //this.countDown.Wait();
-
-            perfomance[mainThread].Add(($"all_countDown_{currentRun}", mainWatch.ElapsedMilliseconds));
             return true;
         }
 
@@ -538,16 +531,16 @@ namespace TradingStrategies.Backtesting.Optimizers
 
             var executors = this.executors[sys];
 
-            var allBars = executors.barsSet;
-            var ts = executors.tse;
-            var strategy = executors.strategy;
+            var allBars = executors.BarsSet;
+            var ts = executors.Executor;
+            var strategy = executors.Strategy;
 
             perfomance[sys].Add(($"executor_{currentRun}", watch.ElapsedMilliseconds));
             watch.Restart();
 
             ts.Initialize();
-            ts.Execute(strategy, executors.ws, null, allBars);
-            executors.result = ts.Performance;
+            ts.Execute(strategy, executors.Script, null, allBars);
+            executors.Result = ts.Performance;
 
             perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
         }
@@ -563,11 +556,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             var executors = this.executors[index];
 
             ListViewItem row = new ListViewItem();
-            row.SubItems[0].Text = this.WealthScript.Bars.Symbol;
-            foreach (var parameter in executors.ws.Parameters)
+            row.SubItems[0].Text = executors.Executor.DataSet.Name;
+            foreach (var parameter in executors.Script.Parameters)
                 row.SubItems.Add(parameter.Value.ToString());
 
-            executors.ss.PopulateScorecard(row, executors.result);
+            executors.Scorecard.PopulateScorecard(row, executors.Result);
 
             optimizationResultListView.Invoke(
                 new Action<ListView, ListViewItem>((view, newRow) => view.Items.Add(newRow)),
@@ -717,7 +710,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 UsePreferredValues = source.UsePreferredValues,
             };
 
-            return source;
+            return target;
         }
 
         /// <summary>
