@@ -33,6 +33,10 @@ using System.Runtime.CompilerServices;
 //может получится как-то подменить его реализацию через рефлексию или IL
 //еще из перфоманса пока не понятно почему утилизируется в среднем только 50% цп
 
+//что еще можно сделать
+//как-то подменить ResultsLong и ResultsShort
+//чтобы велслаб не обсчитывал их на равне с общим Results если нет нужды
+
 namespace TradingStrategies.Backtesting.Optimizers
 {
     static class MainModuleInstance
@@ -160,14 +164,39 @@ namespace TradingStrategies.Backtesting.Optimizers
         public double NetProfit { get; set; }
     }
 
+    internal class ExecutionScope
+    {
+        public TradingSystemExecutor tse  { get; set; }
+        public WealthScript ws { get; set; }
+        public StrategyScorecard ss { get; set; }
+        public SystemPerformance result { get; set; }
+        public Strategy strategy { get; set; }
+        public List<Bars> barsSet { get; set; }
+
+        public ExecutionScope(
+            TradingSystemExecutor tse, 
+            WealthScript ws, 
+            StrategyScorecard ss, 
+            SystemPerformance result, 
+            Strategy strategy, 
+            List<Bars> barsSet)
+        {
+            this.tse = tse;
+            this.ws = ws;
+            this.ss = ss;
+            this.result = result;
+            this.strategy = strategy;
+            this.barsSet = barsSet;
+        }
+    }
+
     /// <summary>
     /// Implements Multithreaded Optimization
     /// </summary>
     public class ParallelExhaustiveOptimizer : Optimizer
     {
         private int numThreads;
-        private (TradingSystemExecutor tse, WealthScript ws, StrategyScorecard ss)[] executors;
-        private SystemPerformance[] results;
+        private ExecutionScope[] executors;
         private CountdownEvent countDown;
         private List<StrategyParameter> paramValues;
         private bool supported;
@@ -293,6 +322,9 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// </summary>
         public override void FirstRun()
         {
+            parentExecutor = ExtractExecutor(this.WealthScript);
+            parentExecutor.BenchmarkBuyAndHoldON = false;
+
             // check if this strategy can be run on multiple threads
             this.supported = true;
             this.barsCache = new Dictionary<string, Bars>(numThreads);
@@ -325,34 +357,13 @@ namespace TradingStrategies.Backtesting.Optimizers
                 return;
             }
             this.countDown = new CountdownEvent(numThreads);
-            this.results = new SystemPerformance[numThreads];
-            this.executors = new (TradingSystemExecutor, WealthScript, StrategyScorecard)[numThreads];
-            Parallel.For(0, numThreads, i =>
-            {
-                this.executors[i] = (
-                    CreateExecutor(this.Strategy, ps, sm, this.WealthScript),
-                    stm.GetWealthScriptObject(this.Strategy),
-                    GetSelectedScoreCard(sm)
-                );
-                this.executors[i].tse.ExternalSymbolRequested += this.OnLoadSymbol;
-                this.executors[i].tse.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
-                this.results[i] = null;
-                SynchronizeWealthScriptParameters(this.executors[i].ws, this.WealthScript);
-            });
-            this.paramValues = this.WealthScript.Parameters
-                .Select(p =>
-                {
-                    // set the value to start
-                    p.Value = p.Start;
-                    return CopyParameter(p);
-                })
-                .ToList();
+            this.executors = new ExecutionScope[numThreads];
 
             //extract all data set bars
             int i = 0;
-            foreach (var symbol in tse.DataSet.Symbols)
+            foreach (var symbol in parentExecutor.DataSet.Symbols)
             {
-                var bars = tse.BarsLoader.GetData(tse.DataSet, symbol);
+                var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
                 dataSetBars.Add(symbol, bars);
 
                 //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
@@ -365,14 +376,39 @@ namespace TradingStrategies.Backtesting.Optimizers
                     .SetValue(bars, i.ToString());
                 i++;
             }
-            //parentExecutor = ExtractExecutor(this.WealthScript);
-            //parentExecutor = CopyExecutor(ExtractExecutor(this.WealthScript));
-            //parentExecutor = CopyExecutor(CreateExecutor(this.Strategy, ps, sm, this.WealthScript));
-            parentExecutor = CreateExecutor(this.Strategy, ps, sm, this.WealthScript);
 
-            //оптимизация главного цикла
-            var mainExecutor = ExtractExecutor(this.WealthScript);
-            mainExecutor.BenchmarkBuyAndHoldON = false;
+            Parallel.For(0, numThreads, 
+                //new ParallelOptions { MaxDegreeOfParallelism = 1 },
+                i =>
+                {
+                    this.executors[i] = new ExecutionScope(
+                        CopyExecutor(parentExecutor),
+                        stm.GetWealthScriptObject(this.Strategy),
+                        GetSelectedScoreCard(sm),
+                        null,
+                        CopyStrategy(this.Strategy),
+                        dataSetBars.Values.ToList()
+                        //tse.DataSet.Symbols
+                        //    .Select((s, ix) =>
+                        //    {
+                        //        var bars = tse.BarsLoader.GetData(tse.DataSet, s);
+                        //        typeof(Bars).GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(bars, ix.ToString());
+                        //        return bars;
+                        //    })
+                        //    .ToList()
+                    );
+                    this.executors[i].tse.ExternalSymbolRequested += this.OnLoadSymbol;
+                    this.executors[i].tse.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
+                    SynchronizeWealthScriptParameters(this.executors[i].ws, this.WealthScript);
+                });
+            this.paramValues = this.WealthScript.Parameters
+                .Select(p =>
+                {
+                    // set the value to start
+                    p.Value = p.Start;
+                    return CopyParameter(p);
+                })
+                .ToList();
 
             optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
 
@@ -452,10 +488,11 @@ namespace TradingStrategies.Backtesting.Optimizers
                         }
                         catch
                         {
-                            this.results[threadNum] = null;
+                            executors.result = null;
                         }
                         finally
                         {
+                            executors.tse.Clear();
                             this.countDown.Signal();
 
                             watch.Stop();
@@ -470,7 +507,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                     this.supported = false;
                     for (int j = i; j < numThreads; j++)
                     {
-                        this.results[j] = null;
+                        this.executors[j].result = null;
                         this.countDown.Signal();
                     }
                     if (i == 0)
@@ -497,17 +534,17 @@ namespace TradingStrategies.Backtesting.Optimizers
 
             var executors = this.executors[sys];
 
-            var allBars = dataSetBars.Values.ToList();
-            //new executer for each run - most valuable fix
-            var ts = CopyExecutor(parentExecutor);
-
-            var strategy = CopyStrategy(this.Strategy);
+            var allBars = executors.barsSet;
+            var ts = executors.tse;
+            var strategy = executors.strategy;
 
             perfomance[sys].Add(($"executor_{currentRun}", watch.ElapsedMilliseconds));
             watch.Restart();
 
+            ts.Initialize();
             ts.Execute(strategy, executors.ws, null, allBars);
-            this.results[sys] = ts.Performance;
+            executors.result = ts.Performance;
+
             perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
         }
 
