@@ -329,70 +329,83 @@ namespace TradingStrategies.Backtesting.Optimizers
             parentExecutor = ExtractExecutor(this.WealthScript);
             parentExecutor.BenchmarkBuyAndHoldON = false;
 
-            // check if this strategy can be run on multiple threads
-            this.supported = true;
-            this.barsCache = new Dictionary<string, Bars>(numThreads);
-            StrategyManager stm = new StrategyManager();
-            SettingsManager sm = new SettingsManager();
-            settingsManager = sm;
-            sm.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
-            sm.FileName = "WealthLabConfig.txt";
-            sm.LoadSettings();
-            PositionSize ps = GetPositionSize(this.WealthScript);
-            TradingSystemExecutor tse = CreateExecutor(this.Strategy, ps, sm, this.WealthScript);
-            tse.ExternalSymbolRequested += this.OnLoadSymbol;
-            tse.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
-            WealthScript ws = stm.GetWealthScriptObject(this.Strategy);
+            //extract all data set bars
+            dataSetBars = new Dictionary<string, Bars>();
             try
             {
-                tse.Execute(ws, this.WealthScript.Bars);
+                int i = 0;
+                foreach (var symbol in parentExecutor.DataSet.Symbols)
+                {
+                    var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
+                    dataSetBars.Add(symbol, bars);
+
+                    //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
+                    //судя по профайлеру на этом тратится очень много ресурсов, изначально там формируется большая строка
+                    typeof(Bars)
+                        .GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic)
+                        .SetValue(bars, i.ToString());
+                    i++;
+                }
             }
             catch (Exception e)
             {
-                Debug.Print(e.Message + "\n" + e.StackTrace);
-                while (e.InnerException != null)
-                {
-                    Debug.Print(e.InnerException.Message + "\n" + e.InnerException.StackTrace);
-                    e = e.InnerException;
-                }
-                MessageBox.Show("This strategy cannot be run in multi-threaded mode." +
-                    "\nError: " + e.Message + "\n" + e.StackTrace);
+                var message = $"Cannot load bars.{Environment.NewLine}Error: {e.ToString()}";
+                Debug.Print(message);
+                MessageBox.Show(message);
                 this.supported = false;
                 return;
             }
+
+            StrategyManager strategyManager = new StrategyManager();
+            SettingsManager settingsManager = new SettingsManager();
+            settingsManager.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
+            settingsManager.FileName = "WealthLabConfig.txt";
+            settingsManager.LoadSettings();
+
+            // check if this strategy can be run by this optimizer
+            this.supported = true;
+            this.barsCache = new Dictionary<string, Bars>(numThreads);
+
+            var testExecutor = CopyExecutor(parentExecutor);
+            var testScript = strategyManager.GetWealthScriptObject(this.Strategy);
+            var testStrategy = CopyStrategy(this.Strategy);
+
+            testExecutor.ExternalSymbolRequested += this.OnLoadSymbol;
+            testExecutor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
+
+            try
+            {
+                testExecutor.Execute(testStrategy, testScript, null, dataSetBars.Values.ToList());
+            }
+            catch (Exception e)
+            {
+                var message = 
+                    $"This strategy cannot be run in multi-threaded mode." +
+                    $"{Environment.NewLine}Error: {e.ToString()}";
+                Debug.Print(message);
+                MessageBox.Show(message);
+                this.supported = false;
+                return;
+            }
+
+            //initialize parallel executors
             this.countDown = new CountdownEvent(numThreads);
             this.executors = new ExecutionScope[numThreads];
 
-            //extract all data set bars
-            int i = 0;
-            foreach (var symbol in parentExecutor.DataSet.Symbols)
-            {
-                var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
-                dataSetBars.Add(symbol, bars);
-
-                //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
-                //судя по профайлеру на этом тратится очень много ресурсов, изначально там формируется большая строка
-                typeof(Bars)
-                    .GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .SetValue(bars, i.ToString());
-                i++;
-            }
-
             Parallel.For(0, numThreads, 
-                //new ParallelOptions { MaxDegreeOfParallelism = 1 },
                 i =>
                 {
                     this.executors[i] = new ExecutionScope(
                         CopyExecutor(parentExecutor),
-                        stm.GetWealthScriptObject(this.Strategy),
-                        GetSelectedScoreCard(sm),
+                        strategyManager.GetWealthScriptObject(this.Strategy),
+                        GetSelectedScoreCard(settingsManager),
                         null,
                         CopyStrategy(this.Strategy),
                         dataSetBars.Values.ToList()
-                        //tse.DataSet.Symbols
+                        //parentExecutor.DataSet.Symbols
                         //    .Select((s, ix) =>
                         //    {
-                        //        var bars = tse.BarsLoader.GetData(tse.DataSet, s);
+                        //        var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, s);
                         //        typeof(Bars).GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(bars, ix.ToString());
                         //        return bars;
                         //    })
@@ -402,22 +415,24 @@ namespace TradingStrategies.Backtesting.Optimizers
                     this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
                     SynchronizeWealthScriptParameters(this.executors[i].Script, this.WealthScript);
                 });
-            this.paramValues = this.WealthScript.Parameters
-                .Select(p =>
-                {
-                    // set the value to start
-                    p.Value = p.Start;
-                    return CopyParameter(p);
-                })
-                .ToList();
+
+            //initialize parameters
+            this.paramValues = new List<StrategyParameter>(this.WealthScript.Parameters.Count);
+            foreach(var parameter in this.WealthScript.Parameters)
+            {
+                parameter.Value = parameter.Start;
+                paramValues.Add(CopyParameter(parameter));
+            }
 
             optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
 
+            //initialize perfomance metrics
             var runs = (int)NumberOfRuns;
             const int metricsCount = 10; 
             perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>(runs * metricsCount)).ToArray();  //with main thread
 
-            this.countDown.Signal(countDown.InitialCount);  //освобождаем перед первым вызовом
+            //release before first run
+            this.countDown.Signal(countDown.InitialCount);
         }
 
         private static void Busy()
