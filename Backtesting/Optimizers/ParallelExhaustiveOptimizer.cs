@@ -21,6 +21,9 @@ using System.Runtime.CompilerServices;
 
 namespace TradingStrategies.Backtesting.Optimizers
 {
+    /// <summary>
+    /// Represents scope of data for one separate optimization run
+    /// </summary>
     internal class ExecutionScope
     {
         public TradingSystemExecutor Executor  { get; set; }
@@ -75,20 +78,19 @@ namespace TradingStrategies.Backtesting.Optimizers
         //for debug
         public override void RunCompleted(OptimizationResultList results)
         {
+            mainWatch.Reset();
             base.RunCompleted(results);
         }
 
         /// <summary>
-        /// Initializes the optimizer
+        /// Initializes the optimizer. Called when optimization method has been selected. Run once for multiple optimization sessions.
         /// </summary>
         public override void Initialize()
         {
             numThreads = Environment.ProcessorCount;
+            countDown = new CountdownEvent(numThreads);
         }
 
-        /// <summary>
-        /// Returns the number of runs required for the selected strategy
-        /// </summary>
         public override double NumberOfRuns
         {
             get
@@ -103,9 +105,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
-        /// <summary>
-        /// Returns the number of runs required for a single strategy parameter
-        /// </summary>
         private double NumberOfRunsPerParameter(StrategyParameter parameter)
         {
             if ((parameter.Start < parameter.Stop && parameter.Step > 0) ||
@@ -120,62 +119,12 @@ namespace TradingStrategies.Backtesting.Optimizers
         }
 
         /// <summary>
-        /// Callback for the executor to get external symbols
-        /// </summary>
-        private void OnLoadSymbol(Object sender, LoadSymbolEventArgs args)
-        {
-            if (barsCache.ContainsKey(args.Symbol))
-            {
-                args.SymbolData = barsCache[args.Symbol];
-            }
-            else
-            {
-                lock (this.WealthScript)
-                {
-                    // check no other thread got here first
-                    if (!barsCache.ContainsKey(args.Symbol))
-                    {
-                        this.WealthScript.SetContext(args.Symbol, false);
-                        barsCache[args.Symbol] = this.WealthScript.Bars;
-                        this.WealthScript.RestoreContext();
-                    }
-                    args.SymbolData = barsCache[args.Symbol];
-                }
-            }
-        }
-
-        /// <summary>
-        /// Callback for the executor to get external symbols
-        /// </summary>
-        private void OnLoadSymbolFromDataSet(Object sender, LoadSymbolFromDataSetEventArgs args)
-        {
-            if (barsCache.ContainsKey(args.Symbol))
-            {
-                args.Bars = barsCache[args.Symbol];
-            }
-            else
-            {
-                lock (this.WealthScript)
-                {
-                    // check no other thread got here first
-                    if (!barsCache.ContainsKey(args.Symbol))
-                    {
-                        this.WealthScript.SetContext(args.Symbol, false);
-                        barsCache[args.Symbol] = this.WealthScript.Bars;
-                        this.WealthScript.RestoreContext();
-                    }
-                    args.Bars = barsCache[args.Symbol];
-                }
-            }
-        }
-
-        //TODO: перенести в Initialize то, что должно вызываться только один раз
-
-        /// <summary>
-        /// The very first run for this optimization. Sets up everything for the entire optimization
+        /// The very first run for this optimization. Sets up everything for the entire optimization. Run once for one optimization session.
         /// </summary>
         public override void FirstRun()
         {
+            mainWatch.Restart();
+
             parentExecutor = ExtractExecutor(this.WealthScript);
             parentExecutor.BenchmarkBuyAndHoldON = false;
 
@@ -239,7 +188,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
 
             //initialize parallel executors
-            this.countDown = new CountdownEvent(numThreads);
             this.executors = new ExecutionScope[numThreads];
 
             Parallel.For(0, numThreads, 
@@ -272,6 +220,9 @@ namespace TradingStrategies.Backtesting.Optimizers
             var runs = (int)NumberOfRuns;
             const int metricsCount = 10; 
             perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>(runs * metricsCount)).ToArray();  //with main thread
+
+            perfomance[mainThread].Add(($"firstRun", mainWatch.ElapsedMilliseconds));
+            mainWatch.Restart();
 
             //release before first run
             this.countDown.Signal(countDown.InitialCount);
@@ -556,11 +507,7 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private static TradingSystemExecutor ExtractExecutor(WealthScript script)
         {
-            var type = script.GetType();
-            while (type != typeof(WealthScript))
-                type = type.BaseType;
-
-            var tsField = type
+            var tsField = typeof(WealthScript)
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
                 .First(x => x.FieldType == typeof(TradingSystemExecutor));
             var tsExecutor = tsField.GetValue(script) as TradingSystemExecutor;
@@ -575,6 +522,56 @@ namespace TradingStrategies.Backtesting.Optimizers
                     return new BasicScorecard();
             }
             return new ExtendedScorecard();
+        }
+
+        /// <summary>
+        /// Callback for the executor to get external symbols
+        /// </summary>
+        private void OnLoadSymbol(Object sender, LoadSymbolEventArgs args)
+        {
+            if (barsCache.ContainsKey(args.Symbol))
+            {
+                args.SymbolData = barsCache[args.Symbol];
+            }
+            else
+            {
+                lock (this.WealthScript)
+                {
+                    // check no other thread got here first
+                    if (!barsCache.ContainsKey(args.Symbol))
+                    {
+                        this.WealthScript.SetContext(args.Symbol, false);
+                        barsCache[args.Symbol] = this.WealthScript.Bars;
+                        this.WealthScript.RestoreContext();
+                    }
+                    args.SymbolData = barsCache[args.Symbol];
+                }
+            }
+        }
+
+        /// <summary>
+        /// Callback for the executor to get external symbols
+        /// </summary>
+        private void OnLoadSymbolFromDataSet(Object sender, LoadSymbolFromDataSetEventArgs args)
+        {
+            if (barsCache.ContainsKey(args.Symbol))
+            {
+                args.Bars = barsCache[args.Symbol];
+            }
+            else
+            {
+                lock (this.WealthScript)
+                {
+                    // check no other thread got here first
+                    if (!barsCache.ContainsKey(args.Symbol))
+                    {
+                        this.WealthScript.SetContext(args.Symbol, false);
+                        barsCache[args.Symbol] = this.WealthScript.Bars;
+                        this.WealthScript.RestoreContext();
+                    }
+                    args.Bars = barsCache[args.Symbol];
+                }
+            }
         }
 
         ~ParallelExhaustiveOptimizer()
