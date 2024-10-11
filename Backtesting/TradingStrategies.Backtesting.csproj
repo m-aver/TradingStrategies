@@ -55,6 +55,10 @@
     <Reference Include="WealthLab.Indicators">
       <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Indicators.dll</HintPath>
     </Reference>
+    <Reference Include="WealthLab.Optimizers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Optimizers.dll</HintPath>
+    </Reference>
     <Reference Include="WealthLab.Visualizers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.dll</HintPath>
@@ -67,6 +71,7 @@
     <Compile Include="Core\WealthScriptWrapper.cs" />
     <Compile Include="Indicators\BollingerBands.cs" />
     <Compile Include="Indicators\BollingerFilter.cs" />
+    <Compile Include="Optimizers\ParallelExhaustiveOptimizer.cs" />
     <Compile Include="Strategies\CoupStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Strategies\TestStrategy.cs" />
