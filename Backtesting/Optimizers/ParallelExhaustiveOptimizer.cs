@@ -43,131 +43,6 @@ using System.Runtime.CompilerServices;
 
 namespace TradingStrategies.Backtesting.Optimizers
 {
-    static class MainModuleInstance
-    {
-        private static object _instance;
-        private static PropertyInfo _dataSources;
-
-        static MainModuleInstance()
-        {
-            Initialize();
-        }
-
-        /// <summary>
-        /// Get Wealth-Lab Dev/Pro exe assembly
-        /// </summary>
-        private static Assembly GetWLAssembly()
-        {
-            Assembly wlAssembly = null;
-
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (assembly.FullName.Contains("WealthLabDev") ||
-                    assembly.FullName.Contains("WealthLabPro"))
-                {
-                    wlAssembly = assembly;
-                    break;
-                }
-            }
-
-            if (wlAssembly == null)
-                throw new Exception("Wealth-Lab not found.");
-
-            return wlAssembly;
-        }
-
-        /// <summary>
-        /// Set Main Module Instance
-        /// </summary>
-        private static void SetMainModuleInstance()
-        {
-            Type mainModuleType = null;
-
-            foreach (Type wlAssemblyType in GetWLAssembly().GetTypes())
-            {
-                Type[] interfaces = wlAssemblyType.GetInterfaces();
-
-                bool wlpDetected = false;
-                int cnt = 0;
-                foreach (Type wlInterface in interfaces)
-                {
-                    if (wlInterface == typeof(WealthLab.IAuthenticationHost) ||
-                        (wlInterface == typeof(WealthLab.IConnectionStatus)) ||
-                        (wlInterface == typeof(WealthLab.IMenuItemAdder)))
-                        cnt++;
-
-                    if (cnt >= 3)
-                        wlpDetected = true;
-                }
-                if (wlAssemblyType.FullName == "WealthLabPro.MainModule" || wlpDetected)
-                {
-                    mainModuleType = wlAssemblyType;
-                    break;
-                }
-            }
-
-            if (mainModuleType == null)
-                throw new Exception("MainModule not found.");
-
-            FieldInfo fiInstance = null;
-
-            foreach (FieldInfo field in mainModuleType.GetFields())
-            {
-                if (field.FieldType == mainModuleType)
-                {
-                    fiInstance = field;
-                    break;
-                }
-            }
-
-            if (fiInstance == null)
-                throw new Exception("MainModule.Instance not found.");
-
-            _instance = fiInstance.GetValue(null);
-        }
-
-        private static void Initialize()
-        {
-            SetMainModuleInstance();
-            SetDataSourcesInfos();
-        }
-
-        /// <summary>
-        /// Find DataSources
-        /// </summary>
-        private static void SetDataSourcesInfos()
-        {
-            foreach (PropertyInfo property in _instance.GetType().GetProperties())
-            {
-                if (property.PropertyType == typeof(DataSourceManager))
-                {
-                    _dataSources = property;
-                }
-            }
-
-            if ((_dataSources == null))
-                throw new Exception("DataSourceManager field not found.");
-        }
-
-        /// <summary>
-        /// DataSourceManager
-        /// </summary>
-        public static DataSourceManager GetDataSources()
-        {
-            return (DataSourceManager)_dataSources.GetValue(_instance, new object[] { });
-        }
-    }
-
-    // for debug
-    internal class ParamInfo
-    {
-        public double MaPeriod { get; set; }
-        public double MaPercent { get; set; }
-        public double SigmoidOffset { get; set; }
-        public double SigmoidStretch { get; set; }
-        public double NetProfit { get; set; }
-    }
-
     internal class ExecutionScope
     {
         public TradingSystemExecutor Executor  { get; set; }
@@ -206,9 +81,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         private bool supported;
         private Dictionary<string, Bars> barsCache;
 
-        private ConcurrentQueue<ParamInfo> paramInfos = new ConcurrentQueue<ParamInfo>();
-        private Dictionary<string, Bars> dataSetBars = new Dictionary<string, Bars>();
-        private SettingsManager settingsManager;
+        private Dictionary<string, Bars> dataSetBars;
         private TradingSystemExecutor parentExecutor;
         private ListView optimizationResultListView;
 
@@ -318,7 +191,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
-        //TODO: оптимизировать и разгрести FirstRun
         //TODO: перенести в Initialize то, что должно вызываться только один раз
 
         /// <summary>
@@ -435,12 +307,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             this.countDown.Signal(countDown.InitialCount);
         }
 
-        private static void Busy()
-        {
-            var start = DateTime.Now;
-            var end = start + TimeSpan.FromSeconds(1);
-            while (DateTime.Now < end) { }
-        }
 
         public override bool NextRun(SystemPerformance sp, OptimizationResult or)
         {
@@ -728,53 +594,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
-        /// <summary>
-        /// Creates a trading executor to be used for optimization runs
-        /// </summary>
-        private static TradingSystemExecutor CreateExecutor(Strategy strategy, PositionSize ps, SettingsManager settings, WealthScript ws)
-        {
-            FundamentalsLoader fundamentalsLoader = new FundamentalsLoader();
-            fundamentalsLoader.DataHost = MainModuleInstance.GetDataSources();
-
-            var parentExecutor = ExtractExecutor(ws);
-
-            // this code is based on the PortfolioEquityEx from Community.Components 
-            TradingSystemExecutor executor = new TradingSystemExecutor();
-
-            executor.BenchmarkBuyAndHoldON = false;
-
-            // Store user-selected position size GUI dialog settings into a variable
-            executor.PosSize = ps;
-            if (settings.Settings.Count > 0)
-            {
-                executor.ApplyCommission = settings.Get("ApplyCommissions", false);
-                executor.ApplyInterest = settings.Get("ApplyInterest", false);
-                executor.ApplyDividends = settings.Get("ApplyDividends", false);
-                executor.CashRate = settings.Get("CashRate", 0d);
-                executor.EnableSlippage = settings.Get("EnableSlippage", false);
-                executor.LimitDaySimulation = settings.Get("LimitDaySimulation", false);
-                executor.LimitOrderSlippage = settings.Get("LimitOrderSlippage", false);
-                executor.MarginRate = settings.Get("MarginRate", 0d);
-                executor.NoDecimalRoundingForLimitStopPrice = settings.Get("NoDecimalRoundingForLimitStopPrice", false);
-                executor.PricingDecimalPlaces = settings.Get("PricingDecimalPlaces", 2);
-                executor.ReduceQtyBasedOnVolume = settings.Get("ReduceQtyBasedOnVolume", false);
-                executor.RedcuceQtyPct = settings.Get("ReduceQtyPct", 0d);
-                executor.RoundLots = settings.Get("RoundLots", false);
-                executor.RoundLots50 = settings.Get("RoundLots50", false);
-                executor.SlippageTicks = settings.Get("SlippageTicks", 0);
-                executor.SlippageUnits = settings.Get("SlippageUnits", 0d);
-                executor.WorstTradeSimulation = settings.Get("WorstTradeSimulation", false);
-                executor.FundamentalsLoader = fundamentalsLoader;
-
-                executor.BarsLoader = parentExecutor.BarsLoader;
-                executor.DataSet = parentExecutor.DataSet;
-
-                //now it completely matches with default optimizer results for my strategy
-                executor.Commission = parentExecutor.Commission;
-            }
-            return executor;
-        }
-
         private static TradingSystemExecutor ExtractExecutor(WealthScript script)
         {
             var type = script.GetType();
@@ -786,27 +605,6 @@ namespace TradingStrategies.Backtesting.Optimizers
                 .First(x => x.FieldType == typeof(TradingSystemExecutor));
             var tsExecutor = tsField.GetValue(script) as TradingSystemExecutor;
             return tsExecutor;
-        }
-
-        /// <summary>
-        /// Returns the PositionSize object of a Strategy being executed
-        /// </summary>
-        private static PositionSize GetPositionSize(WealthScript wsObj)
-        {
-            foreach (Form form in Application.OpenForms)
-            {
-                if (form.Name == "ChartForm")
-                {
-                    WealthScript ws = (WealthScript)form.GetType().GetProperty("WealthScript").GetValue(form, null);
-                    if ((ws != null) && (ws.Equals(wsObj)))
-                    {
-                        PropertyInfo pi = form.GetType().GetProperty("PositionSize");
-                        PositionSize ps = (PositionSize)pi.GetValue(form, null);
-                        return ps;
-                    }
-                }
-            }
-            return null;
         }
 
         /// <summary>
