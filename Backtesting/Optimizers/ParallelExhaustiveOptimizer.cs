@@ -107,6 +107,11 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private double NumberOfRunsPerParameter(StrategyParameter parameter)
         {
+            if (!parameter.IsEnabled)
+            {
+                return 1;
+            }
+
             if ((parameter.Start < parameter.Stop && parameter.Step > 0) ||
                 (parameter.Start > parameter.Stop && parameter.Step < 0))
             {
@@ -187,6 +192,14 @@ namespace TradingStrategies.Backtesting.Optimizers
                 return;
             }
 
+            //initialize parameters
+            this.paramValues = new List<StrategyParameter>(this.WealthScript.Parameters.Count);
+            foreach (var parameter in this.WealthScript.Parameters)
+            {
+                parameter.Value = parameter.IsEnabled ? parameter.Start : parameter.DefaultValue;
+                paramValues.Add(CopyParameter(parameter));
+            }
+
             //initialize parallel executors
             this.executors = new ExecutionScope[numThreads];
 
@@ -205,14 +218,6 @@ namespace TradingStrategies.Backtesting.Optimizers
                     this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
                     SynchronizeWealthScriptParameters(this.executors[i].Script, this.WealthScript);
                 });
-
-            //initialize parameters
-            this.paramValues = new List<StrategyParameter>(this.WealthScript.Parameters.Count);
-            foreach(var parameter in this.WealthScript.Parameters)
-            {
-                parameter.Value = parameter.Start;
-                paramValues.Add(CopyParameter(parameter));
-            }
 
             optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
 
@@ -388,6 +393,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 step: old.Step,
                 description: old.Description)
             {
+                IsEnabled = old.IsEnabled,
                 DefaultValue = old.DefaultValue
             };
         }
@@ -405,6 +411,12 @@ namespace TradingStrategies.Backtesting.Optimizers
                 return false; // we're done
 
             var current = paramValues[currentParam];
+
+            if (!current.IsEnabled)
+            {
+                current.Value = current.DefaultValue;
+                return SetNextRunParameters(currentParam + 1);
+            }
 
             current.Value += current.Step;
 
