@@ -13,33 +13,11 @@ using System.Linq;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
-//перфоманс
-//создание экзекутора через CreateExecutor занимает чуть больше времени чем выполнение скрипта (>20-30%) (много рефлексии, обязательно оптимизировать)
-//при этом в параллельном режиме создание экзекутора и выполнение скрипта занимает в 3 раза больше времени, чем в последовательном (цикл в одном треде)
-//100/70мс в последовательном и 300/200мс в параллельном
-//в последовательном режиме с множеством тредов и lock цифры примерно такие же как с циклом, мб чуть больше
-//в параллельном главный поток висит окло 500 мс на блокировке, в момент запуска тредов ЦП под 100%, пожалуй все треды действительно идут параллельно
-//возможно где-то в недрах велслаба лочимся на каких-нибудь блокировках, поэтому такая разница между режимами 
-//при добавлении фейковой нагрузки через Busy, утилизация ЦП поперла вверх, хотя не всегда в момент нагрузки была 100. очень похоже что все таки где-то внутри есть блокировки на которых скрипт троттлится (lock нагрузку не жрет)
-//выполнение метода AddResultsToUi происходит мгновенно, тут оптимизация не нужна
-
-//точки останова в коде стратегии очень сильно замедляют дебаг
-
-//странный эффект, с CopyExecutor видно про стопвотчу что создание экзекутора стало занимать раза в 2 меньше времени
-//но общее время выполнения осталось таким же (1:10)
-//мб сборщик мусора замедляет перфоманс
-
 //судя по профайлеру большую часть цп сжирает SynchronizedBarIterator в SystemResults
 //может получится как-то подменить его реализацию через рефлексию или IL
-//еще из перфоманса пока не понятно почему утилизируется в среднем только 50% цп
 
-//что еще можно сделать
-//как-то подменить ResultsLong и ResultsShort
+//еще можно как-то подменить ResultsLong и ResultsShort
 //чтобы велслаб не обсчитывал их на равне с общим Results если нет нужды
-
-//я тут обрадовался что переиспользование экзекуторов дает сильный прирост в производительности
-//но на самом деле я просто выключил ThrottleStop с режимом уменьшения тактовой частоты цп, видимо перезагружал комп
-//с ним результаты примерно теже
 
 namespace TradingStrategies.Backtesting.Optimizers
 {
@@ -274,14 +252,6 @@ namespace TradingStrategies.Backtesting.Optimizers
                         null,
                         CopyStrategy(this.Strategy),
                         dataSetBars.Values.ToList()
-                        //parentExecutor.DataSet.Symbols
-                        //    .Select((s, ix) =>
-                        //    {
-                        //        var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, s);
-                        //        typeof(Bars).GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(bars, ix.ToString());
-                        //        return bars;
-                        //    })
-                        //    .ToList()
                     );
                     this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
                     this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
@@ -306,7 +276,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             //release before first run
             this.countDown.Signal(countDown.InitialCount);
         }
-
 
         public override bool NextRun(SystemPerformance sp, OptimizationResult or)
         {
@@ -426,9 +395,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
         }
 
-        /// <summary>
-        /// Adds a single set of results to the UI
-        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddResultsToUI(int index)
         {
@@ -450,9 +416,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             perfomance[index].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
         }
 
-        /// <summary>
-        /// Synchronizes strategy parameters between scripts
-        /// </summary>
         private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
         {
             wsTarget.Parameters.Clear();
@@ -478,14 +441,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             };
         }
 
-        /// <summary>
-        /// Increments strategy parameter values for the next optimization run based on exhaustive optimization
-        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool SetNextRunParameters() => SetNextRunParameters(0);
 
         /// <summary>
-        /// Increments strategy parameter values for the next optimization run based on exhaustive optimization - recursive implementation
+        /// Increments strategy parameter values for the next optimization run based on exhaustive optimization
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool SetNextRunParameters(int currentParam)
@@ -607,9 +567,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             return tsExecutor;
         }
 
-        /// <summary>
-        /// Returns a new instance of the configured scorecard
-        /// </summary>
         private static StrategyScorecard GetSelectedScoreCard(SettingsManager sm)
         {
             if (sm.Settings.ContainsKey("Optimization.Scorecard"))
