@@ -5,20 +5,37 @@ using System.Text;
 using System.Threading.Tasks;
 using WealthLab;
 
+//синхронизирует итерацию нескольких серий баров
+//таким образом что пересекающиеся по времени серии итерируются параллельно друг другу
+
 namespace TradingStrategies.Utilities
 {
+    /// <summary>
+    /// Optimized version of WealthLab.SynchronizedBarIterator.
+    /// Replace it in WealthLab.dll source code using ildasm.exe/ilasm.exe
+    /// </summary>
     public class SynchronizedBarIterator
     {
         private DateTime dateTime_0;
-
         private ICollection<Bars> icollection_0;
-
         private Dictionary<string, int> dictionary_0 = new Dictionary<string, int>();
 
+        //дата текущей итерации
+        //соответствует дате текущего бара одной (или нескольких) серии,
+        //либо лежит между текущей и следующей итерацией остальных серий
+        //если они уже начали и еще не закончили итерирование
         public DateTime Date => dateTime_0;
+
+        //номер бара на текущей итерации данной серии
+        //-1 если серия еще не начала итерироваться (лежит в будущем)
+        //или номер последнего бара если уже закончила итерирование (осталась в прошлом)
+        public int Bar(Bars bars) => dictionary_0[bars.UniqueDescription];
 
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
+            //ищем дату первого бара из всего датасета
+            //и выставляем num 0 (разрешаем дальшейнее итерирование) на сериях которые начинаются с этой даты
+
             icollection_0 = barCollection;
             foreach (Bars item in barCollection)
             {
@@ -45,6 +62,7 @@ namespace TradingStrategies.Utilities
 
         public bool Next()
         {
+            //это видимо чтобы проскипать возможные бары с одинаковой датой (в рамках одной серии)
             foreach (Bars item in icollection_0)
             {
                 int num = dictionary_0[item.UniqueDescription];
@@ -58,6 +76,7 @@ namespace TradingStrategies.Utilities
                 }
             }
 
+            //продолжаем итерирование если хотя бы одна серия еще не дошла до конца
             bool flag = true;
             foreach (Bars item2 in icollection_0)
             {
@@ -67,12 +86,12 @@ namespace TradingStrategies.Utilities
                     break;
                 }
             }
-
             if (flag)
             {
                 return false;
             }
 
+            //ищем наименьшую дату следующего итерируемого бара среди всех серий
             dateTime_0 = DateTime.MaxValue;
             foreach (Bars item3 in icollection_0)
             {
@@ -83,6 +102,7 @@ namespace TradingStrategies.Utilities
                 }
             }
 
+            //пытаемся итерировать каждую серию, если наткнулись на наименьшую следующую дату то фиксируем итерацию серии
             foreach (Bars item4 in icollection_0)
             {
                 int num3 = dictionary_0[item4.UniqueDescription];
@@ -97,11 +117,6 @@ namespace TradingStrategies.Utilities
             }
 
             return true;
-        }
-
-        public int Bar(Bars bars)
-        {
-            return dictionary_0[bars.UniqueDescription];
         }
     }
 }
