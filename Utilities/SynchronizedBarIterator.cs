@@ -23,6 +23,7 @@ namespace TradingStrategies.Utilities
         //не нужно считать хэш строк
         private readonly Dictionary<Bars, int> dictionary_1;
         private readonly List<Bars> barsCollection;
+        private readonly List<int> iterations;
 
         //дата текущей итерации
         //соответствует дате текущего бара одной (или нескольких) серии,
@@ -41,6 +42,7 @@ namespace TradingStrategies.Utilities
             //и выставляем num 0 (разрешаем дальшейнее итерирование) на сериях которые начинаются с этой даты
 
             dictionary_1 = new Dictionary<Bars, int>(barCollection.Count);
+            iterations = new List<int>(barCollection.Count);
             barsCollection = barCollection.ToList();
             icollection_0 = barCollection;
 
@@ -62,10 +64,12 @@ namespace TradingStrategies.Utilities
                 if (item.Count > 0 && item.Date[0] == dateTime_0)
                 {
                     dictionary_1[item] = 1;
+                    iterations.Add(1);
                 }
                 else
                 {
                     dictionary_1[item] = 0;
+                    iterations.Add(0);
                 }
             }
         }
@@ -80,7 +84,7 @@ namespace TradingStrategies.Utilities
             for (int i = 0; i < barsCollection.Count; i++)
             {
                 Bars item = barsCollection[i];
-                int num = dictionary_1[item];
+                int num = iterations[i];
 
                 if (num >= 1)
                 {
@@ -88,6 +92,7 @@ namespace TradingStrategies.Utilities
                     {
                         num++;
                         dictionary_1[item] = num;
+                        iterations[i] = num;
                     }
                 }
 
@@ -115,18 +120,20 @@ namespace TradingStrategies.Utilities
             if (toRemove >= 0)
             {
                 barsCollection.RemoveAt(toRemove);
+                iterations.RemoveAt(toRemove);
             }
 
             //пытаемся итерировать каждую серию, если наткнулись на наименьшую следующую дату то фиксируем итерацию серии
             for (int i = 0; i < barsCollection.Count; i++)
             {
                 Bars item = barsCollection[i];
-                int num = dictionary_1[item];
+                int num = iterations[i];
 
                 if (item.Date[num] == dateTime_0)
                 {
                     num++;
                     dictionary_1[item] = num;
+                    iterations[i] = num;
                 }
             }
 
