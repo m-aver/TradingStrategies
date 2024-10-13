@@ -20,6 +20,9 @@ namespace TradingStrategies.Utilities
         private ICollection<Bars> icollection_0;
         private Dictionary<string, int> dictionary_0 = new Dictionary<string, int>();
 
+        //не нужно считать хэш строк
+        private Dictionary<Bars, int> dictionary_1;
+
         private List<Bars> barsCollection;
 
         //дата текущей итерации
@@ -31,13 +34,14 @@ namespace TradingStrategies.Utilities
         //номер бара на текущей итерации данной серии
         //-1 если серия еще не начала итерироваться (лежит в будущем)
         //или номер последнего бара если уже закончила итерирование (осталась в прошлом)
-        public int Bar(Bars bars) => dictionary_0[bars.UniqueDescription];
+        public int Bar(Bars bars) => dictionary_1[bars];
 
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
             //ищем дату первого бара из всего датасета
             //и выставляем num 0 (разрешаем дальшейнее итерирование) на сериях которые начинаются с этой даты
 
+            dictionary_1 = new Dictionary<Bars, int>(barCollection.Count);
             barsCollection = barCollection.ToList();
             icollection_0 = barCollection;
 
@@ -55,11 +59,11 @@ namespace TradingStrategies.Utilities
             {
                 if (item3.Count > 0 && item3.Date[0] == dateTime_0)
                 {
-                    dictionary_0[item3.UniqueDescription] = 0;
+                    dictionary_1[item3] = 0;
                 }
                 else
                 {
-                    dictionary_0[item3.UniqueDescription] = -1;
+                    dictionary_1[item3] = -1;
                 }
             }
         }
@@ -74,14 +78,14 @@ namespace TradingStrategies.Utilities
             int i = 0;
             foreach (Bars item in barsCollection)
             {
-                int num = dictionary_0[item.UniqueDescription];
+                int num = dictionary_1[item];
 
                 if (num >= 0)
                 {
                     while (num < item.Count - 1 && item.Date[num] == item.Date[num + 1])
                     {
                         num++;
-                        dictionary_0[item.UniqueDescription] = num;
+                        dictionary_1[item] = num;
                     }
                 }
 
@@ -116,12 +120,12 @@ namespace TradingStrategies.Utilities
             //пытаемся итерировать каждую серию, если наткнулись на наименьшую следующую дату то фиксируем итерацию серии
             foreach (Bars item4 in barsCollection)
             {
-                int num3 = dictionary_0[item4.UniqueDescription];
+                int num3 = dictionary_1[item4];
 
                 num3++;
                 if (item4.Date[num3] == dateTime_0)
                 {
-                    dictionary_0[item4.UniqueDescription] = num3;
+                    dictionary_1[item4] = num3;
                 }
             }
 
