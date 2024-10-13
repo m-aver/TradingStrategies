@@ -17,13 +17,12 @@ namespace TradingStrategies.Utilities
     public class SynchronizedBarIterator
     {
         private DateTime dateTime_0;
-        private ICollection<Bars> icollection_0;
-        private Dictionary<string, int> dictionary_0 = new Dictionary<string, int>();
+        private readonly ICollection<Bars> icollection_0;
+        private readonly Dictionary<string, int> dictionary_0 = new Dictionary<string, int>();
 
         //не нужно считать хэш строк
-        private Dictionary<Bars, int> dictionary_1;
-
-        private List<Bars> barsCollection;
+        private readonly Dictionary<Bars, int> dictionary_1;
+        private readonly List<Bars> barsCollection;
 
         //дата текущей итерации
         //соответствует дате текущего бара одной (или нескольких) серии,
@@ -46,24 +45,27 @@ namespace TradingStrategies.Utilities
             icollection_0 = barCollection;
 
             dateTime_0 = DateTime.MaxValue;
-            foreach (Bars item2 in barCollection)
+
+            for (int i = 0; i < barsCollection.Count; i++)
             {
-                var startDate = item2.Date[0];
-                if (item2.Count > 0 && startDate < dateTime_0)
+                Bars item = barsCollection[i];
+                var startDate = item.Date[0];
+                if (item.Count > 0 && startDate < dateTime_0)
                 {
                     dateTime_0 = startDate;
                 }
             }
 
-            foreach (Bars item3 in barCollection)
+            for (int i = 0; i < barsCollection.Count; i++)
             {
-                if (item3.Count > 0 && item3.Date[0] == dateTime_0)
+                Bars item = barsCollection[i];
+                if (item.Count > 0 && item.Date[0] == dateTime_0)
                 {
-                    dictionary_1[item3] = 0;
+                    dictionary_1[item] = 0;
                 }
                 else
                 {
-                    dictionary_1[item3] = -1;
+                    dictionary_1[item] = -1;
                 }
             }
         }
@@ -75,9 +77,9 @@ namespace TradingStrategies.Utilities
             int toRemove = -1;
             DateTime next = dateTime_0;
 
-            int i = 0;
-            foreach (Bars item in barsCollection)
+            for (int i = 0; i < barsCollection.Count; i++)
             {
+                Bars item = barsCollection[i];
                 int num = dictionary_1[item];
 
                 if (num >= 0)
@@ -104,8 +106,6 @@ namespace TradingStrategies.Utilities
                 {
                     dateTime_0 = next;
                 }
-
-                i++;
             }
 
             if (flag)
@@ -118,8 +118,9 @@ namespace TradingStrategies.Utilities
             }
 
             //пытаемся итерировать каждую серию, если наткнулись на наименьшую следующую дату то фиксируем итерацию серии
-            foreach (Bars item4 in barsCollection)
+            for (int i = 0; i < barsCollection.Count; i++)
             {
+                Bars item4 = barsCollection[i];
                 int num3 = dictionary_1[item4];
 
                 num3++;
