@@ -20,6 +20,8 @@ namespace TradingStrategies.Utilities
         private ICollection<Bars> icollection_0;
         private Dictionary<string, int> dictionary_0 = new Dictionary<string, int>();
 
+        private List<Bars> barsCollection;
+
         //дата текущей итерации
         //соответствует дате текущего бара одной (или нескольких) серии,
         //либо лежит между текущей и следующей итерацией остальных серий
@@ -36,18 +38,16 @@ namespace TradingStrategies.Utilities
             //ищем дату первого бара из всего датасета
             //и выставляем num 0 (разрешаем дальшейнее итерирование) на сериях которые начинаются с этой даты
 
+            barsCollection = barCollection.ToList();
             icollection_0 = barCollection;
-            foreach (Bars item in barCollection)
-            {
-                dictionary_0[item.UniqueDescription] = -1;
-            }
 
             dateTime_0 = DateTime.MaxValue;
             foreach (Bars item2 in barCollection)
             {
-                if (item2.Count > 0 && item2.Date[0] < dateTime_0)
+                var startDate = item2.Date[0];
+                if (item2.Count > 0 && startDate < dateTime_0)
                 {
-                    dateTime_0 = item2.Date[0];
+                    dateTime_0 = startDate;
                 }
             }
 
@@ -57,10 +57,80 @@ namespace TradingStrategies.Utilities
                 {
                     dictionary_0[item3.UniqueDescription] = 0;
                 }
+                else
+                {
+                    dictionary_0[item3.UniqueDescription] = -1;
+                }
             }
         }
 
         public bool Next()
+        {
+            dateTime_0 = DateTime.MaxValue;
+            bool flag = true;
+            int toRemove = -1;
+            DateTime next = dateTime_0;
+
+            int i = 0;
+            foreach (Bars item in barsCollection)
+            {
+                int num = dictionary_0[item.UniqueDescription];
+
+                if (num >= 0)
+                {
+                    while (num < item.Count - 1 && item.Date[num] == item.Date[num + 1])
+                    {
+                        num++;
+                        dictionary_0[item.UniqueDescription] = num;
+                    }
+                }
+
+                if (num < item.Count - 1)
+                {
+                    flag = false;
+                }
+                else
+                {
+                    toRemove = i;
+                    continue;
+                }
+
+                next = item.Date[num + 1];
+                if (next < dateTime_0)
+                {
+                    dateTime_0 = next;
+                }
+
+                i++;
+            }
+
+            if (flag)
+            {
+                return false;
+            }
+            if (toRemove >= 0)
+            {
+                barsCollection.RemoveAt(toRemove);
+            }
+
+            //пытаемся итерировать каждую серию, если наткнулись на наименьшую следующую дату то фиксируем итерацию серии
+            foreach (Bars item4 in barsCollection)
+            {
+                int num3 = dictionary_0[item4.UniqueDescription];
+
+                num3++;
+                if (item4.Date[num3] == dateTime_0)
+                {
+                    dictionary_0[item4.UniqueDescription] = num3;
+                }
+            }
+
+            return true;
+        }
+
+
+
+        public bool NextOld()
         {
             //это видимо чтобы проскипать возможные бары с одинаковой датой (в рамках одной серии)
             foreach (Bars item in icollection_0)
