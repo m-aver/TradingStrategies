@@ -33,7 +33,7 @@ namespace TradingStrategies.Utilities
         //номер бара на текущей итерации данной серии
         //-1 если серия еще не начала итерироваться (лежит в будущем)
         //или номер последнего бара если уже закончила итерирование (осталась в прошлом)
-        public int Bar(Bars bars) => dictionary_1[bars];
+        public int Bar(Bars bars) => dictionary_1[bars] - 1;
 
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
@@ -61,11 +61,11 @@ namespace TradingStrategies.Utilities
                 Bars item = barsCollection[i];
                 if (item.Count > 0 && item.Date[0] == dateTime_0)
                 {
-                    dictionary_1[item] = 0;
+                    dictionary_1[item] = 1;
                 }
                 else
                 {
-                    dictionary_1[item] = -1;
+                    dictionary_1[item] = 0;
                 }
             }
         }
@@ -82,16 +82,16 @@ namespace TradingStrategies.Utilities
                 Bars item = barsCollection[i];
                 int num = dictionary_1[item];
 
-                if (num >= 0)
+                if (num >= 1)
                 {
-                    while (num < item.Count - 1 && item.Date[num] == item.Date[num + 1])
+                    while (num < item.Count && item.Date[num - 1] == item.Date[num])
                     {
                         num++;
                         dictionary_1[item] = num;
                     }
                 }
 
-                if (num < item.Count - 1)
+                if (num < item.Count)
                 {
                     flag = false;
                 }
@@ -101,7 +101,7 @@ namespace TradingStrategies.Utilities
                     continue;
                 }
 
-                next = item.Date[num + 1];
+                next = item.Date[num];
                 if (next < dateTime_0)
                 {
                     dateTime_0 = next;
@@ -123,9 +123,9 @@ namespace TradingStrategies.Utilities
                 Bars item = barsCollection[i];
                 int num = dictionary_1[item];
 
-                num++;
                 if (item.Date[num] == dateTime_0)
                 {
+                    num++;
                     dictionary_1[item] = num;
                 }
             }
