@@ -120,13 +120,13 @@ namespace TradingStrategies.Utilities
             //пытаемся итерировать каждую серию, если наткнулись на наименьшую следующую дату то фиксируем итерацию серии
             for (int i = 0; i < barsCollection.Count; i++)
             {
-                Bars item4 = barsCollection[i];
-                int num3 = dictionary_1[item4];
+                Bars item = barsCollection[i];
+                int num = dictionary_1[item];
 
-                num3++;
-                if (item4.Date[num3] == dateTime_0)
+                num++;
+                if (item.Date[num] == dateTime_0)
                 {
-                    dictionary_1[item4] = num3;
+                    dictionary_1[item] = num;
                 }
             }
 
