@@ -20,6 +20,8 @@ namespace TradingStrategies.Utilities
         private readonly Dictionary<Bars, int> barsMap;
         private readonly Bars[] barsCollection;
         private readonly int[] iterations;
+        private int startIdx = 0;
+        private readonly int barsCount;
 
         //дата текущей итерации
         //соответствует дате текущего бара одной (или нескольких) серии,
@@ -34,17 +36,15 @@ namespace TradingStrategies.Utilities
 
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
-            
-            
+            barsCount = barCollection.Count;
 
-            dictionary_1 = new Dictionary<Bars, int>(barCollection.Count);
-            barsMap = new Dictionary<Bars, int>(barCollection.Count);
-            iterations = new int[barCollection.Count];
+            barsMap = new Dictionary<Bars, int>(barsCount);
+            iterations = new int[barsCount];
             barsCollection = barCollection.ToArray();
 
             iterationDate = DateTime.MaxValue;
 
-            for (int i = 0; i < barsCollection.Length; i++)
+            for (int i = 0; i < barsCount; i++)
             {
                 Bars item = barsCollection[i];
                 var startDate = item.Date[0];
@@ -54,7 +54,7 @@ namespace TradingStrategies.Utilities
                 }
             }
 
-            for (int i = 0; i < barsCollection.Length; i++)
+            for (int i = 0; i < barsCount; i++)
             {
                 Bars item = barsCollection[i];
                 if (item.Count > 0 && item.Date[0] == iterationDate)
@@ -76,7 +76,7 @@ namespace TradingStrategies.Utilities
             bool isCompleted = true;
             int toRemove = -1;
 
-            for (int i = 0; i < barsCollection.Length; i++)
+            for (int i = startIdx; i < barsCount; i++)
             {
                 Bars item = barsCollection[i];
                 int num = iterations[i];
@@ -114,14 +114,17 @@ namespace TradingStrategies.Utilities
             }
             if (toRemove >= 0)
             {
-                var index = toRemove + 1;
-                var length = barsCollection.Length - index;
+                var index = startIdx;
+                var length = toRemove - index;
+                var destIndex = index + 1;
 
-                Array.Copy(barsCollection, index, barsCollection, toRemove, length);
-                Array.Copy(iterations, index, iterations, toRemove, length);
+                Array.Copy(barsCollection, index, barsCollection, destIndex, length);
+                Array.Copy(iterations, index, iterations, destIndex, length);
+
+                startIdx++;
             }
 
-            for (int i = 0; i < barsCollection.Length; i++)
+            for (int i = startIdx; i < barsCount; i++)
             {
                 Bars item = barsCollection[i];
                 int num = iterations[i];
