@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,9 @@ namespace TradingStrategies.Utilities
         private int startIdx = 0;
         private readonly int barsCount;
 
+        private readonly ArrayPool<int> intPool;
+        private readonly ArrayPool<Bars> barsPool;
+
         //дата текущей итерации
         //соответствует дате текущего бара одной (или нескольких) серии,
         //либо лежит между текущей и следующей итерацией остальных серий
@@ -37,10 +41,14 @@ namespace TradingStrategies.Utilities
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
             barsCount = barCollection.Count;
+            
+            intPool = ArrayPool<int>.Shared;
+            barsPool = ArrayPool<Bars>.Shared;
 
             barsMap = new Dictionary<Bars, int>(barsCount);
-            iterations = new int[barsCount];
-            barsCollection = barCollection.ToArray();
+            iterations = intPool.Rent(barsCount);
+            barsCollection = barsPool.Rent(barsCount);
+            barCollection.CopyTo(barsCollection, 0);
 
             iterationDate = DateTime.MaxValue;
 
@@ -110,6 +118,8 @@ namespace TradingStrategies.Utilities
 
             if (isCompleted)
             {
+                barsPool.Return(barsCollection, true);
+                intPool.Return(iterations, true);
                 return false;
             }
             if (toRemove >= 0)
