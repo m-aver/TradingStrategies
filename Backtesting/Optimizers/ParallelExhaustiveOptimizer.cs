@@ -13,11 +13,17 @@ using System.Linq;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
-//судя по профайлеру большую часть цп сжирает SynchronizedBarIterator в SystemResults
-//может получится как-то подменить его реализацию через рефлексию или IL
-
-//еще можно как-то подменить ResultsLong и ResultsShort
-//чтобы велслаб не обсчитывал их на равне с общим Results если нет нужды
+//TODO:
+//побаловаться настройками GC
+//разобраться куда утекает память | UPD: предположение что просто винда выделяет память под процесс заранее, по метрикам студии все норм
+//можно зафигачить базовый класс оптимизеру, который будет генерировать окно в интерфейсе под настройки (см. монтекарло)
+//признак запущенной оптимизации в WS Wrapper для перфоманса
+//записать изменения в исходном коде
+//причесать, закомитить
+//добавить выбор скорекардов
+//свой скорекард с основными параметрами, MS123 слишком много жрет цп
+//пофиксить переиспользование оптимизера
+//удалить один лишний экзекутор
 
 namespace TradingStrategies.Backtesting.Optimizers
 {
@@ -160,7 +166,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 this.supported = false;
                 return;
             }
-
+            
             StrategyManager strategyManager = new StrategyManager();
             SettingsManager settingsManager = new SettingsManager();
             settingsManager.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
