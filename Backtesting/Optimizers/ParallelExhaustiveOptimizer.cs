@@ -66,11 +66,12 @@ namespace TradingStrategies.Backtesting.Optimizers
         private TradingSystemExecutor parentExecutor;
         private ListView optimizationResultListView;
 
-        //for watches
+        //for metrics
+        private const bool writeMetrics = false;
         private int mainThread => numThreads + 1 - 1;
         private int currentRun = 0;
         private Stopwatch mainWatch = new Stopwatch();
-        private List<(string stage, long milliseconds)>[] perfomance;
+        private IOptimizerPerfomanceMetrics metrics;
 
         public override string Description => "Parallel Optimizer (Exhaustive)";
         public override string FriendlyName => Description;
@@ -223,10 +224,12 @@ namespace TradingStrategies.Backtesting.Optimizers
 
             //initialize perfomance metrics
             var runs = (int)NumberOfRuns;
-            const int metricsCount = 10; 
-            perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>(runs * metricsCount)).ToArray();  //with main thread
+            const int metricsCount = 10;
+            metrics = writeMetrics
+                ? (IOptimizerPerfomanceMetrics) new OptimizerPerfomanceMetrics(numThreads + 1, runs, metricsCount)
+                : (IOptimizerPerfomanceMetrics) new MockOptimizerPerfomanceMetrics();
 
-            perfomance[mainThread].Add(($"firstRun", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("firstRun", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
             mainWatch.Restart();
 
             //release before first run
@@ -235,7 +238,7 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         public override bool NextRun(SystemPerformance sp, OptimizationResult or)
         {
-            perfomance[mainThread].Add(($"all_end_{currentRun}", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("all_end", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
 
             currentRun++;
             mainWatch.Restart();
@@ -255,7 +258,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         {
             this.countDown.Wait();
 
-            perfomance[mainThread].Add(($"all_countDown_{currentRun}", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("all_countDown", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
 
             if (!this.supported)
                 return false;
@@ -306,7 +309,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                             this.countDown.Signal();
 
                             watch.Stop();
-                            perfomance[threadNum].Add(($"all_{currentRun}", watch.ElapsedMilliseconds));
+                            metrics.SetTime("all", watch.ElapsedMilliseconds, threadNum, currentRun);
                         }
                     }, i);
                 }
@@ -325,7 +328,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 }
             }
 
-            perfomance[mainThread].Add(($"all_runThreads_{currentRun}", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("all_runThreads", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
 
             return true;
         }
@@ -341,14 +344,14 @@ namespace TradingStrategies.Backtesting.Optimizers
             var ts = executors.Executor;
             var strategy = executors.Strategy;
 
-            perfomance[sys].Add(($"executor_{currentRun}", watch.ElapsedMilliseconds));
+            metrics.SetTime("executor", watch.ElapsedMilliseconds, sys, currentRun);
             watch.Restart();
 
             ts.Initialize();
             ts.Execute(strategy, executors.Script, null, allBars);
             executors.Result = ts.Performance;
 
-            perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
+            metrics.SetTime("script", watch.ElapsedMilliseconds, sys, currentRun);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -369,7 +372,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 new Action<ListView, ListViewItem>((view, newRow) => view.Items.Add(newRow)),
                 optimizationResultListView, row);
 
-            perfomance[index].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
+            metrics.SetTime("ui", uiWatch.ElapsedMilliseconds, index, currentRun);
         }
 
         private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
