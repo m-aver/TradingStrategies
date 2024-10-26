@@ -38,14 +38,16 @@ namespace TradingStrategies.Backtesting.Optimizers
         public SystemPerformance Result { get; set; }
         public Strategy Strategy { get; set; }
         public List<Bars> BarsSet { get; set; }
+        public List<ListViewItem> ResultRows { get; set; }
 
         public ExecutionScope(
-            TradingSystemExecutor executor, 
-            WealthScript script, 
-            StrategyScorecard scorecard, 
-            SystemPerformance result, 
-            Strategy strategy, 
-            List<Bars> barsSet)
+            TradingSystemExecutor executor,
+            WealthScript script,
+            StrategyScorecard scorecard,
+            SystemPerformance result,
+            Strategy strategy,
+            List<Bars> barsSet,
+            List<ListViewItem> resultRows)
         {
             this.Executor = executor;
             this.Script = script;
@@ -53,6 +55,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             this.Result = result;
             this.Strategy = strategy;
             this.BarsSet = barsSet;
+            this.ResultRows = resultRows;
         }
     }
 
@@ -82,11 +85,13 @@ namespace TradingStrategies.Backtesting.Optimizers
         public override string Description => "Parallel Optimizer (Exhaustive)";
         public override string FriendlyName => Description;
 
-        //for debug
         public override void RunCompleted(OptimizationResultList results)
         {
+            countDown.Wait();
             mainWatch.Reset();
             base.RunCompleted(results);
+            PopulateUI();
+            countDown.Dispose();
         }
 
         /// <summary>
@@ -95,7 +100,6 @@ namespace TradingStrategies.Backtesting.Optimizers
         public override void Initialize()
         {
             numThreads = Environment.ProcessorCount;
-            countDown = new CountdownEvent(numThreads);
         }
 
         public override double NumberOfRuns
@@ -138,6 +142,14 @@ namespace TradingStrategies.Backtesting.Optimizers
             mainWatch.Restart();
 
             parentExecutor = ExtractExecutor(this.WealthScript);
+            if (parentExecutor == null)
+            {
+                var message = $"cannot load executor, you must run strategy firstly on that dataset everywhere";
+                Debug.Print(message);
+                MessageBox.Show(message);
+                this.supported = false;
+                return;
+            }
             parentExecutor.BenchmarkBuyAndHoldON = false;
 
             //extract all data set bars
@@ -210,6 +222,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             //initialize parallel executors
             this.executors = new ExecutionScope[numThreads];
 
+            var runs = (int)NumberOfRuns;
             Parallel.For(0, numThreads, 
                 i =>
                 {
@@ -219,7 +232,8 @@ namespace TradingStrategies.Backtesting.Optimizers
                         GetSelectedScoreCard(settingsManager),
                         null,
                         CopyStrategy(this.Strategy),
-                        dataSetBars.Values.ToList()
+                        dataSetBars.Values.ToList(),
+                        new List<ListViewItem>(runs)
                     );
                     this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
                     this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
@@ -229,7 +243,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
 
             //initialize perfomance metrics
-            var runs = (int)NumberOfRuns;
             const int metricsCount = 10;
             metrics = writeMetrics
                 ? (IOptimizerPerfomanceMetrics) new OptimizerPerfomanceMetrics(numThreads + 1, runs, metricsCount)
@@ -238,8 +251,8 @@ namespace TradingStrategies.Backtesting.Optimizers
             metrics.SetTime("firstRun", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
             mainWatch.Restart();
 
-            //release before first run
-            this.countDown.Signal(countDown.InitialCount);
+            this.countDown = new CountdownEvent(numThreads);
+            this.countDown.Signal(countDown.InitialCount);  //release before first run
         }
 
         public override bool NextRun(SystemPerformance sp, OptimizationResult or)
@@ -249,7 +262,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             currentRun++;
             mainWatch.Restart();
 
-            var x = NextRunInternal(sp, or);
+            var x = NextRunInternal();
 
             mainWatch.Restart();
 
@@ -260,7 +273,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         /// Implements parallel runs - each logical "next run" results in multiple parallel runs
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool NextRunInternal(SystemPerformance sp, OptimizationResult or)
+        private bool NextRunInternal()
         {
             this.countDown.Wait();
 
@@ -373,12 +386,32 @@ namespace TradingStrategies.Backtesting.Optimizers
                 row.SubItems.Add(parameter.Value.ToString());
 
             executors.Scorecard.PopulateScorecard(row, executors.Result);
-
-            optimizationResultListView.Invoke(
-                new Action<ListView, ListViewItem>((view, newRow) => view.Items.Add(newRow)),
-                optimizationResultListView, row);
+            executors.ResultRows.Add(row);
 
             metrics.SetTime("ui", uiWatch.ElapsedMilliseconds, index, currentRun);
+        }
+
+        private void PopulateUI()
+        {
+            var rows = executors.SelectMany(x => x.ResultRows).ToArray();
+
+            if (optimizationResultListView.InvokeRequired)
+            {
+                //выполняется на главном потоке
+                //может привести к дедлоку если главный поток лочится на счетчике
+                optimizationResultListView.Invoke(
+                    new Action<ListView, ListViewItem[]>((view, newRows) => view.Items.AddRange(newRows)),
+                    optimizationResultListView, rows);
+            }
+            else
+            {
+                optimizationResultListView.Items.AddRange(rows);
+            }
+
+            foreach (var executor in executors)
+            {
+                executor.ResultRows.Clear();
+            }
         }
 
         private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
@@ -597,7 +630,7 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         ~ParallelExhaustiveOptimizer()
         {
-            countDown.Dispose();
+            countDown?.Dispose();
         }
     }
 }
