@@ -40,7 +40,7 @@ namespace TradingStrategies.Utilities
         //-1 если серия еще не начала итерироваться (лежит в будущем)
         //или номер последнего бара если уже закончила итерирование (осталась в прошлом)
         //(внутренние итерации смещены на +1 для оптимизации)
-        public int Bar(Bars bars) => barsMap[bars] - 1;
+        public int Bar(Bars bars) => iterations[barsMap[bars]] - 1;
 
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
@@ -87,14 +87,13 @@ namespace TradingStrategies.Utilities
                 var (ticks, count) = barsTicks[i];
                 if (count > 0 && ticks[0] == iterationTicks)
                 {
-                    barsMap[bars] = 1;
                     iterations[i] = 1;
                 }
                 else
                 {
-                    barsMap[bars] = 0;
                     iterations[i] = 0;
                 }
+                barsMap[bars] = i;
             }
         }
 
@@ -106,7 +105,6 @@ namespace TradingStrategies.Utilities
 
             for (int i = startIdx; i < barsCount; i++)
             {
-                var bars = barsCollection[i];
                 var iter = iterations[i];
                 var (ticks, count) = barsTicks[i];
 
@@ -115,7 +113,6 @@ namespace TradingStrategies.Utilities
                     while (iter < count && ticks[iter - 1] == ticks[iter])
                     {
                         iter++;
-                        barsMap[bars] = iter;
                         iterations[i] = iter;
                     }
                 }
@@ -140,7 +137,7 @@ namespace TradingStrategies.Utilities
             if (isCompleted)
             {
                 barsPool.Return(barsCollection, true);
-                intPool.Return(iterations, true);
+                //intPool.Return(iterations, true);
 
                 foreach (var ticks in barsTicks.Where(x => x.ticks != null))
                 {
@@ -152,35 +149,43 @@ namespace TradingStrategies.Utilities
             }
             if (toRemove >= 0)
             {
-                var sourceIdx = startIdx;
-                var length = toRemove - sourceIdx;
-                var destinationIdx = sourceIdx + 1;
-
-                Array.Copy(barsCollection, sourceIdx, barsCollection, destinationIdx, length);
-                Array.Copy(iterations, sourceIdx, iterations, destinationIdx, length);
-
                 longPool.Return(barsTicks[toRemove].ticks, true);
                 barsTicks[toRemove] = default;
-                Array.Copy(barsTicks, sourceIdx, barsTicks, destinationIdx, length);
+
+                var removingBars = barsCollection[toRemove];
+                barsMap[removingBars] = startIdx;
+                for (var i = startIdx; i < toRemove; i++)
+                {
+                    var movingBars = barsCollection[i];
+                    barsMap[movingBars] = i + 1;
+                }
+
+                ArrayHelper.ShiftItem(barsCollection, toRemove, startIdx);
+                ArrayHelper.ShiftItem(iterations, toRemove, startIdx);
+                ArrayHelper.ShiftItem(barsTicks, toRemove, startIdx);
 
                 startIdx++;
             }
 
             for (int i = startIdx; i < barsCount; i++)
             {
-                var bars = barsCollection[i];
                 var iter = iterations[i];
                 var ticks = barsTicks[i].ticks;
 
                 if (ticks[iter] == iterationTicks)
                 {
                     iter++;
-                    barsMap[bars] = iter;
                     iterations[i] = iter;
                 }
             }
 
             return true;
+        }
+
+        ~SynchronizedBarIterator()
+        {
+            //может быть использовано после итерирования
+            intPool.Return(iterations, true);
         }
     }
 }

@@ -45,6 +45,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArrayHelper.cs" />
     <Compile Include="SynchronizedBarIterator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
