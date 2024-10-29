@@ -55,8 +55,10 @@ namespace TradingStrategies.Utilities
             iterations = intPool.Rent(barsCount);
             barsCollection = barsPool.Rent(barsCount);
             barCollection.CopyTo(barsCollection, 0);
-
             barsTicks = long2dPool.Rent(barsCount);
+
+            iterationTicks = long.MaxValue;
+
             for (int i = 0; i < barsCount; i++)
             {
                 var dates = barsCollection[i].Date;
@@ -67,13 +69,7 @@ namespace TradingStrategies.Utilities
                     ticks[j] = dates[j].Ticks;
                 }
                 barsTicks[i] = (ticks, count);
-            }
 
-            iterationTicks = long.MaxValue;
-
-            for (int i = 0; i < barsCount; i++)
-            {
-                var (ticks, count) = barsTicks[i];
                 var startTicks = ticks[0];
                 if (count > 0 && startTicks < iterationTicks)
                 {
@@ -112,8 +108,7 @@ namespace TradingStrategies.Utilities
                 {
                     while (iter < count && ticks[iter - 1] == ticks[iter])
                     {
-                        iter++;
-                        iterations[i] = iter;
+                        iterations[i] = ++iter;
                     }
                 }
 
@@ -147,22 +142,26 @@ namespace TradingStrategies.Utilities
 
                 return false;
             }
+
             if (toRemove >= 0)
             {
                 longPool.Return(barsTicks[toRemove].ticks, true);
                 barsTicks[toRemove] = default;
 
-                var removingBars = barsCollection[toRemove];
-                barsMap[removingBars] = startIdx;
-                for (var i = startIdx; i < toRemove; i++)
+                if (toRemove != startIdx)
                 {
-                    var movingBars = barsCollection[i];
-                    barsMap[movingBars] = i + 1;
-                }
+                    var removingBars = barsCollection[toRemove];
+                    barsMap[removingBars] = startIdx;
+                    for (var i = startIdx; i < toRemove; i++)
+                    {
+                        var movingBars = barsCollection[i];
+                        barsMap[movingBars] = i + 1;
+                    }
 
-                ArrayHelper.ShiftItem(barsCollection, toRemove, startIdx);
-                ArrayHelper.ShiftItem(iterations, toRemove, startIdx);
-                ArrayHelper.ShiftItem(barsTicks, toRemove, startIdx);
+                    ArrayHelper.ShiftItem(barsCollection, toRemove, startIdx);
+                    ArrayHelper.ShiftItem(iterations, toRemove, startIdx);
+                    ArrayHelper.ShiftItem(barsTicks, toRemove, startIdx);
+                }
 
                 startIdx++;
             }
@@ -174,8 +173,7 @@ namespace TradingStrategies.Utilities
 
                 if (ticks[iter] == iterationTicks)
                 {
-                    iter++;
-                    iterations[i] = iter;
+                    iterations[i] = ++iter;
                 }
             }
 
