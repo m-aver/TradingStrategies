@@ -6,11 +6,26 @@ using System.Text;
 using System.Threading.Tasks;
 using WealthLab;
 
+//TODO:
+//как будто ноды сильно грузят GC, пул не помогает?
+//какой то этот аррэй пул проблемный, надо либо свой писать, либо что-то другое использовать
+//?: 1 - слишком много аллокаций, 2 - локи и бездействие цп
+
 //синхронизирует итерацию нескольких серий баров
 //таким образом что пересекающиеся по времени серии итерируются параллельно друг другу
 
 namespace TradingStrategies.Utilities
 {
+    internal class Node
+    {
+        public int iteration;
+        public long[] ticks;
+        public int count;
+
+        public Node next;
+        public Node prev;
+    }
+
     /// <summary>
     /// Optimized version of WealthLab.SynchronizedBarIterator.
     /// Replace it in WealthLab.dll source code using ildasm.exe/ilasm.exe
@@ -18,17 +33,13 @@ namespace TradingStrategies.Utilities
     public class SynchronizedBarIterator
     {
         private long iterationTicks;
-        private readonly Dictionary<Bars, int> barsMap;
-        private readonly Bars[] barsCollection;
-        private readonly int[] iterations;
-        private readonly (long[] ticks, int count)[] barsTicks;
-        private int startIdx = 0;
+        private readonly Dictionary<Bars, Node> barsMap;
         private readonly int barsCount;
 
-        private readonly ArrayPool<int> intPool;
-        private readonly ArrayPool<Bars> barsPool;
+        private Node seek;
+        private readonly Node[] nodes;
+        private readonly ArrayPool<Node> nodePool;
         private readonly ArrayPool<long> longPool;
-        private readonly ArrayPool<(long[], int)> long2dPool;
 
         //дата текущей итерации
         //соответствует дате текущего бара одной (или нескольких) серии,
@@ -40,75 +51,95 @@ namespace TradingStrategies.Utilities
         //-1 если серия еще не начала итерироваться (лежит в будущем)
         //или номер последнего бара если уже закончила итерирование (осталась в прошлом)
         //(внутренние итерации смещены на +1 для оптимизации)
-        public int Bar(Bars bars) => iterations[barsMap[bars]] - 1;
+        public int Bar(Bars bars) => barsMap[bars].iteration - 1;
 
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
             barsCount = barCollection.Count;
-            
-            intPool = ArrayPool<int>.Shared;
-            barsPool = ArrayPool<Bars>.Shared;
-            longPool = ArrayPool<long>.Shared;
-            long2dPool = ArrayPool<(long[], int)>.Shared;
+            barsMap = new Dictionary<Bars, Node>(barsCount);
 
-            barsMap = new Dictionary<Bars, int>(barsCount);
-            iterations = intPool.Rent(barsCount);
-            barsCollection = barsPool.Rent(barsCount);
-            barCollection.CopyTo(barsCollection, 0);
-            barsTicks = long2dPool.Rent(barsCount);
+            longPool = ArrayPool<long>.Shared;
+            nodePool = ArrayPool<Node>.Shared;
+
+            nodes = nodePool.Rent(barsCount);
 
             iterationTicks = long.MaxValue;
 
-            for (int i = 0; i < barsCount; i++)
+            int i = 0;
+            foreach(var bars in barCollection)
             {
-                var dates = barsCollection[i].Date;
+                var dates = bars.Date;
                 var count = dates.Count;
                 var ticks = longPool.Rent(count);
                 for (int j = 0; j < count; j++)
                 {
                     ticks[j] = dates[j].Ticks;
                 }
-                barsTicks[i] = (ticks, count);
+
+                var node = nodes[i] ?? new Node();
+                node.iteration = 0;
+                node.ticks = ticks;
+                node.count = count;
+                nodes[i] = node;
+
+                barsMap[bars] = node;
 
                 var startTicks = ticks[0];
                 if (count > 0 && startTicks < iterationTicks)
                 {
                     iterationTicks = startTicks;
                 }
+
+                i++;
             }
 
-            for (int i = 0; i < barsCount; i++)
+            for (i = 0; i < barsCount; i++)
             {
-                var bars = barsCollection[i];
-                var (ticks, count) = barsTicks[i];
+                var node = nodes[i];
+                var next = i < barsCount - 1 ? nodes[i + 1] : null;
+                var prev = i > 0 ? nodes[i - 1] : null;
+
+                node.next = next;
+                node.prev = prev;
+            }
+
+            for (i = 0; i < barsCount; i++)
+            {
+                var node = nodes[i];
+                var ticks = node.ticks;
+                var count = node.count;
+
                 if (count > 0 && ticks[0] == iterationTicks)
                 {
-                    iterations[i] = 1;
+                    node.iteration = 1;
                 }
                 else
                 {
-                    iterations[i] = 0;
+                    node.iteration = 0;
                 }
-                barsMap[bars] = i;
             }
+
+            seek = nodes[0];
         }
 
         public bool Next()
         {
             iterationTicks = long.MaxValue;
             bool isCompleted = true;
-            int toRemove = -1;
 
-            for (int i = startIdx; i < barsCount; i++)
+            var node = seek;
+            do
             {
-                var iter = iterations[i];
-                var (ticks, count) = barsTicks[i];
+                var iter = node.iteration;
+                var ticks = node.ticks;
+                var count = node.count;
+                var next = node.next;
 
                 if (iter >= 1)
                 {
                     while (iter < count && ticks[iter - 1] == ticks[iter])
                     {
-                        iterations[i] = ++iter;
+                        node.iteration = ++iter;
                     }
                 }
 
@@ -116,66 +147,65 @@ namespace TradingStrategies.Utilities
                 {
                     isCompleted = false;
                 }
-                else
+                else //remove completed
                 {
-                    toRemove = i;
+                    longPool.Return(ticks, true);
+                    node.ticks = default;
+                    node.count = default;
+
+                    if (ReferenceEquals(node, seek))
+                    {
+                        seek = next;
+                    }
+                    else
+                    {
+                        node.prev.next = next;
+                    }
+
+                    node = next;
                     continue;
                 }
 
-                var next = ticks[iter];
-                if (next < iterationTicks)
+                var nextTick = ticks[iter];
+                if (nextTick < iterationTicks)
                 {
-                    iterationTicks = next;
+                    iterationTicks = nextTick;
                 }
+
+                node = next;
             }
+            while (node != null);
 
             if (isCompleted)
             {
-                barsPool.Return(barsCollection, true);
-                //intPool.Return(iterations, true);
-
-                foreach (var ticks in barsTicks.Where(x => x.ticks != null))
+                for (int i = 0; i < barsCount; i++)
                 {
-                    longPool.Return(ticks.ticks, true);
+                    var ticks = nodes[i].ticks;
+                    if (ticks != null)
+                    {
+                        longPool.Return(ticks, true);
+                    }
                 }
-                long2dPool.Return(barsTicks, true);
+
+                //nodePool.Return(nodes, false);
 
                 return false;
             }
 
-            if (toRemove >= 0)
+            node = seek;
+            do
             {
-                longPool.Return(barsTicks[toRemove].ticks, true);
-                barsTicks[toRemove] = default;
-
-                if (toRemove != startIdx)
-                {
-                    var removingBars = barsCollection[toRemove];
-                    barsMap[removingBars] = startIdx;
-                    for (var i = startIdx; i < toRemove; i++)
-                    {
-                        var movingBars = barsCollection[i];
-                        barsMap[movingBars] = i + 1;
-                    }
-
-                    ArrayHelper.ShiftItem(barsCollection, toRemove, startIdx);
-                    ArrayHelper.ShiftItem(iterations, toRemove, startIdx);
-                    ArrayHelper.ShiftItem(barsTicks, toRemove, startIdx);
-                }
-
-                startIdx++;
-            }
-
-            for (int i = startIdx; i < barsCount; i++)
-            {
-                var iter = iterations[i];
-                var ticks = barsTicks[i].ticks;
+                var iter = node.iteration;
+                var ticks = node.ticks;
 
                 if (ticks[iter] == iterationTicks)
                 {
-                    iterations[i] = ++iter;
+                    node.iteration = ++iter;
                 }
+
+                node = node.next;
             }
+            while (node != null);
 
             return true;
         }
@@ -183,7 +213,7 @@ namespace TradingStrategies.Utilities
         ~SynchronizedBarIterator()
         {
             //может быть использовано после итерирования
-            intPool.Return(iterations, true);
+            nodePool.Return(nodes, false);
         }
     }
 }
