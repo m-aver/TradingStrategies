@@ -160,6 +160,11 @@ namespace TradingStrategies.Utilities
                     else
                     {
                         node.prev.next = next;
+
+                        if (next != null)
+                        {
+                            next.prev = node.prev;
+                        }
                     }
 
                     node = next;
