@@ -133,9 +133,8 @@ namespace TradingStrategies.Utilities
                 var iter = node.iteration;
                 var ticks = node.ticks;
                 var count = node.count;
-                var next = node.next;
 
-                if (iter >= 1)
+                if (iter > 0)
                 {
                     while (iter < count && ticks[iter - 1] == ticks[iter])
                     {
@@ -155,19 +154,18 @@ namespace TradingStrategies.Utilities
 
                     if (ReferenceEquals(node, seek))
                     {
-                        seek = next;
+                        seek = node.next;
                     }
-                    else
+                    if (node.prev != null)
                     {
-                        node.prev.next = next;
-
-                        if (next != null)
-                        {
-                            next.prev = node.prev;
-                        }
+                        node.prev.next = node.next;
+                    }
+                    if (node.next != null)
+                    {
+                        node.next.prev = node.prev;
                     }
 
-                    node = next;
+                    node = node.next;
                     continue;
                 }
 
@@ -177,7 +175,7 @@ namespace TradingStrategies.Utilities
                     iterationTicks = nextTick;
                 }
 
-                node = next;
+                node = node.next;
             }
             while (node != null);
 

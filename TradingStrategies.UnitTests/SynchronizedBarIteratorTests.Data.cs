@@ -7,10 +7,12 @@ namespace TradingStrategies.UnitTests
     {
         public static IEnumerable<object[]> GetBarDates(int seriesCount)
         {
+            var barsCount = 100;
+
             var linear = Enumerable
                 .Range(0, seriesCount)
                 .Select(x => Enumerable
-                    .Range(0, 100)
+                    .Range(0, barsCount)
                     .Select(y => DateTime.Now + TimeSpan.FromDays(x) + TimeSpan.FromSeconds(y))
                     .ToArray())
                 .ToArray();
@@ -20,7 +22,7 @@ namespace TradingStrategies.UnitTests
             var parallel = Enumerable
                 .Range(0, seriesCount)
                 .Select(x => Enumerable
-                    .Range(0, 100)
+                    .Range(0, barsCount)
                     .Select(y => DateTime.Now + TimeSpan.FromDays(y))
                     .ToArray())
                 .ToArray();
@@ -30,7 +32,7 @@ namespace TradingStrategies.UnitTests
             var overlaped = Enumerable
                 .Range(0, seriesCount)
                 .Select(x => Enumerable
-                    .Range(0, 100)
+                    .Range(0, barsCount)
                     .Select(y => DateTime.Now + TimeSpan.FromDays(x) + TimeSpan.FromHours(y))
                     .ToArray())
                 .ToArray();
@@ -41,7 +43,7 @@ namespace TradingStrategies.UnitTests
                 .Range(0, seriesCount)
                 .OrderDescending()
                 .Select(x => Enumerable
-                    .Range(0, 100)
+                    .Range(0, barsCount)
                     .Select(y => DateTime.Now + TimeSpan.FromDays(x) + TimeSpan.FromHours(y))
                     .OrderDescending()
                     .ToArray())
@@ -63,7 +65,6 @@ namespace TradingStrategies.UnitTests
                     .Select(x => Enumerable
                         .Range(0, barsCount())
                         .Select(y => DateTime.Now + TimeSpan.FromHours(hoursOffset()))
-                        .Order()
                         .ToArray())
                     .ToArray();
 
