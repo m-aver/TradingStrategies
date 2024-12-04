@@ -33,7 +33,7 @@ namespace TradingStrategies.Utilities
     public class SynchronizedBarIterator
     {
         private long iterationTicks;
-        private readonly Dictionary<Bars, Node> barsMap;
+        private readonly IReadOnlyDictionary<Bars, Node> barsMap;
         private readonly int barsCount;
 
         private Node seek;
@@ -56,7 +56,6 @@ namespace TradingStrategies.Utilities
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
             barsCount = barCollection.Count;
-            barsMap = new Dictionary<Bars, Node>(barsCount);
 
             longPool = ArrayPool<long>.Shared;
             nodePool = ArrayPool<Node>.Shared;
@@ -66,7 +65,7 @@ namespace TradingStrategies.Utilities
             iterationTicks = long.MaxValue;
 
             int i = 0;
-            foreach(var bars in barCollection)
+            foreach (var bars in barCollection)
             {
                 var dates = bars.Date;
                 var count = dates.Count;
@@ -81,8 +80,6 @@ namespace TradingStrategies.Utilities
                 node.ticks = ticks;
                 node.count = count;
                 nodes[i] = node;
-
-                barsMap[bars] = node;
 
                 var startTicks = ticks[0];
                 if (count > 0 && startTicks < iterationTicks)
@@ -119,7 +116,25 @@ namespace TradingStrategies.Utilities
                 }
             }
 
+            barsMap = CreateBarsMap(barCollection, nodes);
+
             seek = nodes[0];
+        }
+
+        private static IReadOnlyDictionary<Bars, Node> CreateBarsMap(ICollection<Bars> barCollection, Node[] nodes)
+        {
+            try
+            {
+                return barCollection is IReadOnlyList<Bars> barList //its actually List
+                    ? new LiteDictionary<Bars, Node>(barList, nodes)
+                    : new LiteDictionary<Bars, Node>(barCollection.ToArray(), nodes);
+            }
+            catch   //duplicate hash codes
+            {
+                return barCollection
+                    .Zip(nodes, (bars, node) => (bars, node))
+                    .ToDictionary(x => x.bars, x => x.node);
+            }
         }
 
         public bool Next()

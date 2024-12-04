@@ -156,17 +156,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             dataSetBars = new Dictionary<string, Bars>();
             try
             {
-                int i = 0;
+                int i = 1;
                 foreach (var symbol in parentExecutor.DataSet.Symbols)
                 {
                     var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
-                    dataSetBars.Add(symbol, bars);
-
-                    //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
-                    //судя по профайлеру на этом тратится очень много ресурсов, изначально там формируется большая строка
-                    typeof(Bars)
-                        .GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic)
-                        .SetValue(bars, i.ToString());
+                    dataSetBars.Add(symbol, bars.WithHash(i));
                     i++;
                 }
             }

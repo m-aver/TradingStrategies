@@ -71,6 +71,7 @@
     <Compile Include="Core\WealthScriptWrapper.cs" />
     <Compile Include="Indicators\BollingerBands.cs" />
     <Compile Include="Indicators\BollingerFilter.cs" />
+    <Compile Include="Optimizers\BarsWrapper.cs" />
     <Compile Include="Optimizers\ParallelExhaustiveOptimizer.cs" />
     <Compile Include="Strategies\CoupStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
