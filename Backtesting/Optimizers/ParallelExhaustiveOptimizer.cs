@@ -12,6 +12,7 @@ using Fidelity.Components;
 using System.Linq;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Runtime;
 
 //TODO:
 //побаловаться настройками GC
@@ -92,6 +93,8 @@ namespace TradingStrategies.Backtesting.Optimizers
             base.RunCompleted(results);
             PopulateUI();
             countDown.Dispose();
+
+            FullCollect();
         }
 
         /// <summary>
@@ -120,6 +123,8 @@ namespace TradingStrategies.Backtesting.Optimizers
         public override void FirstRun()
         {
             mainWatch.Restart();
+
+            FullCollect();
 
             parentExecutor = ExtractExecutor(this.WealthScript);
             if (parentExecutor == null)
@@ -578,6 +583,12 @@ namespace TradingStrategies.Backtesting.Optimizers
                     args.Bars = barsCache[args.Symbol];
                 }
             }
+        }
+
+        private static void FullCollect()
+        {
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect();
         }
 
         ~ParallelExhaustiveOptimizer()
