@@ -14,8 +14,8 @@ namespace TradingStrategies.UnitTests
             //arrange
             var barsCollection = barDates.Select(BarsHelper.FromDates).ToArray();
 
-            var oldResults = new List<IterationResult>();
-            var ownResults = new List<IterationResult>();
+            var oldResults = new List<BarsIterationResult>();
+            var ownResults = new List<BarsIterationResult>();
 
             //act
             var oldIterator = new WealthLab.SynchronizedBarIterator(barsCollection);
@@ -23,8 +23,8 @@ namespace TradingStrategies.UnitTests
 
             do
             {
-                var oldResult = new IterationResult(oldIterator.Date);
-                var ownResult = new IterationResult(ownIterator.Date);
+                var oldResult = new BarsIterationResult(oldIterator.Date);
+                var ownResult = new BarsIterationResult(ownIterator.Date);
 
                 foreach (var bars in barsCollection)
                 {
@@ -41,7 +41,7 @@ namespace TradingStrategies.UnitTests
             Assert.False(oldIterator.Next());
             Assert.False(ownIterator.Next());
 
-            Assert.Equal(oldResults, ownResults, IterationResultsComparer.Instance);
+            Assert.Equal(oldResults, ownResults, BarsIterationResultsComparer.Instance);
         }
     }
 }

@@ -10,6 +10,7 @@
     <RootNamespace>TradingStrategies.Backtesting</RootNamespace>
     <AssemblyName>TradingStrategies.Backtesting</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>8</LangVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -72,6 +73,9 @@
     <Compile Include="Indicators\BollingerBands.cs" />
     <Compile Include="Indicators\BollingerFilter.cs" />
     <Compile Include="Optimizers\BarsWrapper.cs" />
+    <Compile Include="Optimizers\AccuracyStrategyParameter.cs" />
+    <Compile Include="Optimizers\StrategyParametersIterator.cs" />
+    <Compile Include="Optimizers\OptimizerPerfomanceMetrics.cs" />
     <Compile Include="Optimizers\ParallelExhaustiveOptimizer.cs" />
     <Compile Include="Strategies\CoupStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

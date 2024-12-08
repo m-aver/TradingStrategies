@@ -74,6 +74,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         private Dictionary<string, Bars> dataSetBars;
         private TradingSystemExecutor parentExecutor;
         private ListView optimizationResultListView;
+        private IStrategyParametersIterator parametersIterator;
 
         //for metrics
         private const bool writeMetrics = false;
@@ -102,36 +103,16 @@ namespace TradingStrategies.Backtesting.Optimizers
             numThreads = Environment.ProcessorCount;
         }
 
+        //RunsRequired = NumberOfRuns * datasets-count
         public override double NumberOfRuns
         {
             get
             {
-                double runs = 1.0;
-                foreach (StrategyParameter parameter in WealthScript.Parameters)
-                    runs *= NumberOfRunsPerParameter(parameter);
-                runs = Math.Max(Math.Floor(runs / numThreads), 1);
-                if (runs > int.MaxValue)
-                    runs = int.MaxValue; // otherwise the progress bar is broken
+                var iterator = CreateParametersIterator();
+                var runs = iterator.RunsCount();
+                runs = Math.Max(runs / numThreads, 1);
                 return runs;
             }
-        }
-
-        private double NumberOfRunsPerParameter(StrategyParameter parameter)
-        {
-            if (!parameter.IsEnabled)
-            {
-                return 1;
-            }
-
-            if ((parameter.Start < parameter.Stop && parameter.Step > 0) ||
-                (parameter.Start > parameter.Stop && parameter.Step < 0))
-            {
-                return Math.Max(
-                    Math.Floor((parameter.Stop - parameter.Start + parameter.Step) / parameter.Step),
-                    1);
-            }
-
-            return 1;
         }
 
         /// <summary>
@@ -206,12 +187,8 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
 
             //initialize parameters
-            this.paramValues = new List<StrategyParameter>(this.WealthScript.Parameters.Count);
-            foreach (var parameter in this.WealthScript.Parameters)
-            {
-                parameter.Value = parameter.IsEnabled ? parameter.Start : parameter.DefaultValue;
-                paramValues.Add(CopyParameter(parameter));
-            }
+            this.parametersIterator = CreateParametersIterator();
+            this.paramValues = parametersIterator.CurrentParameters.ToList();
 
             //initialize parallel executors
             this.executors = new ExecutionScope[numThreads];
@@ -434,38 +411,22 @@ namespace TradingStrategies.Backtesting.Optimizers
             };
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool SetNextRunParameters() => SetNextRunParameters(0);
-
         /// <summary>
         /// Increments strategy parameter values for the next optimization run based on exhaustive optimization
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool SetNextRunParameters(int currentParam)
+        private bool SetNextRunParameters()
         {
-            if (currentParam >= paramValues.Count)
-                return false; // we're done
+            return this.parametersIterator.MoveNext();
+        }
 
-            var current = paramValues[currentParam];
-
-            if (!current.IsEnabled)
-            {
-                current.Value = current.DefaultValue;
-                return SetNextRunParameters(currentParam + 1);
-            }
-
-            current.Value += current.Step;
-
-            if ((current.Value >= (current.Stop + current.Step) &&
-                current.Step > 0)
-                ||
-                (current.Value <= (current.Stop - current.Step) &&
-                current.Step < 0))
-            {
-                current.Value = current.Start;
-                return SetNextRunParameters(currentParam + 1);
-            }
-            return true;
+        private IStrategyParametersIterator CreateParametersIterator(bool fromStart = true)
+        {
+            var parameters = this.WealthScript.Parameters.Select(CopyParameter).ToArray();
+            var iterator = new StrategyParametersIterator(parameters);
+            if (fromStart) 
+                iterator.Reset();
+            return iterator;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
