@@ -2,8 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 using WealthLab;
 
 //синхронизирует итерацию нескольких серий баров
@@ -56,7 +55,8 @@ namespace TradingStrategies.Utilities
 
             longPool = ArrayPoolHelper<long>.PreconfiguredShared;
             nodePool = ArrayPoolHelper<Node>.PreconfiguredShared;
-#if DEBUG   //сильно тупит в дебаге из студии, все ноды попадают в один бакет пула и видимо влияет SpinLock(Debugger.IsAttached)
+
+#if DEBUG   //сильно тупит в дебаге из студии, видимо влияет SpinLock(Debugger.IsAttached) в бакете пула
             nodePool = NodePool.CreateOrGet(barsCount);
 #endif
             nodes = nodePool.Rent(barsCount);
@@ -127,6 +127,7 @@ namespace TradingStrategies.Utilities
             seek = nodes[0];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static IReadOnlyDictionary<Bars, Node> CreateBarsMap(ICollection<Bars> barCollection, Node[] nodes)
         {
             try
@@ -138,8 +139,8 @@ namespace TradingStrategies.Utilities
             catch   //duplicate hash codes
             {
                 return barCollection
-                    .Zip(nodes, (bars, node) => (bars, node))
-                    .ToDictionary(x => x.bars, x => x.node);
+                    .Zip(nodes, static (bars, node) => (bars, node))
+                    .ToDictionary(static x => x.bars, static x => x.node);
             }
         }
 
@@ -157,7 +158,7 @@ namespace TradingStrategies.Utilities
 
                 if (iter > 0)
                 {
-                    while (iter < count && ticks[iter - 1] == ticks[iter])
+                    while (iter < count && ticks[iter - 1] == ticks[iter])  //skip duplicate dates
                     {
                         node.iteration = ++iter;
                     }
@@ -236,7 +237,7 @@ namespace TradingStrategies.Utilities
 
         ~SynchronizedBarIterator()
         {
-            //может быть использовано после итерирования
+            //если будет использоваться после итерирования
             nodePool.Return(nodes, false);
         }
     }
