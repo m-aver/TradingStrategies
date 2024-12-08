@@ -21,7 +21,6 @@ using System.Runtime;
 //признак запущенной оптимизации в WS Wrapper для перфоманса
 //записать изменения в исходном коде
 //причесать, закомитить
-//добавить выбор скорекардов
 //свой скорекард с основными параметрами, MS123 слишком много жрет цп
 //удалить один лишний экзекутор
 //убедиться результаты одинаковы
@@ -75,6 +74,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         private TradingSystemExecutor parentExecutor;
         private ListView optimizationResultListView;
         private IStrategyParametersIterator parametersIterator;
+        private IScorecardProvider scorecardProvider;
 
         //for metrics
         private const bool writeMetrics = false;
@@ -103,6 +103,13 @@ namespace TradingStrategies.Backtesting.Optimizers
         public override void Initialize()
         {
             numThreads = Environment.ProcessorCount;
+
+            var settingsManager = new SettingsManager();
+            settingsManager.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
+            settingsManager.FileName = "WealthLabConfig.txt";
+            settingsManager.LoadSettings();
+
+            scorecardProvider = ScorecardProviderFactory.Create(settingsManager, this);
         }
 
         //RunsRequired = NumberOfRuns * datasets-count
@@ -156,18 +163,13 @@ namespace TradingStrategies.Backtesting.Optimizers
                 return;
             }
             
-            StrategyManager strategyManager = new StrategyManager();
-            SettingsManager settingsManager = new SettingsManager();
-            settingsManager.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
-            settingsManager.FileName = "WealthLabConfig.txt";
-            settingsManager.LoadSettings();
-
             // check if this strategy can be run by this optimizer
             this.supported = true;
             this.barsCache = new Dictionary<string, Bars>(numThreads);
 
-            var testExecutor = CopyExecutor(parentExecutor);
+            var strategyManager = new StrategyManager();
             var testScript = strategyManager.GetWealthScriptObject(this.Strategy);
+            var testExecutor = CopyExecutor(parentExecutor);
             var testStrategy = CopyStrategy(this.Strategy);
 
             testExecutor.ExternalSymbolRequested += this.OnLoadSymbol;
@@ -202,7 +204,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                     this.executors[i] = new ExecutionScope(
                         CopyExecutor(parentExecutor),
                         strategyManager.GetWealthScriptObject(this.Strategy),
-                        GetSelectedScoreCard(settingsManager),
+                        CopySelectedScoreCard(),
                         null,
                         CopyStrategy(this.Strategy),
                         dataSetBars.Values.ToList(),
@@ -525,14 +527,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             return tsExecutor;
         }
 
-        private static StrategyScorecard GetSelectedScoreCard(SettingsManager sm)
+        private StrategyScorecard CopySelectedScoreCard()
         {
-            if (sm.Settings.ContainsKey("Optimization.Scorecard"))
-            {
-                if (string.CompareOrdinal(sm.Settings["Optimization.Scorecard"], "Basic Scorecard") == 0)
-                    return new BasicScorecard();
-            }
-            return new ExtendedScorecard();
+            var scorecard = scorecardProvider.GetSelectedScorecard();
+            scorecard = (StrategyScorecard) Activator.CreateInstance(scorecard.GetType());
+            return scorecard;
         }
 
         /// <summary>
