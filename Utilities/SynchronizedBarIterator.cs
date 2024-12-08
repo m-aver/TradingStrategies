@@ -28,6 +28,8 @@ namespace TradingStrategies.Utilities
     public class SynchronizedBarIterator
     {
         private long iterationTicks;
+        private readonly DateTimeKind iterationTicksKind;
+
         private readonly IReadOnlyDictionary<Bars, Node> barsMap;
         private readonly int barsCount;
 
@@ -40,7 +42,7 @@ namespace TradingStrategies.Utilities
         //соответствует дате текущего бара одной (или нескольких) серии,
         //либо лежит между текущей и следующей итерацией остальных серий
         //если они уже начали и еще не закончили итерирование
-        public DateTime Date => new DateTime(iterationTicks);
+        public DateTime Date => new DateTime(iterationTicks, iterationTicksKind);
 
         //номер бара на текущей итерации данной серии
         //-1 если серия еще не начала итерироваться (лежит в будущем)
@@ -60,6 +62,7 @@ namespace TradingStrategies.Utilities
             nodes = nodePool.Rent(barsCount);
 
             iterationTicks = long.MaxValue;
+            iterationTicksKind = barCollection.FirstOrDefault()?.Date.FirstOrDefault().Kind ?? default;
 
             int i = 0;
             foreach (var bars in barCollection)
@@ -70,6 +73,12 @@ namespace TradingStrategies.Utilities
                 for (int j = 0; j < count; j++)
                 {
                     ticks[j] = dates[j].Ticks;
+
+                    if (dates[j].Kind != iterationTicksKind)
+                    {
+                        var msg = $"bar dates must have identical kind; expected: {iterationTicksKind}; bar: {bars}, date: {dates[j]}";
+                        throw new ArgumentException(msg, nameof(barCollection));
+                    }
                 }
 
                 var node = nodes[i] ?? new Node();
