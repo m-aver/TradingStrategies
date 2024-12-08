@@ -6,11 +6,6 @@ using System.Text;
 using System.Threading.Tasks;
 using WealthLab;
 
-//TODO:
-//как будто ноды сильно грузят GC, пул не помогает?
-//какой то этот аррэй пул проблемный, надо либо свой писать, либо что-то другое использовать
-//?: 1 - слишком много аллокаций, 2 - локи и бездействие цп
-
 //синхронизирует итерацию нескольких серий баров
 //таким образом что пересекающиеся по времени серии итерируются параллельно друг другу
 
@@ -57,9 +52,11 @@ namespace TradingStrategies.Utilities
         {
             barsCount = barCollection.Count;
 
-            longPool = ArrayPool<long>.Shared;
-            nodePool = ArrayPool<Node>.Shared;
-
+            longPool = ArrayPoolHelper<long>.PreconfiguredShared;
+            nodePool = ArrayPoolHelper<Node>.PreconfiguredShared;
+#if DEBUG   //сильно тупит в дебаге из студии, все ноды попадают в один бакет пула и видимо влияет SpinLock(Debugger.IsAttached)
+            nodePool = NodePool.CreateOrGet(barsCount);
+#endif
             nodes = nodePool.Rent(barsCount);
 
             iterationTicks = long.MaxValue;
