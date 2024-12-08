@@ -2,8 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 using WealthLab;
 
 //синхронизирует итерацию нескольких серий баров
@@ -11,143 +10,235 @@ using WealthLab;
 
 namespace TradingStrategies.Utilities
 {
+    internal class Node
+    {
+        public int iteration;
+        public long[] ticks;
+        public int count;
+
+        public Node next;
+        public Node prev;
+    }
+
     /// <summary>
     /// Optimized version of WealthLab.SynchronizedBarIterator.
     /// Replace it in WealthLab.dll source code using ildasm.exe/ilasm.exe
     /// </summary>
     public class SynchronizedBarIterator
     {
-        private DateTime iterationDate;
-        private readonly Dictionary<Bars, int> barsMap;
-        private readonly Bars[] barsCollection;
-        private readonly int[] iterations;
-        private int startIdx = 0;
+        private long iterationTicks;
+        private readonly DateTimeKind iterationTicksKind;
+
+        private readonly IReadOnlyDictionary<Bars, Node> barsMap;
         private readonly int barsCount;
 
-        private readonly ArrayPool<int> intPool;
-        private readonly ArrayPool<Bars> barsPool;
+        private Node seek;
+        private readonly Node[] nodes;
+        private readonly ArrayPool<Node> nodePool;
+        private readonly ArrayPool<long> longPool;
 
         //дата текущей итерации
         //соответствует дате текущего бара одной (или нескольких) серии,
         //либо лежит между текущей и следующей итерацией остальных серий
         //если они уже начали и еще не закончили итерирование
-        public DateTime Date => iterationDate;
+        public DateTime Date => new DateTime(iterationTicks, iterationTicksKind);
 
         //номер бара на текущей итерации данной серии
         //-1 если серия еще не начала итерироваться (лежит в будущем)
         //или номер последнего бара если уже закончила итерирование (осталась в прошлом)
-        public int Bar(Bars bars) => barsMap[bars] - 1;
+        //(внутренние итерации смещены на +1 для оптимизации)
+        public int Bar(Bars bars) => barsMap[bars].iteration - 1;
 
         public SynchronizedBarIterator(ICollection<Bars> barCollection)
         {
             barsCount = barCollection.Count;
-            
-            intPool = ArrayPool<int>.Shared;
-            barsPool = ArrayPool<Bars>.Shared;
 
-            barsMap = new Dictionary<Bars, int>(barsCount);
-            iterations = intPool.Rent(barsCount);
-            barsCollection = barsPool.Rent(barsCount);
-            barCollection.CopyTo(barsCollection, 0);
+            longPool = ArrayPoolHelper<long>.PreconfiguredShared;
+            nodePool = ArrayPoolHelper<Node>.PreconfiguredShared;
 
-            iterationDate = DateTime.MaxValue;
+#if DEBUG   //сильно тупит в дебаге из студии, видимо влияет SpinLock(Debugger.IsAttached) в бакете пула
+            nodePool = NodePool.CreateOrGet(barsCount);
+#endif
+            nodes = nodePool.Rent(barsCount);
 
-            for (int i = 0; i < barsCount; i++)
+            iterationTicks = long.MaxValue;
+            iterationTicksKind = barCollection.FirstOrDefault()?.Date.FirstOrDefault().Kind ?? default;
+
+            int i = 0;
+            foreach (var bars in barCollection)
             {
-                Bars item = barsCollection[i];
-                var startDate = item.Date[0];
-                if (item.Count > 0 && startDate < iterationDate)
+                var dates = bars.Date;
+                var count = dates.Count;
+                var ticks = longPool.Rent(count);
+                for (int j = 0; j < count; j++)
                 {
-                    iterationDate = startDate;
+                    ticks[j] = dates[j].Ticks;
+
+                    if (dates[j].Kind != iterationTicksKind)
+                    {
+                        var msg = $"bar dates must have identical kind; expected: {iterationTicksKind}; bar: {bars}, date: {dates[j]}";
+                        throw new ArgumentException(msg, nameof(barCollection));
+                    }
                 }
+
+                var node = nodes[i] ?? new Node();
+                node.iteration = 0;
+                node.ticks = ticks;
+                node.count = count;
+                nodes[i] = node;
+
+                var startTicks = ticks[0];
+                if (count > 0 && startTicks < iterationTicks)
+                {
+                    iterationTicks = startTicks;
+                }
+
+                i++;
             }
 
-            for (int i = 0; i < barsCount; i++)
+            for (i = 0; i < barsCount; i++)
             {
-                Bars item = barsCollection[i];
-                if (item.Count > 0 && item.Date[0] == iterationDate)
+                var node = nodes[i];
+                var next = i < barsCount - 1 ? nodes[i + 1] : null;
+                var prev = i > 0 ? nodes[i - 1] : null;
+
+                node.next = next;
+                node.prev = prev;
+            }
+
+            for (i = 0; i < barsCount; i++)
+            {
+                var node = nodes[i];
+                var ticks = node.ticks;
+                var count = node.count;
+
+                if (count > 0 && ticks[0] == iterationTicks)
                 {
-                    barsMap[item] = 1;
-                    iterations[i] = 1;
+                    node.iteration = 1;
                 }
                 else
                 {
-                    barsMap[item] = 0;
-                    iterations[i] = 0;
+                    node.iteration = 0;
                 }
+            }
+
+            barsMap = CreateBarsMap(barCollection, nodes);
+
+            seek = nodes[0];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static IReadOnlyDictionary<Bars, Node> CreateBarsMap(ICollection<Bars> barCollection, Node[] nodes)
+        {
+            try
+            {
+                return barCollection is IReadOnlyList<Bars> barList //its actually List
+                    ? new LiteDictionary<Bars, Node>(barList, nodes)
+                    : new LiteDictionary<Bars, Node>(barCollection.ToArray(), nodes);
+            }
+            catch   //duplicate hash codes
+            {
+                return barCollection
+                    .Zip(nodes, static (bars, node) => (bars, node))
+                    .ToDictionary(static x => x.bars, static x => x.node);
             }
         }
 
         public bool Next()
         {
-            iterationDate = DateTime.MaxValue;
+            iterationTicks = long.MaxValue;
             bool isCompleted = true;
-            int toRemove = -1;
 
-            for (int i = startIdx; i < barsCount; i++)
+            var node = seek;
+            do
             {
-                Bars item = barsCollection[i];
-                int num = iterations[i];
+                var iter = node.iteration;
+                var ticks = node.ticks;
+                var count = node.count;
 
-                if (num >= 1)
+                if (iter > 0)
                 {
-                    while (num < item.Count && item.Date[num - 1] == item.Date[num])
+                    while (iter < count && ticks[iter - 1] == ticks[iter])  //skip duplicate dates
                     {
-                        num++;
-                        barsMap[item] = num;
-                        iterations[i] = num;
+                        node.iteration = ++iter;
                     }
                 }
 
-                if (num < item.Count)
+                if (iter < count)
                 {
                     isCompleted = false;
                 }
-                else
+                else //remove completed
                 {
-                    toRemove = i;
+                    longPool.Return(ticks, true);
+                    node.ticks = default;
+                    node.count = default;
+
+                    if (ReferenceEquals(node, seek))
+                    {
+                        seek = node.next;
+                    }
+                    if (node.prev != null)
+                    {
+                        node.prev.next = node.next;
+                    }
+                    if (node.next != null)
+                    {
+                        node.next.prev = node.prev;
+                    }
+
+                    node = node.next;
                     continue;
                 }
 
-                var next = item.Date[num];
-                if (next < iterationDate)
+                var nextTick = ticks[iter];
+                if (nextTick < iterationTicks)
                 {
-                    iterationDate = next;
+                    iterationTicks = nextTick;
                 }
+
+                node = node.next;
             }
+            while (node != null);
 
             if (isCompleted)
             {
-                barsPool.Return(barsCollection, true);
-                intPool.Return(iterations, true);
+                for (int i = 0; i < barsCount; i++)
+                {
+                    var ticks = nodes[i].ticks;
+                    if (ticks != null)
+                    {
+                        longPool.Return(ticks, true);
+                    }
+                }
+
+                //nodePool.Return(nodes, false);
+
                 return false;
             }
-            if (toRemove >= 0)
+
+            node = seek;
+            do
             {
-                var index = startIdx;
-                var length = toRemove - index;
-                var destIndex = index + 1;
+                var iter = node.iteration;
+                var ticks = node.ticks;
 
-                Array.Copy(barsCollection, index, barsCollection, destIndex, length);
-                Array.Copy(iterations, index, iterations, destIndex, length);
-
-                startIdx++;
-            }
-
-            for (int i = startIdx; i < barsCount; i++)
-            {
-                Bars item = barsCollection[i];
-                int num = iterations[i];
-
-                if (item.Date[num] == iterationDate)
+                if (ticks[iter] == iterationTicks)
                 {
-                    num++;
-                    barsMap[item] = num;
-                    iterations[i] = num;
+                    node.iteration = ++iter;
                 }
+
+                node = node.next;
             }
+            while (node != null);
 
             return true;
+        }
+
+        ~SynchronizedBarIterator()
+        {
+            //если будет использоваться после итерирования
+            nodePool.Return(nodes, false);
         }
     }
 }
