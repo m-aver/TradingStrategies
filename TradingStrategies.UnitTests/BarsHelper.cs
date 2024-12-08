@@ -17,5 +17,5 @@ internal static class BarsHelper
         }
 
         return bars;
-    } 
+    }
 }

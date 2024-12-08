@@ -22,8 +22,8 @@ using System.Runtime.CompilerServices;
 //причесать, закомитить
 //добавить выбор скорекардов
 //свой скорекард с основными параметрами, MS123 слишком много жрет цп
-//пофиксить переиспользование оптимизера
 //удалить один лишний экзекутор
+//убедиться результаты одинаковы
 
 namespace TradingStrategies.Backtesting.Optimizers
 {
@@ -70,7 +70,6 @@ namespace TradingStrategies.Backtesting.Optimizers
         private List<StrategyParameter> paramValues;
         private bool supported;
         private Dictionary<string, Bars> barsCache;
-
         private Dictionary<string, Bars> dataSetBars;
         private TradingSystemExecutor parentExecutor;
         private ListView optimizationResultListView;
@@ -137,12 +136,10 @@ namespace TradingStrategies.Backtesting.Optimizers
             dataSetBars = new Dictionary<string, Bars>();
             try
             {
-                int i = 1;
-                foreach (var symbol in parentExecutor.DataSet.Symbols)
+                foreach (var (symbol, i) in parentExecutor.DataSet.Symbols.Select((x, i) => (x, i)))
                 {
                     var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
-                    dataSetBars.Add(symbol, bars.WithHash(i));
-                    i++;
+                    dataSetBars.Add(symbol, bars.WithHash(i + 1));
                 }
             }
             catch (Exception e)

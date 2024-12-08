@@ -31,7 +31,7 @@ namespace TradingStrategies.Backtesting.Utility
 
             double arg = (priceVariance - xOffset) / xStretch;
             double sgm = 1 / (1 + Math.Exp(-arg));
-            
+
             try
             {
                 return (LogicDouble)(1 - sgm);
@@ -73,7 +73,7 @@ namespace TradingStrategies.Backtesting.Utility
         }
     }
 
-    internal class NoScale : IScaleFactorCalculator
+    public class NoScale : IScaleFactorCalculator
     {
         public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
         {
