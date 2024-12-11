@@ -3,10 +3,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using WealthLab;
 
-namespace TradingStrategies.Backtesting.Optimizers
+namespace TradingStrategies.Backtesting.Optimizers.Utility
 {
     //iterate througth parameters values
-    public interface IStrategyParametersIterator 
+    public interface IStrategyParametersIterator
     {
         IEnumerable<StrategyParameter> CurrentParameters { get; }
         bool MoveNext();

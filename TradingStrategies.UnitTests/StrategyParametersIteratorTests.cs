@@ -1,5 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using TradingStrategies.Backtesting.Optimizers;
+﻿using TradingStrategies.Backtesting.Optimizers;
+using TradingStrategies.Backtesting.Optimizers.Utility;
 using WealthLab;
 
 namespace TradingStrategies.UnitTests

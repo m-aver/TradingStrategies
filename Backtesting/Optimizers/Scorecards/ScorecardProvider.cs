@@ -6,7 +6,7 @@ using WealthLab;
 using WealthLab.Visualizers;
 using WealthLab.Visualizers.MS123;
 
-namespace TradingStrategies.Backtesting.Optimizers
+namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
     internal static class ScorecardProviderFactory
     {
@@ -21,9 +21,9 @@ namespace TradingStrategies.Backtesting.Optimizers
 
     internal static class ScorecardProvidersContainer
     {
-        private static readonly ConcurrentDictionary<long, IScorecardProvider> _scorecards = 
+        private static readonly ConcurrentDictionary<long, IScorecardProvider> _scorecards =
             new ConcurrentDictionary<long, IScorecardProvider>();
-        
+
         public static void RegisterScorecard(IScorecardProvider provider, IOptimizationHost host)
         {
             var hash = host.GetHashCode();

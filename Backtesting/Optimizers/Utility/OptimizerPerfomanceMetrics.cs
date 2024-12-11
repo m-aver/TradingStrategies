@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TradingStrategies.Backtesting.Optimizers
+namespace TradingStrategies.Backtesting.Optimizers.Utility
 {
     internal interface IOptimizerPerfomanceMetrics
     {

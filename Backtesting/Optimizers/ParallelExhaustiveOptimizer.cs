@@ -1,29 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
 using WealthLab;
-using WealthLab.Visualizers;
 using Fidelity.Components;
 using System.Linq;
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime;
+using TradingStrategies.Backtesting.Optimizers.Scorecards;
+using TradingStrategies.Backtesting.Optimizers.Utility;
 
-//TODO:
-//побаловаться настройками GC
-//разобраться куда утекает память | UPD: предположение что просто винда выделяет память под процесс заранее, по метрикам студии все норм
-//можно зафигачить базовый класс оптимизеру, который будет генерировать окно в интерфейсе под настройки (см. монтекарло)
-//признак запущенной оптимизации в WS Wrapper для перфоманса
-//записать изменения в исходном коде
-//причесать, закомитить
-//свой скорекард с основными параметрами, MS123 слишком много жрет цп
-//удалить один лишний экзекутор
-//убедиться результаты одинаковы
+//студия может сожрать много рама
+//тогда GC работает активнее и перфоманс понижается
+//также если открыт Omen Gaming Hub, то сильно режется максимальная утилизация ЦП (85% -> 55%)
+//видимо по дефолту активируется какой-то экономный профиль
 
 namespace TradingStrategies.Backtesting.Optimizers
 {
@@ -210,8 +203,8 @@ namespace TradingStrategies.Backtesting.Optimizers
                         dataSetBars.Values.ToList(),
                         new List<ListViewItem>(runs)
                     );
-                    this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
-                    this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
+                    //this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
+                    //this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
                     SynchronizeWealthScriptParameters(this.executors[i].Script, this.WealthScript);
                 });
 
@@ -237,11 +230,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             currentRun++;
             mainWatch.Restart();
 
-            var x = NextRunInternal();
+            var next = NextRunInternal();
 
             mainWatch.Restart();
 
-            return x;
+            return next;
         }
 
         /// <summary>

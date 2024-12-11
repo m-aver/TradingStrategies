@@ -1,7 +1,7 @@
 ﻿using System;
 using WealthLab;
 
-namespace TradingStrategies.Backtesting.Optimizers
+namespace TradingStrategies.Backtesting.Optimizers.Utility
 {
     //uses decimals for accuracy iterating
     //and provides methods for manage iterating

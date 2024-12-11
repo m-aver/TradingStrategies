@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
 //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
@@ -8,7 +7,7 @@ using WealthLab;
 //также стандартный хеш-код приводит к коллизиям в словарях
 //вызывает более дорогие GetHashCode и Equals
 
-namespace TradingStrategies.Backtesting.Optimizers
+namespace TradingStrategies.Backtesting.Optimizers.Utility
 {
     internal static class BarsHelper
     {
@@ -60,8 +59,8 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         public override bool Equals(object obj)
         {
-            return 
-                obj is BarsWrapper bars && 
+            return
+                obj is BarsWrapper bars &&
                 bars.hash == this.hash;
         }
     }

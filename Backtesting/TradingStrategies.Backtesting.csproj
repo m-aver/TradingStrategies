@@ -64,6 +64,18 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.dll</HintPath>
     </Reference>
+    <Reference Include="WealthLab.Visualizers.MS123, Version=2018.10.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.MS123.dll</HintPath>
+    </Reference>
+    <Reference Include="WealthLab.Visualizers.MS123.Helper, Version=2017.10.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.MS123.Helper.dll</HintPath>
+    </Reference>
+    <Reference Include="WealthLab.Visualizers.MS123.WealthSignals, Version=2017.6.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.MS123.WealthSignals.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\IStrategyExecuter.cs" />
@@ -72,10 +84,11 @@
     <Compile Include="Core\WealthScriptWrapper.cs" />
     <Compile Include="Indicators\BollingerBands.cs" />
     <Compile Include="Indicators\BollingerFilter.cs" />
-    <Compile Include="Optimizers\BarsWrapper.cs" />
-    <Compile Include="Optimizers\AccuracyStrategyParameter.cs" />
-    <Compile Include="Optimizers\StrategyParametersIterator.cs" />
-    <Compile Include="Optimizers\OptimizerPerfomanceMetrics.cs" />
+    <Compile Include="Optimizers\Utility\OptimizerPerfomanceMetrics.cs" />
+    <Compile Include="Optimizers\Utility\BarsWrapper.cs" />
+    <Compile Include="Optimizers\Utility\AccuracyStrategyParameter.cs" />
+    <Compile Include="Optimizers\Utility\StrategyParametersIterator.cs" />
+    <Compile Include="Optimizers\Scorecards\ScorecardProvider.cs" />
     <Compile Include="Optimizers\ParallelExhaustiveOptimizer.cs" />
     <Compile Include="Strategies\CoupStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
