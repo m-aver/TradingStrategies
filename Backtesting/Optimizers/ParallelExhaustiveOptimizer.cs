@@ -15,6 +15,7 @@ using TradingStrategies.Backtesting.Optimizers.Utility;
 
 //студия может сожрать много рама
 //тогда GC работает активнее и перфоманс понижается
+//настройки GC: <gcServer enabled="true"/> <gcConcurrent enabled="true"/>
 //также если открыт Omen Gaming Hub, то сильно режется максимальная утилизация ЦП (85% -> 55%)
 //видимо по дефолту активируется какой-то экономный профиль
 
@@ -283,7 +284,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                             {
                                 ExecuteOne(threadNum);
 
-                                AddResultsToUI(threadNum);
+                                PrepareResultsToUI(threadNum);
                             }
                         }
                         catch
@@ -342,7 +343,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AddResultsToUI(int index)
+        private void PrepareResultsToUI(int index)
         {
             var uiWatch = Stopwatch.StartNew();
 
