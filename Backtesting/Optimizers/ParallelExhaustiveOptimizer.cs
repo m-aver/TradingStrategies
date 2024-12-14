@@ -1,23 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
 using WealthLab;
-using WealthLab.Visualizers;
 using Fidelity.Components;
 using System.Linq;
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Runtime;
+using TradingStrategies.Backtesting.Optimizers.Scorecards;
+using TradingStrategies.Backtesting.Optimizers.Utility;
 
-//судя по профайлеру большую часть цп сжирает SynchronizedBarIterator в SystemResults
-//может получится как-то подменить его реализацию через рефлексию или IL
-
-//еще можно как-то подменить ResultsLong и ResultsShort
-//чтобы велслаб не обсчитывал их на равне с общим Results если нет нужды
+//студия может сожрать много рама
+//тогда GC работает активнее и перфоманс понижается
+//настройки GC: <gcServer enabled="true"/> <gcConcurrent enabled="true"/>
+//также если открыт Omen Gaming Hub, то сильно режется максимальная утилизация ЦП (85% -> 55%)
+//видимо по дефолту активируется какой-то экономный профиль
 
 namespace TradingStrategies.Backtesting.Optimizers
 {
@@ -32,14 +32,16 @@ namespace TradingStrategies.Backtesting.Optimizers
         public SystemPerformance Result { get; set; }
         public Strategy Strategy { get; set; }
         public List<Bars> BarsSet { get; set; }
+        public List<ListViewItem> ResultRows { get; set; }
 
         public ExecutionScope(
-            TradingSystemExecutor executor, 
-            WealthScript script, 
-            StrategyScorecard scorecard, 
-            SystemPerformance result, 
-            Strategy strategy, 
-            List<Bars> barsSet)
+            TradingSystemExecutor executor,
+            WealthScript script,
+            StrategyScorecard scorecard,
+            SystemPerformance result,
+            Strategy strategy,
+            List<Bars> barsSet,
+            List<ListViewItem> resultRows)
         {
             this.Executor = executor;
             this.Script = script;
@@ -47,6 +49,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             this.Result = result;
             this.Strategy = strategy;
             this.BarsSet = barsSet;
+            this.ResultRows = resultRows;
         }
     }
 
@@ -61,25 +64,31 @@ namespace TradingStrategies.Backtesting.Optimizers
         private List<StrategyParameter> paramValues;
         private bool supported;
         private Dictionary<string, Bars> barsCache;
-
         private Dictionary<string, Bars> dataSetBars;
         private TradingSystemExecutor parentExecutor;
         private ListView optimizationResultListView;
+        private IStrategyParametersIterator parametersIterator;
+        private IScorecardProvider scorecardProvider;
 
-        //for watches
+        //for metrics
+        private const bool writeMetrics = false;
         private int mainThread => numThreads + 1 - 1;
         private int currentRun = 0;
         private Stopwatch mainWatch = new Stopwatch();
-        private List<(string stage, long milliseconds)>[] perfomance;
+        private IOptimizerPerfomanceMetrics metrics;
 
         public override string Description => "Parallel Optimizer (Exhaustive)";
         public override string FriendlyName => Description;
 
-        //for debug
         public override void RunCompleted(OptimizationResultList results)
         {
+            countDown.Wait();
             mainWatch.Reset();
             base.RunCompleted(results);
+            PopulateUI();
+            countDown.Dispose();
+
+            FullCollect();
         }
 
         /// <summary>
@@ -88,39 +97,25 @@ namespace TradingStrategies.Backtesting.Optimizers
         public override void Initialize()
         {
             numThreads = Environment.ProcessorCount;
-            countDown = new CountdownEvent(numThreads);
+
+            var settingsManager = new SettingsManager();
+            settingsManager.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
+            settingsManager.FileName = "WealthLabConfig.txt";
+            settingsManager.LoadSettings();
+
+            scorecardProvider = ScorecardProviderFactory.Create(settingsManager, this);
         }
 
+        //RunsRequired = NumberOfRuns * datasets-count
         public override double NumberOfRuns
         {
             get
             {
-                double runs = 1.0;
-                foreach (StrategyParameter parameter in WealthScript.Parameters)
-                    runs *= NumberOfRunsPerParameter(parameter);
-                runs = Math.Max(Math.Floor(runs / numThreads), 1);
-                if (runs > int.MaxValue)
-                    runs = int.MaxValue; // otherwise the progress bar is broken
+                var iterator = CreateParametersIterator();
+                var runs = iterator.RunsCount();
+                runs = Math.Max(runs / numThreads, 1);
                 return runs;
             }
-        }
-
-        private double NumberOfRunsPerParameter(StrategyParameter parameter)
-        {
-            if (!parameter.IsEnabled)
-            {
-                return 1;
-            }
-
-            if ((parameter.Start < parameter.Stop && parameter.Step > 0) ||
-                (parameter.Start > parameter.Stop && parameter.Step < 0))
-            {
-                return Math.Max(
-                    Math.Floor((parameter.Stop - parameter.Start + parameter.Step) / parameter.Step),
-                    1);
-            }
-
-            return 1;
         }
 
         /// <summary>
@@ -130,25 +125,27 @@ namespace TradingStrategies.Backtesting.Optimizers
         {
             mainWatch.Restart();
 
+            FullCollect();
+
             parentExecutor = ExtractExecutor(this.WealthScript);
+            if (parentExecutor == null)
+            {
+                var message = $"cannot load executor, you must run strategy firstly on that dataset everywhere";
+                Debug.Print(message);
+                MessageBox.Show(message);
+                this.supported = false;
+                return;
+            }
             parentExecutor.BenchmarkBuyAndHoldON = false;
 
             //extract all data set bars
             dataSetBars = new Dictionary<string, Bars>();
             try
             {
-                int i = 0;
-                foreach (var symbol in parentExecutor.DataSet.Symbols)
+                foreach (var (symbol, i) in parentExecutor.DataSet.Symbols.Select((x, i) => (x, i)))
                 {
                     var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
-                    dataSetBars.Add(symbol, bars);
-
-                    //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
-                    //судя по профайлеру на этом тратится очень много ресурсов, изначально там формируется большая строка
-                    typeof(Bars)
-                        .GetField("_uniqueDesc", BindingFlags.Instance | BindingFlags.NonPublic)
-                        .SetValue(bars, i.ToString());
-                    i++;
+                    dataSetBars.Add(symbol, bars.WithHash(i + 1));
                 }
             }
             catch (Exception e)
@@ -159,19 +156,14 @@ namespace TradingStrategies.Backtesting.Optimizers
                 this.supported = false;
                 return;
             }
-
-            StrategyManager strategyManager = new StrategyManager();
-            SettingsManager settingsManager = new SettingsManager();
-            settingsManager.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
-            settingsManager.FileName = "WealthLabConfig.txt";
-            settingsManager.LoadSettings();
-
+            
             // check if this strategy can be run by this optimizer
             this.supported = true;
             this.barsCache = new Dictionary<string, Bars>(numThreads);
 
-            var testExecutor = CopyExecutor(parentExecutor);
+            var strategyManager = new StrategyManager();
             var testScript = strategyManager.GetWealthScriptObject(this.Strategy);
+            var testExecutor = CopyExecutor(parentExecutor);
             var testStrategy = CopyStrategy(this.Strategy);
 
             testExecutor.ExternalSymbolRequested += this.OnLoadSymbol;
@@ -193,69 +185,68 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
 
             //initialize parameters
-            this.paramValues = new List<StrategyParameter>(this.WealthScript.Parameters.Count);
-            foreach (var parameter in this.WealthScript.Parameters)
-            {
-                parameter.Value = parameter.IsEnabled ? parameter.Start : parameter.DefaultValue;
-                paramValues.Add(CopyParameter(parameter));
-            }
+            this.parametersIterator = CreateParametersIterator();
+            this.paramValues = parametersIterator.CurrentParameters.ToList();
 
             //initialize parallel executors
             this.executors = new ExecutionScope[numThreads];
 
+            var runs = (int)NumberOfRuns;
             Parallel.For(0, numThreads, 
                 i =>
                 {
                     this.executors[i] = new ExecutionScope(
                         CopyExecutor(parentExecutor),
                         strategyManager.GetWealthScriptObject(this.Strategy),
-                        GetSelectedScoreCard(settingsManager),
+                        CopySelectedScoreCard(),
                         null,
                         CopyStrategy(this.Strategy),
-                        dataSetBars.Values.ToList()
+                        dataSetBars.Values.ToList(),
+                        new List<ListViewItem>(runs)
                     );
-                    this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
-                    this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
+                    //this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
+                    //this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
                     SynchronizeWealthScriptParameters(this.executors[i].Script, this.WealthScript);
                 });
 
             optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
 
             //initialize perfomance metrics
-            var runs = (int)NumberOfRuns;
-            const int metricsCount = 10; 
-            perfomance = new List<(string, long)>[numThreads + 1].Select(x => new List<(string, long)>(runs * metricsCount)).ToArray();  //with main thread
+            const int metricsCount = 10;
+            metrics = writeMetrics
+                ? (IOptimizerPerfomanceMetrics) new OptimizerPerfomanceMetrics(numThreads + 1, runs, metricsCount)
+                : (IOptimizerPerfomanceMetrics) new MockOptimizerPerfomanceMetrics();
 
-            perfomance[mainThread].Add(($"firstRun", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("firstRun", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
             mainWatch.Restart();
 
-            //release before first run
-            this.countDown.Signal(countDown.InitialCount);
+            this.countDown = new CountdownEvent(numThreads);
+            this.countDown.Signal(countDown.InitialCount);  //release before first run
         }
 
         public override bool NextRun(SystemPerformance sp, OptimizationResult or)
         {
-            perfomance[mainThread].Add(($"all_end_{currentRun}", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("all_end", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
 
             currentRun++;
             mainWatch.Restart();
 
-            var x = NextRunInternal(sp, or);
+            var next = NextRunInternal();
 
             mainWatch.Restart();
 
-            return x;
+            return next;
         }
 
         /// <summary>
         /// Implements parallel runs - each logical "next run" results in multiple parallel runs
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool NextRunInternal(SystemPerformance sp, OptimizationResult or)
+        private bool NextRunInternal()
         {
             this.countDown.Wait();
 
-            perfomance[mainThread].Add(($"all_countDown_{currentRun}", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("all_countDown", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
 
             if (!this.supported)
                 return false;
@@ -293,7 +284,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                             {
                                 ExecuteOne(threadNum);
 
-                                AddResultsToUI(threadNum);
+                                PrepareResultsToUI(threadNum);
                             }
                         }
                         catch
@@ -306,7 +297,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                             this.countDown.Signal();
 
                             watch.Stop();
-                            perfomance[threadNum].Add(($"all_{currentRun}", watch.ElapsedMilliseconds));
+                            metrics.SetTime("all", watch.ElapsedMilliseconds, threadNum, currentRun);
                         }
                     }, i);
                 }
@@ -325,7 +316,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 }
             }
 
-            perfomance[mainThread].Add(($"all_runThreads_{currentRun}", mainWatch.ElapsedMilliseconds));
+            metrics.SetTime("all_runThreads", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
 
             return true;
         }
@@ -341,18 +332,18 @@ namespace TradingStrategies.Backtesting.Optimizers
             var ts = executors.Executor;
             var strategy = executors.Strategy;
 
-            perfomance[sys].Add(($"executor_{currentRun}", watch.ElapsedMilliseconds));
+            metrics.SetTime("executor", watch.ElapsedMilliseconds, sys, currentRun);
             watch.Restart();
 
             ts.Initialize();
             ts.Execute(strategy, executors.Script, null, allBars);
             executors.Result = ts.Performance;
 
-            perfomance[sys].Add(($"script_{currentRun}", watch.ElapsedMilliseconds));
+            metrics.SetTime("script", watch.ElapsedMilliseconds, sys, currentRun);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AddResultsToUI(int index)
+        private void PrepareResultsToUI(int index)
         {
             var uiWatch = Stopwatch.StartNew();
 
@@ -364,12 +355,32 @@ namespace TradingStrategies.Backtesting.Optimizers
                 row.SubItems.Add(parameter.Value.ToString());
 
             executors.Scorecard.PopulateScorecard(row, executors.Result);
+            executors.ResultRows.Add(row);
 
-            optimizationResultListView.Invoke(
-                new Action<ListView, ListViewItem>((view, newRow) => view.Items.Add(newRow)),
-                optimizationResultListView, row);
+            metrics.SetTime("ui", uiWatch.ElapsedMilliseconds, index, currentRun);
+        }
 
-            perfomance[index].Add(($"ui_{currentRun}", uiWatch.ElapsedMilliseconds));
+        private void PopulateUI()
+        {
+            var rows = executors.SelectMany(x => x.ResultRows).ToArray();
+
+            if (optimizationResultListView.InvokeRequired)
+            {
+                //выполняется на главном потоке
+                //может привести к дедлоку если главный поток лочится на счетчике
+                optimizationResultListView.Invoke(
+                    new Action<ListView, ListViewItem[]>((view, newRows) => view.Items.AddRange(newRows)),
+                    optimizationResultListView, rows);
+            }
+            else
+            {
+                optimizationResultListView.Items.AddRange(rows);
+            }
+
+            foreach (var executor in executors)
+            {
+                executor.ResultRows.Clear();
+            }
         }
 
         private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
@@ -398,38 +409,22 @@ namespace TradingStrategies.Backtesting.Optimizers
             };
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool SetNextRunParameters() => SetNextRunParameters(0);
-
         /// <summary>
         /// Increments strategy parameter values for the next optimization run based on exhaustive optimization
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool SetNextRunParameters(int currentParam)
+        private bool SetNextRunParameters()
         {
-            if (currentParam >= paramValues.Count)
-                return false; // we're done
+            return this.parametersIterator.MoveNext();
+        }
 
-            var current = paramValues[currentParam];
-
-            if (!current.IsEnabled)
-            {
-                current.Value = current.DefaultValue;
-                return SetNextRunParameters(currentParam + 1);
-            }
-
-            current.Value += current.Step;
-
-            if ((current.Value >= (current.Stop + current.Step) &&
-                current.Step > 0)
-                ||
-                (current.Value <= (current.Stop - current.Step) &&
-                current.Step < 0))
-            {
-                current.Value = current.Start;
-                return SetNextRunParameters(currentParam + 1);
-            }
-            return true;
+        private IStrategyParametersIterator CreateParametersIterator(bool fromStart = true)
+        {
+            var parameters = this.WealthScript.Parameters.Select(CopyParameter).ToArray();
+            var iterator = new StrategyParametersIterator(parameters);
+            if (fromStart) 
+                iterator.Reset();
+            return iterator;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -526,14 +521,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             return tsExecutor;
         }
 
-        private static StrategyScorecard GetSelectedScoreCard(SettingsManager sm)
+        private StrategyScorecard CopySelectedScoreCard()
         {
-            if (sm.Settings.ContainsKey("Optimization.Scorecard"))
-            {
-                if (string.CompareOrdinal(sm.Settings["Optimization.Scorecard"], "Basic Scorecard") == 0)
-                    return new BasicScorecard();
-            }
-            return new ExtendedScorecard();
+            var scorecard = scorecardProvider.GetSelectedScorecard();
+            scorecard = (StrategyScorecard) Activator.CreateInstance(scorecard.GetType());
+            return scorecard;
         }
 
         /// <summary>
@@ -586,9 +578,15 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
+        private static void FullCollect()
+        {
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect();
+        }
+
         ~ParallelExhaustiveOptimizer()
         {
-            countDown.Dispose();
+            countDown?.Dispose();
         }
     }
 }
