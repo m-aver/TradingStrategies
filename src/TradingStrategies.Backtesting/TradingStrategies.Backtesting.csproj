@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net4.8</TargetFramework>
+
+		<OutputPath>$(WealthLabDirectoryPath)</OutputPath>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="TradingStrategies.UnitTests; TradingStrategies.Benchmarks" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="System.Windows.Forms" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="Fidelity.Components">
+			<HintPath>$(WealthLabDirectoryPath)Fidelity.Components.dll</HintPath>
+		</Reference>
+		<Reference Include="WealthLab">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.dll</HintPath>
+		</Reference>
+		<Reference Include="WealthLab.Indicators">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Indicators.dll</HintPath>
+		</Reference>
+		<Reference Include="WealthLab.Optimizers">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Optimizers.dll</HintPath>
+		</Reference>
+		<Reference Include="WealthLab.Visualizers">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Visualizers.dll</HintPath>
+		</Reference>
+		<Reference Include="WealthLab.Visualizers.MS123">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Visualizers.MS123.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

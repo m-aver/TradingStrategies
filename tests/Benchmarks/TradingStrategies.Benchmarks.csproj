@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFrameworks>net4.8</TargetFrameworks>
+
+		<DebugType>pdbonly</DebugType>
+		<DebugSymbols>true</DebugSymbols>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="BenchmarkDotNet" Version="0.11.3" />
+		<PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.11.3" />
+		<PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
+		<!--<PackageReference Include="BenchmarkDotNet" Version="0.11.3" Condition="'$(TargetFramework)' == 'net48'" />-->
+		<!--<PackageReference Include="BenchmarkDotNet" Version="0.14.0" Condition="'$(TargetFramework)' == 'net8'" />-->
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\TradingStrategies.Backtesting\TradingStrategies.Backtesting.csproj" />
+		<ProjectReference Include="..\..\src\TradingStrategies.Utilities\TradingStrategies.Utilities.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="WealthLab">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+</Project>

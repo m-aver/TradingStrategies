@@ -26,7 +26,7 @@ namespace TradingStrategies.Backtesting.Optimizers
     /// </summary>
     internal class ExecutionScope
     {
-        public TradingSystemExecutor Executor  { get; set; }
+        public TradingSystemExecutor Executor { get; set; }
         public WealthScript Script { get; set; }
         public StrategyScorecard Scorecard { get; set; }
         public SystemPerformance Result { get; set; }
@@ -156,7 +156,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                 this.supported = false;
                 return;
             }
-            
+
             // check if this strategy can be run by this optimizer
             this.supported = true;
             this.barsCache = new Dictionary<string, Bars>(numThreads);
@@ -175,7 +175,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
             catch (Exception e)
             {
-                var message = 
+                var message =
                     $"This strategy cannot be run in multi-threaded mode." +
                     $"{Environment.NewLine}Error: {e.ToString()}";
                 Debug.Print(message);
@@ -192,7 +192,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             this.executors = new ExecutionScope[numThreads];
 
             var runs = (int)NumberOfRuns;
-            Parallel.For(0, numThreads, 
+            Parallel.For(0, numThreads,
                 i =>
                 {
                     this.executors[i] = new ExecutionScope(
@@ -214,8 +214,8 @@ namespace TradingStrategies.Backtesting.Optimizers
             //initialize perfomance metrics
             const int metricsCount = 10;
             metrics = writeMetrics
-                ? (IOptimizerPerfomanceMetrics) new OptimizerPerfomanceMetrics(numThreads + 1, runs, metricsCount)
-                : (IOptimizerPerfomanceMetrics) new MockOptimizerPerfomanceMetrics();
+                ? (IOptimizerPerfomanceMetrics)new OptimizerPerfomanceMetrics(numThreads + 1, runs, metricsCount)
+                : (IOptimizerPerfomanceMetrics)new MockOptimizerPerfomanceMetrics();
 
             metrics.SetTime("firstRun", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
             mainWatch.Restart();
@@ -422,7 +422,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         {
             var parameters = this.WealthScript.Parameters.Select(CopyParameter).ToArray();
             var iterator = new StrategyParametersIterator(parameters);
-            if (fromStart) 
+            if (fromStart)
                 iterator.Reset();
             return iterator;
         }
@@ -524,7 +524,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         private StrategyScorecard CopySelectedScoreCard()
         {
             var scorecard = scorecardProvider.GetSelectedScorecard();
-            scorecard = (StrategyScorecard) Activator.CreateInstance(scorecard.GetType());
+            scorecard = (StrategyScorecard)Activator.CreateInstance(scorecard.GetType());
             return scorecard;
         }
 
