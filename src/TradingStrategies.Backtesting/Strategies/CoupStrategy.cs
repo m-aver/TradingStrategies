@@ -62,7 +62,7 @@ namespace TradingStrategies.Backtesting.Strategies
         void IStrategyExecuter.Initialize()
         {
             equitySize = startingCapital;
-            
+
             //event handlers
             _sw.OptimizationStart += OptimizationStartHandler;
             _sw.OptimizationCycleStart += OptimizationCycleStartHandler;
@@ -95,7 +95,7 @@ namespace TradingStrategies.Backtesting.Strategies
             TradeChecker tradeChecker = new SignesTradeChecker(_sw.Bars);
             BollingerFilter BF =
                 new WidthBollingerFilterDecorator(
-                new BollingerFilterDummy(BB), bandsWidth, true);     
+                new BollingerFilterDummy(BB), bandsWidth, true);
 
             //trade signals
             bool isSignalBuy = false;
@@ -176,7 +176,7 @@ namespace TradingStrategies.Backtesting.Strategies
                             stopUp = _sw.Close[bar] * (1 + stopPercent / 100);
                             stopDown = _sw.Close[bar] * (1 - stopPercent / 100);
 
-                            _sw.SetShareSize(lotNum);
+                            _sw.SetShareSize(lotNum);   //нужно после умножения на кэф
                         }
 
                         if (isSignalBuy)
