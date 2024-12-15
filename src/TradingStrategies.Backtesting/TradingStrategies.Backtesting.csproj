@@ -3,8 +3,8 @@
 	<PropertyGroup>
 		<TargetFramework>net4.8</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
 		<!--<TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
 
 		<OutputPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\</OutputPath>
