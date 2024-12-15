@@ -2,12 +2,8 @@
 
 	<PropertyGroup>
 		<TargetFramework>net4.8</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<LangVersion>latest</LangVersion>
-		<!--<TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
 
-		<OutputPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\</OutputPath>
+		<OutputPath>$(WealthLabDirectoryPath)</OutputPath>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 	</PropertyGroup>
 
@@ -16,35 +12,27 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!--<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />-->
-	</ItemGroup>
-
-	<ItemGroup>
 		<Reference Include="System.Windows.Forms" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Reference Include="Fidelity.Components, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-			<SpecificVersion>False</SpecificVersion>
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\Fidelity.Components.dll</HintPath>
+		<Reference Include="Fidelity.Components">
+			<HintPath>$(WealthLabDirectoryPath)Fidelity.Components.dll</HintPath>
 		</Reference>
 		<Reference Include="WealthLab">
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.dll</HintPath>
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.dll</HintPath>
 		</Reference>
 		<Reference Include="WealthLab.Indicators">
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Indicators.dll</HintPath>
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Indicators.dll</HintPath>
 		</Reference>
-		<Reference Include="WealthLab.Optimizers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-			<SpecificVersion>False</SpecificVersion>
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Optimizers.dll</HintPath>
+		<Reference Include="WealthLab.Optimizers">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Optimizers.dll</HintPath>
 		</Reference>
-		<Reference Include="WealthLab.Visualizers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-			<SpecificVersion>False</SpecificVersion>
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.dll</HintPath>
+		<Reference Include="WealthLab.Visualizers">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Visualizers.dll</HintPath>
 		</Reference>
-		<Reference Include="WealthLab.Visualizers.MS123, Version=2018.10.1.0, Culture=neutral, processorArchitecture=MSIL">
-			<SpecificVersion>False</SpecificVersion>
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.Visualizers.MS123.dll</HintPath>
+		<Reference Include="WealthLab.Visualizers.MS123">
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.Visualizers.MS123.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 </Project>

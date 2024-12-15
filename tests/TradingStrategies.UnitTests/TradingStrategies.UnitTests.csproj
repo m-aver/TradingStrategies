@@ -2,8 +2,6 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
@@ -26,7 +24,7 @@
 
 	<ItemGroup>
 		<Reference Include="WealthLab">
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.dll</HintPath>
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 

@@ -2,10 +2,6 @@
 
 	<PropertyGroup>
 		<TargetFramework>net4.8</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<LangVersion>latest</LangVersion>
-		<!--<TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
 
 		<OutputPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\</OutputPath>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -21,7 +17,7 @@
 
 	<ItemGroup>
 		<Reference Include="WealthLab">
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.dll</HintPath>
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 

@@ -3,9 +3,7 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<TargetFrameworks>net4.8</TargetFrameworks>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<LangVersion>latest</LangVersion>
-		<Nullable>enable</Nullable>
+
 		<DebugType>pdbonly</DebugType>
 		<DebugSymbols>true</DebugSymbols>
 	</PropertyGroup>
@@ -25,7 +23,7 @@
 
 	<ItemGroup>
 		<Reference Include="WealthLab">
-			<HintPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\WealthLab.dll</HintPath>
+			<HintPath>$(WealthLabDirectoryPath)WealthLab.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 
