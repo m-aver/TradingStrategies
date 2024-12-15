@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+﻿using System.Collections;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 //подоптимизированная ридонли версия словаря для использования в бар итераторе
 //убран вызов object.Equals, валидация входящих параметров, вызов object.GetHashCode напрямую (а не через DefaulEqualityComparer) и т.п.
@@ -14,7 +8,7 @@ using System.Threading.Tasks;
 namespace TradingStrategies.Utilities
 {
     //core
-    internal sealed partial class LiteDictionary<TKey, TValue>
+    internal sealed partial class LiteDictionary<TKey, TValue> where TKey : notnull
     {
         private struct Entry
         {
@@ -119,7 +113,7 @@ namespace TradingStrategies.Utilities
             }
             catch (KeyNotFoundException)
             {
-                value = default;
+                value = default!;
                 return false;
             }
         }
