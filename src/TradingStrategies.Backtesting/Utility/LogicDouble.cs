@@ -5,7 +5,7 @@ namespace TradingStrategies.Backtesting.Utility
     /// <summary>
     /// Represents a double number that may take values only from the [0,1] span.
     /// </summary>
-    internal struct LogicDouble
+    public struct LogicDouble
     {
         public const double MaxValue = 1;
         public const double MinValue = 0;

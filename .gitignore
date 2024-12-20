@@ -5,6 +5,7 @@
 _local/
 _temp/
 [Tt]humbs.db
+resources/
 
 # User-specific files
 *.suo

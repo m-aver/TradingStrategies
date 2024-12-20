@@ -1,6 +1,6 @@
 ﻿namespace TradingStrategies.Backtesting.Core
 {
-    internal interface IStrategyExecuter
+    public interface IStrategyExecuter
     {
         void Initialize();
         void Execute();

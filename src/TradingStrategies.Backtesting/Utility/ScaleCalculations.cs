@@ -2,13 +2,13 @@
 
 namespace TradingStrategies.Backtesting.Utility
 {
-    internal interface IScaleFactorCalculator
+    public interface IScaleFactorCalculator
     {
         //return: 0 - 1.0
         LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch);
     }
 
-    internal class AtanScaleCalculation : IScaleFactorCalculator
+    public class AtanScaleCalculation : IScaleFactorCalculator
     {
         //xOffset doesn't impact
         public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
@@ -23,7 +23,7 @@ namespace TradingStrategies.Backtesting.Utility
     }
 
     //-6 ~ 0; 6 ~ 1  ->  sigmoid overlaps the 12*x span, when xStretch = x; xOffset = 6*x
-    internal class SigmoidScaleCalculation : IScaleFactorCalculator
+    public class SigmoidScaleCalculation : IScaleFactorCalculator
     {
         public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
         {
@@ -31,19 +31,19 @@ namespace TradingStrategies.Backtesting.Utility
 
             double arg = (priceVariance - xOffset) / xStretch;
             double sgm = 1 / (1 + Math.Exp(-arg));
-            
+
             try
             {
                 return (LogicDouble)(1 - sgm);
             }
             catch
             {
-                return (LogicDouble) 1;
+                return (LogicDouble)1;
             }
         }
     }
 
-    internal class SecHScaleCalculation : IScaleFactorCalculator
+    public class SecHScaleCalculation : IScaleFactorCalculator
     {
         public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
         {
@@ -56,7 +56,7 @@ namespace TradingStrategies.Backtesting.Utility
         }
     }
 
-    internal class ExponentialScaleCalculation : IScaleFactorCalculator
+    public class ExponentialScaleCalculation : IScaleFactorCalculator
     {
         public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
         {
@@ -73,7 +73,7 @@ namespace TradingStrategies.Backtesting.Utility
         }
     }
 
-    internal class NoScale : IScaleFactorCalculator
+    public class NoScale : IScaleFactorCalculator
     {
         public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
         {
