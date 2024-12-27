@@ -357,6 +357,14 @@ namespace TradingStrategies.Backtesting.Optimizers
             executors.Scorecard.PopulateScorecard(row, executors.Result);
             executors.ResultRows.Add(row);
 
+            //for executing strategy by double click on result row
+            var optimizationResult = new OptimizationResult()
+            {
+                Symbol = executors.Executor.DataSet.Name,
+                ParameterValues = executors.Script.Parameters.Select(x => x.Value).ToList(),
+            };
+            row.Tag = optimizationResult;
+
             metrics.SetTime("ui", uiWatch.ElapsedMilliseconds, index, currentRun);
         }
 
