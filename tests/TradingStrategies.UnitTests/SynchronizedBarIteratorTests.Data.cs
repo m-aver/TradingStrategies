@@ -71,5 +71,60 @@ namespace TradingStrategies.UnitTests
                 yield return [random];
             }
         }
+
+        public static IEnumerable<object[]> GetEmptyBarDates()
+        {
+            var noEmptySeriesCount = 10;
+            var noEmptyBarsCount = 100;
+            var emptySeriesCount = 1;
+
+            var firstEmpty =
+                GetEmptySeries(emptySeriesCount)
+                .Union(
+                    GetSeries(noEmptySeriesCount, noEmptyBarsCount)
+                );
+
+            yield return [firstEmpty];
+
+            var lastEmpty =
+                GetSeries(noEmptySeriesCount, noEmptyBarsCount)
+                .Union(
+                    GetEmptySeries(emptySeriesCount)
+                );
+
+            yield return [lastEmpty];
+
+            var amidEmpty =
+                GetSeries(noEmptySeriesCount / 2, noEmptyBarsCount)
+                .Union(
+                    GetEmptySeries(emptySeriesCount)
+                )
+                .Union(
+                    GetSeries(noEmptySeriesCount / 2, noEmptyBarsCount)
+                );
+
+            yield return [amidEmpty];
+
+            var onlyEmpty =
+                GetEmptySeries(emptySeriesCount);
+
+            yield return [onlyEmpty];
+
+            static DateTime[][] GetEmptySeries(int seriesCount)
+            {
+                return GetSeries(seriesCount, 0);
+            }
+
+            static DateTime[][] GetSeries(int seriesCount, int barsCount)
+            {
+                return Enumerable
+                    .Range(0, seriesCount)
+                    .Select(x => Enumerable
+                        .Range(0, barsCount)
+                        .Select(y => DateTime.Now + TimeSpan.FromDays(y))
+                        .ToArray())
+                    .ToArray();
+            }
+        }
     }
 }

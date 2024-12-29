@@ -65,6 +65,12 @@ namespace TradingStrategies.Backtesting.Core
             _strategy.Initialize();
         }
 
+        private static bool ValidateBars(Bars bars)
+        {
+            //check for symbol bars (i.e. they may be filtered by ui)
+            return bars.Count > 0;
+        }
+
         private bool ValidateSymbol()
         {
             //need since DataSetSymbols is null when constructor is called
@@ -74,9 +80,25 @@ namespace TradingStrategies.Backtesting.Core
                 throw new Exception($"{nameof(FinalSymbol)}: not correct symbol name, check existing dataset items");
 
             //check for null to avoid symbol filtering if they is not assigned from outside
+            var inStartRange = _startSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) >= DataSetSymbols.IndexOf(StartSymbol);
+            var inFinalRange = _finalSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) <= DataSetSymbols.IndexOf(FinalSymbol);
+
+            var hasValidBars = ValidateBars(Bars);
+
+            if (!hasValidBars)
+            {
+                var msg = """
+                    invalid bars detected (i.e. filtered by ui), 
+                    it may be dangerous because dataset processing and optimization processing events may not be fired: 
+                    if filtered bars is first or last of entire dataset
+                    """;
+                PrintDebug(msg);
+            }
+
             return
-                (_startSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) >= DataSetSymbols.IndexOf(StartSymbol)) &&
-                (_finalSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) <= DataSetSymbols.IndexOf(FinalSymbol));
+                inStartRange &&
+                inFinalRange &&
+                hasValidBars;
         }
 
         protected override void Execute()
