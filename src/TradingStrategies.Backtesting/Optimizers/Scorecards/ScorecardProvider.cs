@@ -50,6 +50,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         const string ExtendedScorecard = "Extended Scorecard";
         const string MS123Scorecard = "MS123 Scorecard";
         const string MS123ScorecardLite = "MS123 Scorecard (No closed equity)";
+        const string BasicExtendedScorecard = BasicExScorecard.DisplayName;
 
         private StrategyScorecard _current;
 
@@ -88,6 +89,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
                 ExtendedScorecard => new ExtendedScorecard(),
                 MS123Scorecard => new MS123Scorecard(),
                 MS123ScorecardLite => new MS123ScorecardLite(),
+                BasicExtendedScorecard => new BasicExScorecard(),
                 _ => new BasicScorecard(),
             };
         }
