@@ -5,6 +5,8 @@ namespace TradingStrategies.Backtesting.Utility
 {
     public readonly struct DataSeriesPoint
     {
+        public static DataSeriesPoint Faraway => new(default, DateTime.MaxValue);
+
         public DataSeriesPoint(double value, DateTime date) : this()
         {
             Value = value;
@@ -15,6 +17,15 @@ namespace TradingStrategies.Backtesting.Utility
         public DateTime Date { get; }
 
         public DataSeriesPoint Transform(Func<double, double> transformer) => new(transformer(this.Value), this.Date);
+        public DataSeriesPoint WithValue(double newValue) => new(newValue, this.Date);
+
+        public static DataSeriesPoint operator *(DataSeriesPoint point, double value) => point.WithValue(point.Value * value);
+
+        //for tests, debug visualizing
+        public override string ToString()
+        {
+            return $"({Value}, {Date})";
+        }
     }
 
     public static class DataSeriesPointExtensions
@@ -43,6 +54,46 @@ namespace TradingStrategies.Backtesting.Utility
 
             return series;
         }
+
+        public static IEnumerable<DataSeriesPoint> EnsureOrdered(this IEnumerable<DataSeriesPoint> points)
+        {
+            var previousPoint = new DataSeriesPoint(0, DateTime.MinValue);
+
+            foreach (var point in points)
+            {
+                if (point.Date > previousPoint.Date)
+                {
+                    yield return point;
+                }
+                else
+                {
+                    throw new ArgumentException("points are not ordered");
+                }
+
+                previousPoint = point;
+            }
+        }
+    }
+
+    public static class DataSeriesExtensions
+    {
+        public static void AddPoint(this DataSeries series, DataSeriesPoint point)
+        {
+            series.Add(point.Value, point.Date);
+        }
+
+        public static void AddPoints(this DataSeries series, IEnumerable<DataSeriesPoint> points)
+        {
+            foreach (var point in points)
+            {
+                series.AddPoint(point);
+            }
+        }
+
+        public static IReadOnlyCollection<double> GetValues(this DataSeries series)
+        {
+            return series.ToPoints().Select(x => x.Value).ToArray();
+        }
     }
 
     //не реагирует на изменения исходной DataSeries
@@ -53,6 +104,11 @@ namespace TradingStrategies.Backtesting.Utility
 
         public DataSeriesPointEnumerator(DataSeries series)
         {
+            if (series.Count != series.Date.Count)
+            {
+                throw new ArgumentException($"source series has inconsistent number of date and value points, series: {series.Description}");
+            }
+
             _series = series;
             _indexEnumerator = Enumerable.Range(0, series.Count).GetEnumerator();
         }

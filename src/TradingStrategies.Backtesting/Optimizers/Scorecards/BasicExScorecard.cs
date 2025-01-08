@@ -10,7 +10,8 @@ using WealthLab.Visualizers;
 //так проще набрать высокий NetProfit и создать визуально красивую эквити
 //такие стратегии статистически эффективны только на начальном периоде, но не в конце или в будущем
 //чтобы стратегия на актуальном рынке была столь же эффективной как на тестировании, надо подбирать ее так, чтобы на всей истории был равномерный рост
-//такая стратегия должна стремится к экспоненциальной эквити и равномерному росту доходности в процентах
+//такая стратегия должна стремится к экспоненциальной эквити и равномерной доходности в процентах
+//но равномерность утопична, пожалуй не должно быть выбросов доходности присущих только определенному периоду
 
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
@@ -27,12 +28,17 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             "Log Eq Linear Module Error", //модуль линейной ошибки
 
             "Sharpe",
+
+            //MR - Month Return
+            //месячная доходность в процентах
+            "Avg MR",
+            "Max MR",
+            "Min MR",
+            "Avg MR Delta", //усредненное отклонение от среднего
+            "Max MR Delta", //Max MR - Avg MR Delta //отклонение сильнейшего выброса
         ];
 
-        private static readonly string[] columnTypes =
-        [
-            "N", "N", "N"
-        ];
+        private static readonly string[] columnTypes = columnNames.Select(static _ => "N").ToArray();
 
         private const string NumbersFormat = "N2";
 
@@ -42,6 +48,13 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         public override IList<string> ColumnHeadersPortfolioSim => [.. base.ColumnHeadersPortfolioSim, .. columnNames];
         public override IList<string> ColumnTypesRawProfit => [.. base.ColumnTypesRawProfit, .. columnTypes];
         public override IList<string> ColumnTypesPortfolioSim => [.. base.ColumnTypesPortfolioSim, .. columnTypes];
+
+        private readonly IPeriodicalSeriesCalculator _periodicalSeriesCalculator;
+
+        public BasicExScorecard() //создается через активатор
+        {
+            _periodicalSeriesCalculator = PeriodicalSeriesCalculatorFactory.CreateAlignedSingleton();
+        }
 
         public override void PopulateScorecard(ListViewItem resultRow, SystemPerformance performance)
         {
@@ -56,8 +69,25 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             resultRow.SubItems.Add(squaredError.ToString(NumbersFormat));
             resultRow.SubItems.Add(moduleError.ToString(NumbersFormat));
 
-            var sharpe = CalculateSharpeRatio(performance);
+            var monthReturnSeries = CalculateMonthReturns(performance);
+
+            var sharpe = CalculateSharpeRatio(monthReturnSeries, performance.CashReturnRate);
             resultRow.SubItems.Add(sharpe.ToString(NumbersFormat));
+
+            var avgReturn = monthReturnSeries.ToPoints().Average(static p => p.Value);
+            resultRow.SubItems.Add(avgReturn.ToString(NumbersFormat));
+
+            var maxReturn = monthReturnSeries.ToPoints().Max(static p => p.Value);
+            resultRow.SubItems.Add(maxReturn.ToString(NumbersFormat));
+
+            var minReturn = monthReturnSeries.ToPoints().Min(static p => p.Value);
+            resultRow.SubItems.Add(minReturn.ToString(NumbersFormat));
+
+            var avgReturnDelta = monthReturnSeries.ToPoints().Average(p => Math.Abs(p.Value - avgReturn));
+            resultRow.SubItems.Add(avgReturnDelta.ToString(NumbersFormat));
+
+            var maxReturnDelta = maxReturn - avgReturnDelta;
+            resultRow.SubItems.Add(maxReturnDelta.ToString(NumbersFormat));
         }
 
         private static double[] CalculateError(double[] equity)
@@ -77,49 +107,25 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             return scoredError.ToArray();
         }
 
-        //from WealthLab.Visualizers.PVReport
-        private static double CalculateSharpeRatio(SystemPerformance performance)
+        private DataSeries CalculateMonthReturns(SystemPerformance performance)
         {
-            var results = performance.Results;
-            var equitySeries = results.EquityCurve;
-            var equitySpan = equitySeries.Date.Last() - equitySeries.Date.First();
+            var equitySeries = performance.Results.EquityCurve;
+            var monthReturnSeries = _periodicalSeriesCalculator.CalculatePercentDiff(equitySeries, PeriodInfo.Monthly);
+            return monthReturnSeries;
+        }
 
-            var sharpe = 0.0;
-            if (equitySpan.Days > 31 && results.Positions.Count > 0)
-            {
-                var returnsSeries = new DataSeries("Returns"); //прибыль/убыток по месяцам в процентах
-                var previousMonthEquity = equitySeries[0];
-                var previousMonthDate = equitySeries.Date[0];
-                double monthlyEquityIncome;
-                double monthlyEquityIncomePercent;
-
-                int k;
-                for (k = 1; k < equitySeries.Count - 1; k++)
-                {
-                    var currentDate = equitySeries.Date[k];
-                    var newMonth = currentDate.Month != previousMonthDate.Month || currentDate.Year != previousMonthDate.Year;
-
-                    if (newMonth)
-                    {
-                        monthlyEquityIncome = equitySeries[k - 1] - previousMonthEquity;
-                        monthlyEquityIncomePercent = monthlyEquityIncome * 100.0 / previousMonthEquity;
-                        returnsSeries.Add(monthlyEquityIncomePercent, previousMonthDate);
-                        previousMonthEquity = equitySeries[k - 1];
-                        previousMonthDate = currentDate;
-                    }
-                }
-
-                k = equitySeries.Count - 1;
-                monthlyEquityIncome = equitySeries[k] - previousMonthEquity;
-                monthlyEquityIncomePercent = monthlyEquityIncome * 100.0 / previousMonthEquity;
-                returnsSeries.Add(monthlyEquityIncomePercent, previousMonthDate);
-
-                var sma = SMA.Value(returnsSeries.Count - 1, returnsSeries, returnsSeries.Count) * 12.0; //похоже на среднюю годовую доходность
-                var stdDev = StdDev.Value(returnsSeries.Count - 1, returnsSeries, returnsSeries.Count, StdDevCalculation.Population) * Math.Sqrt(12.0);
-                sharpe = (sma - performance.CashReturnRate) / stdDev;
-            }
+        private static double CalculateSharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
+        {
+            var months = monthReturnSeries.Count;
+            var sma = SMA.Value(months - 1, monthReturnSeries, months) * 12.0;
+            var stdDev = StdDev.Value(months - 1, monthReturnSeries, months, StdDevCalculation.Population) * Math.Sqrt(12.0);
+            var sharpe = (sma - cashReturnRate) / stdDev;
 
             return sharpe;
+
+            //sma похоже на среднюю годовую доходность, stdDev - это ошибка
+            //cashReturnRate - конфигурируемая величина, видимо какой процент средств планируется выводить из стратегии, пока всегда 0
+            //итого: sma отвечает за доходность и знак sharpe, stdDev за скоринг - чем больше скачет доходность, тем меньше sharpe
         }
     }
 }
