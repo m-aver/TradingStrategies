@@ -20,6 +20,10 @@ namespace TradingStrategies.Backtesting.Utility
         public DataSeriesPoint WithValue(double newValue) => new(newValue, this.Date);
 
         public static DataSeriesPoint operator *(DataSeriesPoint point, double value) => point.WithValue(point.Value * value);
+        public static DataSeriesPoint operator -(DataSeriesPoint point, double value) => point.WithValue(point.Value - value);
+        public static DataSeriesPoint operator +(DataSeriesPoint point, double value) => point.WithValue(point.Value + value);
+
+        public static implicit operator double (DataSeriesPoint point) => point.Value;
 
         //for tests, debug visualizing
         public override string ToString()
@@ -90,9 +94,9 @@ namespace TradingStrategies.Backtesting.Utility
             }
         }
 
-        public static IReadOnlyCollection<double> GetValues(this DataSeries series)
+        public static IEnumerable<double> GetValues(this DataSeries series)
         {
-            return series.ToPoints().Select(x => x.Value).ToArray();
+            return series.ToPoints().Select(x => x.Value);
         }
     }
 

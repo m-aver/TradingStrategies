@@ -21,11 +21,11 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private static readonly string[] columnNames =
         [
+            //LE - Logarithmic Equity
             //расхождение между логарифмической эквити и ее линейной регрессией
             //показывает насколько сильно эквити отличается от экспоненты
-
-            "Log Eq Squared Error", //квадратичная ошибка
-            "Log Eq Linear Module Error", //модуль линейной ошибки
+            "LE Squared Error", //квадратичная ошибка
+            "LE Linear Module Error", //модуль линейной ошибки
 
             "Sharpe",
 
@@ -60,56 +60,52 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         {
             base.PopulateScorecard(resultRow, performance);
 
-            var equity = performance.Results.EquityCurve.ToPoints().Select(x => x.Value).ToArray();
-            var error = CalculateError(equity);
+            var equitySeries = performance.Results.EquityCurve;
 
-            var squaredError = error.Sum(MathHelper.Sqr);
-            var moduleError = error.Sum(Math.Abs);
+            var errorSeries = CalculateError(equitySeries);
+            var monthReturnSeries = CalculateMonthReturns(equitySeries);
+            var sharpe = CalculateSharpeRatio(monthReturnSeries, performance.CashReturnRate);
 
+            var avgReturn = monthReturnSeries.GetValues().Average();
+            var maxReturn = monthReturnSeries.GetValues().Max();
+            var minReturn = monthReturnSeries.GetValues().Min();
+            var avgReturnDelta = monthReturnSeries.GetValues().Average(x => Math.Abs(x - avgReturn));
+            var maxReturnDelta = maxReturn - avgReturnDelta;
+
+            var squaredError = errorSeries.GetValues().Sum(MathHelper.Sqr);
+            var moduleError = errorSeries.GetValues().Sum(Math.Abs);
+
+            //populate ui
             resultRow.SubItems.Add(squaredError.ToString(NumbersFormat));
             resultRow.SubItems.Add(moduleError.ToString(NumbersFormat));
-
-            var monthReturnSeries = CalculateMonthReturns(performance);
-
-            var sharpe = CalculateSharpeRatio(monthReturnSeries, performance.CashReturnRate);
             resultRow.SubItems.Add(sharpe.ToString(NumbersFormat));
-
-            var avgReturn = monthReturnSeries.ToPoints().Average(static p => p.Value);
             resultRow.SubItems.Add(avgReturn.ToString(NumbersFormat));
-
-            var maxReturn = monthReturnSeries.ToPoints().Max(static p => p.Value);
             resultRow.SubItems.Add(maxReturn.ToString(NumbersFormat));
-
-            var minReturn = monthReturnSeries.ToPoints().Min(static p => p.Value);
             resultRow.SubItems.Add(minReturn.ToString(NumbersFormat));
-
-            var avgReturnDelta = monthReturnSeries.ToPoints().Average(p => Math.Abs(p.Value - avgReturn));
             resultRow.SubItems.Add(avgReturnDelta.ToString(NumbersFormat));
-
-            var maxReturnDelta = maxReturn - avgReturnDelta;
             resultRow.SubItems.Add(maxReturnDelta.ToString(NumbersFormat));
         }
 
-        private static double[] CalculateError(double[] equity)
+        private static DataSeries CalculateError(DataSeries equitySeries)
         {
-            var startingCapital = equity.Length > 0 ? equity[0] : 0;
-            var normalizedEquity = equity.Select(x => x - startingCapital);
-            normalizedEquity = normalizedEquity.Select(static x => Math.Max(1, Math.Abs(x))); //костыли чтобы ln(x) не ругался
-
-            var logEquity = MathHelper.NaturalLog(normalizedEquity).ToArray();
-            var indexes = Enumerable.Range(0, logEquity.Length).Select(Convert.ToDouble).ToArray();
-            var linearRegComponents = MathHelper.LinearRegression(indexes, logEquity);
-            var linearReg = indexes.Select(linearRegComponents.CalculatePrediction);
+            var startingCapital = equitySeries.Count > 0 ? equitySeries[0] : 0;
+            var normalizedEquity = equitySeries.ToPoints()
+                .Select(x => x - startingCapital)
+                .Select(static x => x.WithValue(Math.Max(1, Math.Abs(x)))); //костыли чтобы ln(x) не ругался
+            
+            var logEquity = normalizedEquity
+                .Select(static x => x.WithValue(MathHelper.NaturalLog(x)))
+                .ToArray();
+            var linearRegComponents = MathHelper.LinearRegression(logEquity, out var linearReg);
             var error = logEquity.Zip(linearReg, static (eq, lr) => (eq - lr));
 
             //уменьшаем ошибку при повышении экспоненты (фильтрация 0 наклона, скоринг более успешных)
-            var scoredError = error.Select(x => x * (1 / linearRegComponents.slope)); 
-            return scoredError.ToArray();
+            //error = error.Select(x => x * (1 / linearRegComponents.slope)); 
+            return error.ToSeries();
         }
 
-        private DataSeries CalculateMonthReturns(SystemPerformance performance)
+        private DataSeries CalculateMonthReturns(DataSeries equitySeries)
         {
-            var equitySeries = performance.Results.EquityCurve;
             var monthReturnSeries = _periodicalSeriesCalculator.CalculatePercentDiff(equitySeries, PeriodInfo.Monthly);
             return monthReturnSeries;
         }
@@ -123,7 +119,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
             return sharpe;
 
-            //sma похоже на среднюю годовую доходность, stdDev - это ошибка
+            //sma - похоже на среднюю годовую доходность, stdDev - это ошибка
             //cashReturnRate - конфигурируемая величина, видимо какой процент средств планируется выводить из стратегии, пока всегда 0
             //итого: sma отвечает за доходность и знак sharpe, stdDev за скоринг - чем больше скачет доходность, тем меньше sharpe
         }
