@@ -73,6 +73,27 @@ namespace TradingStrategies.Backtesting.Utility
         }
     }
 
+    public class LinearScaleCalculation : IScaleFactorCalculator
+    {
+        private readonly double _km;
+
+        public LinearScaleCalculation(double km)
+        {
+            if (km > 0)
+            {
+                throw new ArgumentException("koef must be less or equal to 0", nameof(km));
+            }
+
+            _km = km;
+        }
+
+        public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
+        {
+            var val = 1 + (_km * priceVariance);
+            return (LogicDouble)Math.Max(val, 0);
+        }
+    }
+
     public class NoScale : IScaleFactorCalculator
     {
         public LogicDouble GetScaleFactor(double priceVariance, double xOffset, double xStretch)
