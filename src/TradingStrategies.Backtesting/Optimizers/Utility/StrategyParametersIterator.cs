@@ -76,13 +76,29 @@ namespace TradingStrategies.Backtesting.Optimizers.Utility
 
             return true;
         }
+
+        internal long IterationsRetain()
+        {
+            long count = 1;
+            foreach (var parameter in parameters)
+            {
+                count *= (parameter.StepsRetain + 1);
+            }
+            return count - 1;
+        }
     }
 
     internal static class StrategyParametersIteratorExtensions
     {
-        public static int RunsCount(this IStrategyParametersIterator iterator)
+        public static long RunsCount(this IStrategyParametersIterator iterator)
         {
-            var count = 0;
+            //for perfomance
+            if (iterator is StrategyParametersIterator x)
+            {
+                return x.IterationsRetain();
+            }
+
+            long count = 0;
             while (iterator.MoveNext())
             {
                 count++;
