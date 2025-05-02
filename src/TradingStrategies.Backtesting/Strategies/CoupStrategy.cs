@@ -7,12 +7,14 @@ using WealthLab.Indicators;
 using TradingStrategies.Backtesting.Core;
 using TradingStrategies.Backtesting.Indicators;
 using TradingStrategies.Backtesting.Utility;
+using TradingStrategies.Backtesting.Tools;
 
 namespace TradingStrategies.Backtesting.Strategies
 {
     /// <summary>
     /// Simple coup strategy that based on the Bollinger Bands indicator.
     /// </summary>
+    [StrategyIntegration(nameof(CoupStrategy))]
     internal partial class CoupStrategy : IStrategyExecuter
     {
         //use the _sw variable to access the WealthScript state

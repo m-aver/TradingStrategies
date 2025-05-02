@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TradingStrategies.Backtesting.Strategies;
+using TradingStrategies.Backtesting.Tools;
 
 namespace TradingStrategies.Backtesting.Core
 {
@@ -13,8 +14,19 @@ namespace TradingStrategies.Backtesting.Core
 
         public static IStrategyExecuter CreateStrategyInstance(WealthScriptWrapper wrapper)
         {
-            return
-                new CoupStrategy(wrapper);
+            if (wrapper is GeneratedWealthScriptWrapper generated)
+            {
+                var strategy = GeneratedStrategyFactory.CreateStrategyInstance(generated);
+
+                return strategy ?? CreateDefautStrategyInstance(wrapper);
+            }
+
+            return CreateDefautStrategyInstance(wrapper);
+        }
+
+        public static IStrategyExecuter CreateDefautStrategyInstance(WealthScriptWrapper wrapper)
+        {
+            return new CoupStrategy(wrapper);
         }
     }
 }
