@@ -99,7 +99,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             numThreads = Environment.ProcessorCount;
 
             var settingsManager = new SettingsManager();
-            settingsManager.RootPath = Application.UserAppDataPath + System.IO.Path.DirectorySeparatorChar + "Data";
+            settingsManager.RootPath = Application.UserAppDataPath + Path.DirectorySeparatorChar + "Data";
             settingsManager.FileName = "WealthLabConfig.txt";
             settingsManager.LoadSettings();
 
@@ -142,7 +142,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             dataSetBars = new Dictionary<string, Bars>();
             try
             {
-                foreach (var (symbol, i) in parentExecutor.DataSet.Symbols.Select((x, i) => (x, i)))
+                foreach (var (symbol, i) in parentExecutor.DataSet.Symbols.Select(static (x, i) => (x, i)))
                 {
                     var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
                     dataSetBars.Add(symbol, bars.WithHash(i + 1));
@@ -361,7 +361,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             var optimizationResult = new OptimizationResult()
             {
                 Symbol = executors.Executor.DataSet.Name,
-                ParameterValues = executors.Script.Parameters.Select(x => x.Value).ToList(),
+                ParameterValues = executors.Script.Parameters.Select(static x => x.Value).ToList(),
             };
             row.Tag = optimizationResult;
 
@@ -370,14 +370,14 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private void PopulateUI()
         {
-            var rows = executors.SelectMany(x => x.ResultRows).ToArray();
+            var rows = executors.SelectMany(static x => x.ResultRows).ToArray();
 
             if (optimizationResultListView.InvokeRequired)
             {
                 //выполняется на главном потоке
                 //может привести к дедлоку если главный поток лочится на счетчике
                 optimizationResultListView.Invoke(
-                    new Action<ListView, ListViewItem[]>((view, newRows) => view.Items.AddRange(newRows)),
+                    static (ListView view, ListViewItem[] newRows) => view.Items.AddRange(newRows),
                     optimizationResultListView, rows);
             }
             else
@@ -524,7 +524,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         {
             var tsField = typeof(WealthScript)
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-                .First(x => x.FieldType == typeof(TradingSystemExecutor));
+                .First(static x => x.FieldType == typeof(TradingSystemExecutor));
             var tsExecutor = tsField.GetValue(script) as TradingSystemExecutor;
             return tsExecutor;
         }

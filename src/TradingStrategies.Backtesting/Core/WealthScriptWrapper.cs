@@ -37,7 +37,7 @@ namespace TradingStrategies.Backtesting.Core
 
         public string StartSymbol
         {
-            get { return _startSymbol; }
+            get => _startSymbol;
             set
             {
                 if (IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize)))
@@ -50,7 +50,7 @@ namespace TradingStrategies.Backtesting.Core
         }
         public string FinalSymbol
         {
-            get { return _finalSymbol; }
+            get => _finalSymbol;
             set
             {
                 if (IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize)))
