@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
 //SynchronizedBarIterator активно использует GetHashCode от Bars.UniqueDescription (через словари)
@@ -6,6 +7,7 @@ using WealthLab;
 
 //также стандартный хеш-код приводит к коллизиям в словарях
 //вызывает более дорогие GetHashCode и Equals
+//выгодно использовать уникальные хеш коды, лежащие в непрерывном диапазоне, так чтобы mod гарантированно не выдавал коллизий
 
 namespace TradingStrategies.Backtesting.Optimizers.Utility
 {
@@ -30,6 +32,12 @@ namespace TradingStrategies.Backtesting.Optimizers.Utility
                 field.SetValue(target, value);
             }
         }
+
+        //нужна полная копия, т.к. DataSeries имеет внутреннее кеширование без поддержки конкурентности
+        //это ведет к проблем, например к бесконечному циклу при поиске бакетов в словаре
+        public static Bars DeepClone(this Bars source) => CloneUtil<Bars>.DeepClone(source);
+
+        public static Bars Prepare(this Bars bars, int hash) => bars.WithHash(hash).DeepClone();
     }
 
     internal class BarsWrapper : Bars

@@ -142,10 +142,10 @@ namespace TradingStrategies.Backtesting.Optimizers
             dataSetBars = new Dictionary<string, Bars>();
             try
             {
-                foreach (var (symbol, i) in parentExecutor.DataSet.Symbols.Select(static (x, i) => (x, i)))
+                foreach (var symbol in parentExecutor.DataSet.Symbols)
                 {
                     var bars = parentExecutor.BarsLoader.GetData(parentExecutor.DataSet, symbol);
-                    dataSetBars.Add(symbol, bars.WithHash(i + 1));
+                    dataSetBars.Add(symbol, bars);
                 }
             }
             catch (Exception e)
@@ -165,13 +165,14 @@ namespace TradingStrategies.Backtesting.Optimizers
             var testScript = strategyManager.GetWealthScriptObject(this.Strategy);
             var testExecutor = CopyExecutor(parentExecutor);
             var testStrategy = CopyStrategy(this.Strategy);
+            var testBars = dataSetBars.Values.Select((x, i) => x.Prepare(i + 1)).ToList();
 
             testExecutor.ExternalSymbolRequested += this.OnLoadSymbol;
             testExecutor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
 
             try
             {
-                testExecutor.Execute(testStrategy, testScript, null, dataSetBars.Values.ToList());
+                testExecutor.Execute(testStrategy, testScript, null, testBars);
             }
             catch (Exception e)
             {
@@ -195,13 +196,14 @@ namespace TradingStrategies.Backtesting.Optimizers
             Parallel.For(0, numThreads,
                 i =>
                 {
+                    var offset = i * dataSetBars.Values.Count;
                     this.executors[i] = new ExecutionScope(
                         CopyExecutor(parentExecutor),
                         strategyManager.GetWealthScriptObject(this.Strategy),
                         CopySelectedScoreCard(),
                         null,
                         CopyStrategy(this.Strategy),
-                        dataSetBars.Values.ToList(),
+                        dataSetBars.Values.Select((x, j) => x.Prepare(j + 1 + offset)).ToList(),
                         new List<ListViewItem>(runs)
                     );
                     //this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
@@ -214,8 +216,8 @@ namespace TradingStrategies.Backtesting.Optimizers
             //initialize perfomance metrics
             const int metricsCount = 10;
             metrics = writeMetrics
-                ? (IOptimizerPerfomanceMetrics)new OptimizerPerfomanceMetrics(numThreads + 1, runs, metricsCount)
-                : (IOptimizerPerfomanceMetrics)new MockOptimizerPerfomanceMetrics();
+                ? new OptimizerPerfomanceMetrics(numThreads + 1, runs, metricsCount)
+                : new MockOptimizerPerfomanceMetrics();
 
             metrics.SetTime("firstRun", mainWatch.ElapsedMilliseconds, mainThread, currentRun);
             mainWatch.Restart();
