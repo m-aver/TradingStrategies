@@ -70,7 +70,8 @@ internal class StrategyHelperGenerator : ISourceGenerator
         var helperClassBuilder = new StrategyHelperSourceCodeBuilder(helperClassName)
             .AddAuthor("Misha")
             .AddDescription("A strategy from visual studio source generator")
-            .AddID(Guid.NewGuid())
+            //to keep strategy in start window
+            .AddID(name.GetHashCode().ToGuid())
             .AddCreationDate(new DateTime())
             .AddLastModifiedDate(new DateTime())
             .AddWealthScriptType(wsClassName)
