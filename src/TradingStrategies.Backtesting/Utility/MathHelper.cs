@@ -70,38 +70,7 @@ namespace TradingStrategies.Backtesting.Utility
                 rSquared = dblR * dblR,
                 yIntercept = meanY - ((sCo / ssX) * meanX),
                 slope = sCo / ssX,
-            };
-        }
-
-        /// <summary>
-        /// Wrapper for points
-        /// </summary>
-        public static LinearRegressionComponents LinearRegression(DataSeriesPoint[] points, out DataSeriesPoint[] regression)
-        {
-            var minTicks = DateTime.MinValue.Ticks;
-
-            double[] values = new double[points.Length];
-            double[] ticks = new double[points.Length];
-
-            for (int i = 0; i < points.Length; i++)
-            {
-                var point = points[i];
-                values[i] = point.Value;
-                ticks[i] = point.Date.Ticks;
-            }
-
-            var components = LinearRegression(ticks, values);
-
-            regression = new DataSeriesPoint[points.Length];
-
-            for (int i = 0; i < points.Length; i++)
-            {
-                var point = points[i];
-                var regValue = components.CalculatePrediction(point.Date.Ticks);
-                regression[i] = point.WithValue(regValue);
-            }
-
-            return components;
+            }; 
         }
     }
 }
