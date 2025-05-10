@@ -37,6 +37,10 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             "Min MR",
             "Avg MR Delta", //усредненное отклонение от среднего
             "Max MR Delta", //Max MR - Avg MR Delta //отклонение сильнейшего выброса
+
+            "Max Drawdown %",
+            "Longest Drawdown (days)",
+            "SDD",  //суммарная плотность просадок
         ];
 
         private static readonly string[] columnTypes = columnNames.Select(static _ => "N").ToArray();
@@ -77,6 +81,11 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             var squaredErrorCorrected = 100 * squaredError / avgReturn;
             var moduleError = errorSeries.GetValues().Sum(Math.Abs) / errorSeries.Count;
 
+            var drawdownSeries = CalculateDrawdown(equitySeries);
+            var longestDrawdown = IndicatorsCalculator.LongestDrawdown(drawdownSeries.ToPoints()).Days;
+            var drawdownDensity = IndicatorsCalculator.SumDrawdownDensity(drawdownSeries.ToPoints());
+            var maxDrawdown = drawdownSeries.ToPoints().Max(static x => x.Value);
+
             //populate ui
             resultRow.SubItems.Add(squaredError.ToString(NumbersFormat));
             resultRow.SubItems.Add(squaredErrorCorrected.ToString(NumbersFormat));
@@ -87,6 +96,9 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             resultRow.SubItems.Add(minReturn.ToString(NumbersFormat));
             resultRow.SubItems.Add(avgReturnDelta.ToString(NumbersFormat));
             resultRow.SubItems.Add(maxReturnDelta.ToString(NumbersFormat));
+            resultRow.SubItems.Add(maxDrawdown.ToString(NumbersFormat));
+            resultRow.SubItems.Add(longestDrawdown.ToString(NumbersFormat));
+            resultRow.SubItems.Add(drawdownDensity.ToString(NumbersFormat));
         }
 
         private static DataSeries CalculateError(DataSeries equitySeries)
@@ -103,6 +115,11 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         private static double CalculateSharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
         {
             return IndicatorsCalculator.SharpeRatio(monthReturnSeries, cashReturnRate);
+        }
+
+        private static DataSeries CalculateDrawdown(DataSeries equitySeries)
+        {
+            return IndicatorsCalculator.DrawdownPercentage(equitySeries.ToPoints()).ToSeries("drawdown");
         }
     }
 }

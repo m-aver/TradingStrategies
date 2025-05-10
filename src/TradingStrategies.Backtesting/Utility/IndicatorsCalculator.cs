@@ -58,4 +58,95 @@ public static class IndicatorsCalculator
 
         return error.ToSeries("log-error");
     }
+
+    public static IEnumerable<DataSeriesPoint> DrawdownPercentage(IEnumerable<DataSeriesPoint> equitySeries)
+    {
+        using var enumerator = equitySeries.GetEnumerator();
+
+        if (!enumerator.MoveNext())
+        {
+            yield break;
+        }
+
+        var pivot = enumerator.Current.Value;
+
+        do
+        {
+            var point = enumerator.Current;
+
+            if (point.Value < pivot)
+            {
+                var drawndown = 100 * (pivot - point.Value) / pivot;
+                yield return point.WithValue(drawndown);
+            }
+            else
+            {
+                pivot = point.Value;
+                yield return point.WithValue(0);
+            }
+        }
+        while (enumerator.MoveNext());
+    }
+
+    //TODO: кажется не учитывает просадку если она заканчивает датасет
+    public static TimeSpan LongestDrawdown(IEnumerable<DataSeriesPoint> drawdownSeries)
+    {
+        using var enumerator = drawdownSeries.GetEnumerator();
+
+        if (!enumerator.MoveNext())
+        {
+            return TimeSpan.Zero;
+        }
+
+        var pivot = enumerator.Current;
+        var maxSpan = TimeSpan.Zero;
+
+        do
+        {
+            var point = enumerator.Current;
+
+            if (point.Value == 0)
+            {
+                var span = point.Date - pivot.Date;
+                if (span > maxSpan)
+                {
+                    maxSpan = span;
+                }
+
+                pivot = point;
+            }
+        }
+        while (enumerator.MoveNext());
+
+        return maxSpan;
+    }
+
+    //величина просадки умноженная на ее продолжительность, просуммированные по всем просадкам
+    public static double SumDrawdownDensity(IEnumerable<DataSeriesPoint> drawdownSeries)
+    {
+        var density = 0.0;
+        var width = 0;
+        var magnitude = 0.0;
+
+        foreach (var point in drawdownSeries)
+        {
+            if (point.Value > magnitude)
+            {
+                magnitude = point.Value;
+            }
+
+            if (point.Value == 0 && magnitude > 0)
+            {
+                density += (magnitude * width);
+                magnitude = 0;
+                width = 0;
+            }
+            else
+            {
+                width++;
+            }
+        }
+
+        return density;
+    }
 }
