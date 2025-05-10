@@ -1,0 +1,89 @@
+﻿using System.Windows.Forms;
+using WealthLab;
+
+//вспомогательный скорекард
+//позволяет фильтровать результаты для упрощения ориентирования по таблице
+
+namespace TradingStrategies.Backtesting.Optimizers.Scorecards
+{
+    internal class BasicExFilteringScorecard : BasicExScorecard
+    {
+        public new const string DisplayName = "Basic Extended Filtering Scorecard";
+
+        public override string FriendlyName => DisplayName;
+
+        private static bool FilterPerfomance(SystemPerformance performance)
+        {
+            return
+                performance.Results.Positions.Count < 100 ||
+                performance.Results.NetProfit <= 0;
+        }
+
+        private bool FilterResults(ListViewItem resultRow)
+        {
+            var sharpe = TryGetNumericalIndicator(resultRow, BasicExScorecard.Sharpe);
+            var avgMonthReturn = TryGetNumericalIndicator(resultRow, BasicExScorecard.AvgMr);
+            var maxDrawdown = TryGetNumericalIndicator(resultRow, BasicExScorecard.MaxDrawdownPercent);
+            var longestDrawdown = TryGetNumericalIndicator(resultRow, BasicExScorecard.LongestDrawdownInDays);
+
+            return
+                sharpe < 1 ||
+                avgMonthReturn < 8 ||
+                maxDrawdown > 50 ||
+                longestDrawdown > 300;
+        }
+
+        //просто вернуться из метода не вариант
+        //в таком случае добавится пустая строка с параметрами оптимизации и это будет мешать сортировке
+        public override void PopulateScorecard(ListViewItem resultRow, SystemPerformance performance)
+        {
+            if (FilterPerfomance(performance))
+            {
+                RemoveRow(resultRow);
+            }
+            else
+            {
+                base.PopulateScorecard(resultRow, performance);
+
+                if (FilterResults(resultRow))
+                {
+                    RemoveRow(resultRow);
+                }
+            }
+        }
+
+        private void RemoveRow(ListViewItem resultRow)
+        {
+            //если честно не очень понимаю как это работает из ParallelExhaustiveOptimizer
+            //т.к. там ListViewItem создаются без какой-либо привязки к ListView, который должен бы быть null здесь
+            //но тем не менее это работает
+
+            var listView = resultRow.ListView;
+
+            if (listView.InvokeRequired)
+            {
+                listView.Invoke(
+                    static (ListView view, ListViewItem row) => view.Items.Remove(row),
+                    listView, resultRow);
+            }
+            else
+            {
+                listView.Items.Remove(resultRow);
+            }
+        }
+
+        private double? TryGetNumericalIndicator(ListViewItem resultRow, string indicatorName)
+        {
+            var columns = base.ColumnHeadersRawProfit;
+            var items = resultRow.SubItems;
+
+            //поиск с конца, т.к. WealthLab добавляет в начало строки параметры стратегии
+            var indicatorIndex = columns.Count - 1 - columns.IndexOf(indicatorName);
+            var rowIndex = items.Count - 1 - indicatorIndex;
+
+            var rawResult = resultRow.SubItems[rowIndex];
+
+            return double.TryParse(rawResult.Text, out var result) ? result : null;
+        }
+    }
+}

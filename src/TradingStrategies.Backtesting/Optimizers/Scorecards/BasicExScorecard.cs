@@ -1,7 +1,6 @@
 ﻿using System.Windows.Forms;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
-using WealthLab.Indicators;
 using WealthLab.Visualizers;
 
 //идея:
@@ -19,28 +18,46 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
     {
         public const string DisplayName = "Basic Extended Scorecard";
 
+        //LE - Logarithmic Equity
+        //расхождение между логарифмической эквити и ее линейной регрессией
+        //показывает насколько сильно эквити отличается от экспоненты
+
+        //квадратичная ошибка
+        protected const string LeSquaredError = "LE Squared Error";
+        //квадратичная ошибка скорректированная средней доходностью
+        protected const string LeSquaredErrorCorrected = "LE Squared Error Corrected";
+        //модуль линейной ошибки
+        protected const string LeLinearModuleError = "LE Linear Module Error";
+
+        protected const string Sharpe = "Sharpe";
+
+        //MR - Month Return
+        //месячная доходность в процентах
+        protected const string AvgMr = "Avg MR";
+        protected const string MaxMr = "Max MR";
+        protected const string MinMr = "Min MR";
+        protected const string AvgMrDelta = "Avg MR Delta";
+        protected const string MaxMrDelta = "Max MR Delta";
+
+        //просадки
+        protected const string MaxDrawdownPercent = "Max Drawdown %";
+        protected const string LongestDrawdownInDays = "Longest Drawdown (days)";
+        protected const string SumDrawdownDensity = "SDD";
+
         private static readonly string[] columnNames =
         [
-            //LE - Logarithmic Equity
-            //расхождение между логарифмической эквити и ее линейной регрессией
-            //показывает насколько сильно эквити отличается от экспоненты
-            "LE Squared Error", //квадратичная ошибка
-            "LE Squared Error Corrected", //квадратичная ошибка скорректированная средней доходностью
-            "LE Linear Module Error", //модуль линейной ошибки
-
-            "Sharpe",
-
-            //MR - Month Return
-            //месячная доходность в процентах
-            "Avg MR",
-            "Max MR",
-            "Min MR",
-            "Avg MR Delta", //усредненное отклонение от среднего
-            "Max MR Delta", //Max MR - Avg MR Delta //отклонение сильнейшего выброса
-
-            "Max Drawdown %",
-            "Longest Drawdown (days)",
-            "SDD",  //суммарная плотность просадок
+            LeSquaredError,
+            LeSquaredErrorCorrected,
+            LeLinearModuleError,
+            Sharpe,
+            AvgMr,
+            MaxMr,
+            MinMr,
+            AvgMrDelta,
+            MaxMrDelta,
+            MaxDrawdownPercent,
+            LongestDrawdownInDays,
+            SumDrawdownDensity,
         ];
 
         private static readonly string[] columnTypes = columnNames.Select(static _ => "N").ToArray();
@@ -108,8 +125,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private DataSeries CalculateMonthReturns(DataSeries equitySeries)
         {
-            var monthReturnSeries = _periodicalSeriesCalculator.CalculatePercentDiff(equitySeries, PeriodInfo.Monthly);
-            return monthReturnSeries;
+            return _periodicalSeriesCalculator.CalculatePercentDiff(equitySeries, PeriodInfo.Monthly);
         }
 
         private static double CalculateSharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
