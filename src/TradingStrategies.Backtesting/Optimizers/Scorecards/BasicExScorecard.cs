@@ -25,6 +25,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             //расхождение между логарифмической эквити и ее линейной регрессией
             //показывает насколько сильно эквити отличается от экспоненты
             "LE Squared Error", //квадратичная ошибка
+            "LE Squared Error Corrected", //квадратичная ошибка скорректированная средней доходностью
             "LE Linear Module Error", //модуль линейной ошибки
 
             "Sharpe",
@@ -73,10 +74,12 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             var maxReturnDelta = maxReturn - avgReturnDelta;
 
             var squaredError = Math.Sqrt(errorSeries.GetValues().Sum(MathHelper.Sqr) / errorSeries.Count);
+            var squaredErrorCorrected = 100 * squaredError / avgReturn;
             var moduleError = errorSeries.GetValues().Sum(Math.Abs) / errorSeries.Count;
 
             //populate ui
             resultRow.SubItems.Add(squaredError.ToString(NumbersFormat));
+            resultRow.SubItems.Add(squaredErrorCorrected.ToString(NumbersFormat));
             resultRow.SubItems.Add(moduleError.ToString(NumbersFormat));
             resultRow.SubItems.Add(sharpe.ToString(NumbersFormat));
             resultRow.SubItems.Add(avgReturn.ToString(NumbersFormat));
@@ -88,7 +91,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private static DataSeries CalculateError(DataSeries equitySeries)
         {
-            return IndicatorsCalculator.CalculateError(equitySeries);
+            return IndicatorsCalculator.LogError(equitySeries);
         }
 
         private DataSeries CalculateMonthReturns(DataSeries equitySeries)

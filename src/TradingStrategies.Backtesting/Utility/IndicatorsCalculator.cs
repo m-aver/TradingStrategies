@@ -47,19 +47,15 @@ public static class IndicatorsCalculator
     }
 
     //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
-    public static DataSeries CalculateError(DataSeries equitySeries)
+    public static DataSeries LogError(DataSeries equitySeries)
     {
-        var startingCapital = equitySeries.Count > 0 ? equitySeries[0] : 0;
-        var normalizedEquity = equitySeries.ToPoints()
-            .Select(x => x - startingCapital)
-            .Select(static x => x.WithValue(Math.Max(1, Math.Abs(x)))); //костыли чтобы ln(x) не ругался
-
-        var logEquity = normalizedEquity
+        var logEquity = equitySeries
+            .ToPoints()
             .Select(static x => x.WithValue(MathHelper.NaturalLog(x)))
             .ToArray();
         var linearReg = IndicatorsCalculator.LinearRegression(logEquity);
         var error = logEquity.Zip(linearReg, static (eq, lr) => (eq - lr));
 
-        return error.ToSeries();
+        return error.ToSeries("log-error");
     }
 }

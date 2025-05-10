@@ -34,7 +34,7 @@ public class IndicatorsCalculationTests
     }
 
     //ошибка от экспоненты выгл€дит более предпочтительным индикатором, т.к. учитывает равномерность распределени€ доходностей
-    //хот€ суд€ по опыту на реальных данных, все же на нее тоже нельз€ однозначно ориентироватьс€
+    //хот€ суд€ по опыту на реальных данных, все же на нее тоже нельз€ однозначно ориентироватьс€ при анализе близких значений, но подсветить хорошие стратегии она помогает
     [Theory]
     [MemberData(nameof(GetUniformMonthReturnValues))]
     public void SquaredError_OrderOfReturns_AffectsError(double[] uniformMonthReturnValues)
@@ -47,9 +47,9 @@ public class IndicatorsCalculationTests
         var equityOfOrderedDescReturns = ToEquity(startingCapital, ToMonthlySeries(uniformMonthReturnValues.OrderDescending()));
 
         //act
-        var errorOfUniformReturns = CalculateError(IndicatorsCalculator.CalculateError(equityOfUniformReturns));
-        var errorOfOrderedReturns = CalculateError(IndicatorsCalculator.CalculateError(equityOfOrderedReturns));
-        var errorOfOrderedDescReturns = CalculateError(IndicatorsCalculator.CalculateError(equityOfOrderedReturns));
+        var errorOfUniformReturns = CalculateError(IndicatorsCalculator.LogError(equityOfUniformReturns));
+        var errorOfOrderedReturns = CalculateError(IndicatorsCalculator.LogError(equityOfOrderedReturns));
+        var errorOfOrderedDescReturns = CalculateError(IndicatorsCalculator.LogError(equityOfOrderedReturns));
 
         //assert
         Assert.True(errorOfUniformReturns < errorOfOrderedReturns);
@@ -79,10 +79,8 @@ public class IndicatorsCalculationTests
             }
         );
 
-        //yield return Wrap(new double[] { 15, -5, 15, -5, 15, -5, 15, -5, 15, -5 });
-        //вот этот кстати не проходит на сумме квадратов (при достаточно малом количестве значений), но проходит на сумме модулей
-        //хот€ чисто визуально крива€ выгл€дит лучше чем у отсортированного датасета
-        //видимо надо улучшать подсчет ошибки
+        yield return Wrap(new double[] { 15, -5, 15, -5, 15, -5, 15, -5, 15, -5 });
+        yield return Wrap(new double[] { 10, 0, 10, 0, 10, 0, 10, 0, 10, 0 });
 
         static object[] Wrap(object x) => [x];
     }
