@@ -33,6 +33,48 @@ public class IndicatorsCalculationTests
         Assert.Equal(sharpe, sharpeOfOrderedDescSeries);
     }
 
+    //пытался проверить получится ли Sharpe одинаковым, если равномерно увеличивать значения доходностей
+    //не подтвердилось, но вот что интересно - модифицированная версия с увеличенным разбросом доходностей получила больший Sharpe, что плохо
+    //хотя это не детерминированно - другая версия (c 90, -30) получила меньший
+    [Fact(Skip = "not confirmed")]
+    public void SharpeRatio_ValuesOfReturns_DoesNotAffectSharpe()
+    {
+        //arrange
+        var monthReturnValues = new double[]
+        {
+            20, -30, 0, -15, -10, 0, 10, 20, 100, -10, 110, 0
+        };
+
+        //(20, -30) % = 1,2 * 0,7 = 0,84 = 1,4 * 0,6 = (40, -40) % = (20 + 20, -30 - 10) %
+        var monthReturnFactors = new double[]
+        {
+            20, -10,
+            0, 0,
+            -15, 20,
+            0, 0,
+            0, 0,
+            0, 0,
+            //90, -30,
+        };
+
+        var multipliedMonthReturnValues = monthReturnValues.Zip(monthReturnFactors, (v, f) => v + f);
+
+        var monthReturnSeries = ToMonthlySeries(monthReturnValues);
+        var multipliedMonthReturnSeries = ToMonthlySeries(multipliedMonthReturnValues);
+
+        const int startingCapital = 100_000;
+        var equitySeries = ToEquity(startingCapital, monthReturnSeries);
+        var multipliedEquitySeries = ToEquity(startingCapital, multipliedMonthReturnSeries);
+
+        //act
+        var sharpe = IndicatorsCalculator.SharpeRatio(monthReturnSeries, 0);
+        var sharpeOfMultipliedSeries = IndicatorsCalculator.SharpeRatio(multipliedMonthReturnSeries, 0);
+
+        //assert
+        Assert.Equal(equitySeries.ToPoints().Last(), multipliedEquitySeries.ToPoints().Last(), precision: 5);
+        Assert.Equal(sharpe, sharpeOfMultipliedSeries);
+    }
+
     //ошибка от экспоненты выглядит более предпочтительным индикатором, т.к. учитывает равномерность распределения доходностей
     //хотя судя по опыту на реальных данных, все же на нее тоже нельзя однозначно ориентироваться при анализе близких значений, но подсветить хорошие стратегии она помогает
     [Theory]
