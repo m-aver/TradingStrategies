@@ -88,65 +88,101 @@ public static class IndicatorsCalculator
         while (enumerator.MoveNext());
     }
 
-    //TODO: кажется не учитывает просадку если она заканчивает датасет
     public static TimeSpan LongestDrawdown(IEnumerable<DataSeriesPoint> drawdownSeries)
     {
-        using var enumerator = drawdownSeries.GetEnumerator();
+        var drawdowns = IndicatorsCalculator.SeparateDrawdown(drawdownSeries);
 
-        if (!enumerator.MoveNext())
-        {
-            return TimeSpan.Zero;
-        }
-
-        var pivot = enumerator.Current;
         var maxSpan = TimeSpan.Zero;
 
-        do
+        foreach (var drawdown in drawdowns)
         {
-            var point = enumerator.Current;
+            var span = GetSpan(drawdown);
 
-            if (point.Value == 0)
+            if (span > maxSpan)
             {
-                var span = point.Date - pivot.Date;
-                if (span > maxSpan)
-                {
-                    maxSpan = span;
-                }
-
-                pivot = point;
+                maxSpan = span;
             }
         }
-        while (enumerator.MoveNext());
 
         return maxSpan;
+
+        static TimeSpan GetSpan(IEnumerable<DataSeriesPoint> drawdown)
+        {
+            using var enumerator = drawdown.GetEnumerator();
+
+            if (!enumerator.MoveNext())
+            {
+                return TimeSpan.Zero;
+            }
+
+            var first = enumerator.Current;
+
+            while (enumerator.MoveNext());
+
+            var last = enumerator.Current;
+
+            return last.Date - first.Date;
+        }
     }
 
     //величина просадки умноженная на ее продолжительность, просуммированные по всем просадкам
     public static double SumDrawdownDensity(IEnumerable<DataSeriesPoint> drawdownSeries)
     {
+        var drawdowns = IndicatorsCalculator.SeparateDrawdown(drawdownSeries);
+
         var density = 0.0;
-        var width = 0;
-        var magnitude = 0.0;
 
-        foreach (var point in drawdownSeries)
+        foreach (var drawdown in drawdowns)
         {
-            if (point.Value > magnitude)
-            {
-                magnitude = point.Value;
-            }
-
-            if (point.Value == 0 && magnitude > 0)
-            {
-                density += (magnitude * width);
-                magnitude = 0;
-                width = 0;
-            }
-            else
-            {
-                width++;
-            }
+            density += GetDensity(drawdown);
         }
 
         return density;
+
+        static double GetDensity(IEnumerable<DataSeriesPoint> drawdown)
+        {
+            var magnitude = 0d;
+            var width = 0;
+
+            foreach (var point in drawdown)
+            {
+                if (point.Value > magnitude)
+                {
+                    magnitude = point.Value;
+                }
+
+                width++;
+            }
+
+            return magnitude * width;
+        }
+    }
+
+    //WARN: в текущей реализации необходимо итерироваться последовательно по всем просадкам, пропуски не поддерживаются
+    private static IEnumerable<IEnumerable<DataSeriesPoint>> SeparateDrawdown(IEnumerable<DataSeriesPoint> drawdownSeries)
+    {
+        using var enumerator = drawdownSeries.GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+            var point = enumerator.Current;
+
+            if (point.Value > 0)
+            {
+                yield return GetDrawdownIterator(enumerator);
+            }
+        }
+
+        static IEnumerable<DataSeriesPoint> GetDrawdownIterator(IEnumerator<DataSeriesPoint> seriesIterator)
+        {
+            var point = seriesIterator.Current;
+
+            while (point.Value != 0 && seriesIterator.MoveNext())
+            {
+                yield return point;
+
+                point = seriesIterator.Current;
+            }
+        }
     }
 }
