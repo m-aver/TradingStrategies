@@ -13,6 +13,15 @@ using System.Runtime;
 using TradingStrategies.Backtesting.Optimizers.Scorecards;
 using TradingStrategies.Backtesting.Optimizers.Utility;
 
+//есть вариант увеличить перфоманс в 3-4 раза 
+//надо фильтровать результаты стратегии в самой стратегии (по примеру BasicExFilteringScorecard), по окончанию обработки датасета
+//(нужно избежать вызова TradingSystemExecutor.ApplyPositionSize, он довольно дорогой даже если позиций нет)
+//пока нашел два варианта:
+//выставлять TradingSystemExecutor.BuildEquityCurves в false, но для следующего запуска его нужно вернуть в true
+//выбрасывать эксепшен, но надо заранее выставить TradingSystemExecutor.ExceptionEvents в false (можно из экзекутора, а не стратегии)
+//у обоих вариантов есть свои минусы и плюсы, но в любом случае придется переделывать прицип распараллеливания
+//поскольку в текущем варианте, если хотя бы для одного из параллельных запусков не выполнилась фильтрация, он будет задерживать все остальные
+
 //студия может сожрать много рама
 //тогда GC работает активнее и перфоманс понижается
 //настройки GC: <gcServer enabled="true"/> <gcConcurrent enabled="true"/>
