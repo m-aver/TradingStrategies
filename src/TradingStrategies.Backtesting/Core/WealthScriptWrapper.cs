@@ -9,7 +9,7 @@ namespace TradingStrategies.Backtesting.Core
     /// </summary>
     public class WealthScriptWrapper : WealthScript
     {
-        private IStrategyExecuter _strategy;
+        private readonly IStrategyExecuter _strategy;
 
         public event Action SymbolProcessingStart;
         public event Action SymbolProcessingComplete;
@@ -22,6 +22,8 @@ namespace TradingStrategies.Backtesting.Core
 
         private string _startSymbol;
         private string _finalSymbol;
+
+        private readonly IEqualityComparer<string> _symbolComparer = StringComparer.OrdinalIgnoreCase;
 
         public string StartSymbol
         {
@@ -56,38 +58,42 @@ namespace TradingStrategies.Backtesting.Core
             _strategy.Initialize();
         }
 
-        private static bool ValidateBars(Bars bars)
+        private bool ValidateBars()
         {
             //check for symbol bars (i.e. they may be filtered by ui)
-            return bars.Count > 0;
+            var hasValidBars = Bars.Count > 0;
+
+            if (!hasValidBars)
+                PrintInvalidBarsWarning();
+
+            return hasValidBars;
         }
 
         private bool ValidateSymbol()
         {
+            if (_startSymbol is null && _finalSymbol is null)
+            {
+                return true;
+            }
+
             //need since DataSetSymbols is null when constructor is called
-            if (_startSymbol != null && !DataSetSymbols.Contains(_startSymbol))
+            if (_startSymbol != null && !DataSetSymbols.Contains(_startSymbol, _symbolComparer))
                 throw new Exception($"{nameof(StartSymbol)} not correct symbol name, check existing dataset items");
-            if (_finalSymbol != null && !DataSetSymbols.Contains(_finalSymbol))
+            if (_finalSymbol != null && !DataSetSymbols.Contains(_finalSymbol, _symbolComparer))
                 throw new Exception($"{nameof(FinalSymbol)}: not correct symbol name, check existing dataset items");
 
             //check for null to avoid symbol filtering if they is not assigned from outside
             var inStartRange = _startSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) >= DataSetSymbols.IndexOf(StartSymbol);
             var inFinalRange = _finalSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) <= DataSetSymbols.IndexOf(FinalSymbol);
 
-            var hasValidBars = ValidateBars(Bars);
-
-            if (!hasValidBars)
-                PrintInvalidBarsWarning();
-
             return
                 inStartRange &&
-                inFinalRange &&
-                hasValidBars;
+                inFinalRange;
         }
 
         protected override void Execute()
         {
-            if (ValidateSymbol())
+            if (ValidateSymbol() && ValidateBars())
             {
                 OnDataSetProcessingStart();
 
@@ -136,11 +142,11 @@ namespace TradingStrategies.Backtesting.Core
 
         private void OnDataSetProcessingStart()
         {
-            //StrategyWindowID is not set during regular optimization (from WealthLab.Optimization class), seems there's useful bug in WealthLab
+            //StrategyWindowID is not set during regular optimization (from WealthLabPro.Optimization class), seems there's useful bug in WealthLab
             //but for example it is set while WFO-optimization, and maybe is not set while some other processes
             IsOptimizationRun = base.StrategyWindowID == 0;
 
-            if (Bars.Symbol == (StartSymbol ?? DataSetSymbols.First()))
+            if (_symbolComparer.Equals(Bars.Symbol, StartSymbol ?? DataSetSymbols.First()))
             {
                 try
                 {
@@ -155,7 +161,7 @@ namespace TradingStrategies.Backtesting.Core
 
         private void OnDataSetProcessingComplete()
         {
-            if (Bars.Symbol == (FinalSymbol ?? DataSetSymbols.Last()))
+            if (_symbolComparer.Equals(Bars.Symbol, FinalSymbol ?? DataSetSymbols.Last()))
             {
                 try
                 {
