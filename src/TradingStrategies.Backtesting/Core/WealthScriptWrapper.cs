@@ -16,6 +16,8 @@ namespace TradingStrategies.Backtesting.Core
         public event Action DataSetProcessingStart;
         public event Action DataSetProcessingComplete;
 
+        //WARN: use carefully and not for trading logic
+        //there is no guarantee that property was set to true during some optimization process and set to false in some non-optimization processes
         public bool IsOptimizationRun { get; private set; }
 
         private string _startSymbol;
@@ -134,6 +136,10 @@ namespace TradingStrategies.Backtesting.Core
 
         private void OnDataSetProcessingStart()
         {
+            //StrategyWindowID is not set during regular optimization (from WealthLab.Optimization class), seems there's useful bug in WealthLab
+            //but for example it is set while WFO-optimization, and maybe is not set while some other processes
+            IsOptimizationRun = base.StrategyWindowID == 0;
+
             if (Bars.Symbol == (StartSymbol ?? DataSetSymbols.First()))
             {
                 try

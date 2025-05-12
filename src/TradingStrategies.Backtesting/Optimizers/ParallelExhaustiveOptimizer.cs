@@ -459,6 +459,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             target.Commission = source.Commission;
             target.PosSize = CopyPositionSize(source.PosSize);
             target.BenchmarkBuyAndHoldON = false;
+            target.StrategyWindowID = source.StrategyWindowID;
 
             return target;
         }
