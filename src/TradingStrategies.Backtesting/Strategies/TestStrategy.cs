@@ -123,9 +123,6 @@ namespace WealthLabProject.Strategies
             equitySize = startingCapital;
 
             //event handlers
-            _sw.OptimizationStart += OptimizationStartHandler;
-            _sw.OptimizationCycleStart += OptimizationCycleStartHandler;
-            _sw.OptimizationComplete += OptimizationCompleteHandler;
             _sw.SymbolProcessingStart += SymbolProcessingStartHandler;
             _sw.SymbolProcessingComplete += SymbolProcessingCompleteHandler;
             _sw.DataSetProcessingStart += DataSetProcessingStartHandler;
@@ -573,19 +570,6 @@ namespace WealthLabProject.Strategies
 
 
         #region Event handlers
-        private void OptimizationStartHandler()
-        {
-            _sw.PrintDebug("optimize start");
-        }
-
-        private void OptimizationCycleStartHandler()
-        {
-        }
-
-        private void OptimizationCompleteHandler()
-        {
-        }
-
         private void SymbolProcessingStartHandler()
         {
             //_sw.PrintDebug(_sw.Bars.Symbol);	

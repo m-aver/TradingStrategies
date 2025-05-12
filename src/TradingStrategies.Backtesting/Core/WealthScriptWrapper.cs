@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using WealthLab;
-using WealthLab.Optimizers;
 
 namespace TradingStrategies.Backtesting.Core
 {
@@ -15,22 +11,12 @@ namespace TradingStrategies.Backtesting.Core
     {
         private IStrategyExecuter _strategy;
 
-        //Avoid using the default values for optimization parameters that match their start values. 
-        //This will generate the optimization start event for ever stategy run		
-        //OptimizationCycleStart event is not generated for the first optimization cycle. 
-        //Instead, use OptimizationStart event
-        public event Action OptimizationStart;
-        public event Action OptimizationCycleStart;
-        public event Action OptimizationComplete;
         public event Action SymbolProcessingStart;
         public event Action SymbolProcessingComplete;
         public event Action DataSetProcessingStart;
         public event Action DataSetProcessingComplete;
 
         public bool IsOptimizationRun { get; private set; }
-        public bool TrackOptimization { get; set; } = true;
-
-        private List<double> _previousParamValues;
 
         private string _startSymbol;
         private string _finalSymbol;
@@ -101,10 +87,6 @@ namespace TradingStrategies.Backtesting.Core
         {
             if (ValidateSymbol())
             {
-                OnOptimizationStart();
-
-                OnOptimizationCycleStart();
-
                 OnDataSetProcessingStart();
 
                 OnSymbolProcessingStart();
@@ -123,75 +105,6 @@ namespace TradingStrategies.Backtesting.Core
                 OnSymbolProcessingComplete();
 
                 OnDataSetProcessingComplete();
-
-                OnOptimizationComplete();
-            }
-        }
-
-        private void OnOptimizationStart()
-        {
-            if (TrackOptimization &&
-                Bars.Symbol == (StartSymbol ?? DataSetSymbols.First()) &&
-                Parameters != null &&
-                Parameters.Count > 0 &&
-                Parameters.All(static param => param.Value == param.Start))
-            {
-                try
-                {
-                    PrintOptimizationWarning();
-                    OptimizationStart?.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(" [optimization start handlers exception] " + ex.Message, ex);
-                }
-
-                IsOptimizationRun = true;
-                _previousParamValues = Parameters.Select(static param => param.Start).ToList();
-            }
-        }
-
-        private void OnOptimizationCycleStart()
-        {
-            if (TrackOptimization &&
-                IsOptimizationRun &&
-                Bars.Symbol == (StartSymbol ?? DataSetSymbols.First()) &&
-                !Parameters.All(param => param.Value == _previousParamValues[Parameters.IndexOf(param)]))
-            {
-                try
-                {
-                    OptimizationCycleStart?.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(" [optimization cycle start handlers exception] " + ex.Message, ex);
-                }
-
-                _previousParamValues = Parameters.Select(static param => param.Value).ToList();
-            }
-        }
-
-        private void OnOptimizationComplete()
-        {
-            if (TrackOptimization &&
-                IsOptimizationRun &&
-                Bars.Symbol == (FinalSymbol ?? DataSetSymbols.Last()) &&
-                Parameters != null &&
-                Parameters.Count > 0 &&
-                Parameters.All(static param => param.Value == param.Stop))
-            {
-                try
-                {
-                    PrintOptimizationWarning();
-                    OptimizationComplete?.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(" [optimization complete handlers exception] " + ex.Message, ex);
-                }
-
-                IsOptimizationRun = false;
-                _previousParamValues.Clear();
             }
         }
 
@@ -259,15 +172,6 @@ namespace TradingStrategies.Backtesting.Core
             PrintDebug(msg);
         }
 
-        private void PrintOptimizationWarning()
-        {
-            var msg = $"""
-                optimization events work correctly only for {nameof(Exhaustive)} optimizer,
-                for others it may not always fire {nameof(OptimizationStart)} and {nameof(OptimizationComplete)} events
-                """;
-            PrintDebug(msg);
-        }
-
         //interceptor for debug messages
         new public void PrintDebug(string message)
         {
@@ -278,17 +182,8 @@ namespace TradingStrategies.Backtesting.Core
         //need for reason of protected access to default CreateParameter method
         new public StrategyParameter CreateParameter(string name, double defaultValue, double start, double stop, double step)
         {
-            if (defaultValue == start)
-            {
-                throw new ArgumentException(
-                    "Avoid using the default values for optimization parameters that match their start values." +
-                    "Instead, try to find other way to test these parameter values", nameof(defaultValue));
-            }
-            else
-            {
-                var param = base.CreateParameter(name, defaultValue, start, stop, step);
-                return param;
-            }
+            var param = base.CreateParameter(name, defaultValue, start, stop, step);
+            return param;
         }
 
         private bool IsCallFromInterface<T>(string methodName) where T : class

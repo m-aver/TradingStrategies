@@ -66,9 +66,6 @@ namespace TradingStrategies.Backtesting.Strategies
             equitySize = startingCapital;
 
             //event handlers
-            _sw.OptimizationStart += OptimizationStartHandler;
-            _sw.OptimizationCycleStart += OptimizationCycleStartHandler;
-            _sw.OptimizationComplete += OptimizationCompleteHandler;
             _sw.SymbolProcessingStart += SymbolProcessingStartHandler;
             _sw.SymbolProcessingComplete += SymbolProcessingCompleteHandler;
             _sw.DataSetProcessingStart += DataSetProcessingStartHandler;
@@ -308,19 +305,6 @@ namespace TradingStrategies.Backtesting.Strategies
         }
 
         #region EVENT HANDLERS
-        private void OptimizationStartHandler()
-        {
-            _sw.PrintDebug("optimization has been started");
-        }
-
-        private void OptimizationCycleStartHandler()
-        {
-        }
-
-        private void OptimizationCompleteHandler()
-        {
-        }
-
         private void SymbolProcessingStartHandler()
         {
             //_sw.PrintDebug(_sw.Bars.Symbol);	
