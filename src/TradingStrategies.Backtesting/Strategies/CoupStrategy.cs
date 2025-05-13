@@ -166,7 +166,8 @@ namespace TradingStrategies.Backtesting.Strategies
                     #region ENTRY TO TRADE
                     if (!_sw.IsLastPositionActive)
                     {
-                        LotsFactors lotsFactors = default(LotsFactors);
+                        var lotsFactors = LotsFactors.Neutral;
+
                         if (isSignalBuy || isSignalShort)
                         {
                             lotsFactors = CalculateFactors(bar);
@@ -174,19 +175,19 @@ namespace TradingStrategies.Backtesting.Strategies
 
                             stopUp = _sw.Close[bar] * (1 + stopPercent / 100);
                             stopDown = _sw.Close[bar] * (1 - stopPercent / 100);
-
-                            _sw.SetShareSize(lotNum);   //нужно после умножения на кэф
                         }
 
                         if (isSignalBuy)
                         {
                             lotNum *= lotsFactors.BuyFactor;
+                            _sw.SetShareSize(lotNum);
                             _sw.BuyAtClose(bar, "Buy");
                         }
 
                         if (isSignalShort)
                         {
                             lotNum *= lotsFactors.SellFactor;
+                            _sw.SetShareSize(lotNum);
                             _sw.ShortAtClose(bar, "Short");
                         }
                     }
