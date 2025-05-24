@@ -60,7 +60,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             SumDrawdownDensity,
         ];
 
-        private static readonly string[] columnTypes = columnNames.Select(static _ => "N").ToArray();
+        private static readonly string[] columnTypes = columnNames.Select(_ => "N").ToArray();
 
         private const string NumbersFormat = "N2";
 
@@ -101,7 +101,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             var drawdownSeries = CalculateDrawdown(equitySeries);
             var longestDrawdown = IndicatorsCalculator.LongestDrawdown(drawdownSeries.ToPoints()).Days;
             var drawdownDensity = IndicatorsCalculator.SumDrawdownDensity(drawdownSeries.ToPoints());
-            var maxDrawdown = drawdownSeries.ToPoints().Max(static x => x.Value);
+            var maxDrawdown = drawdownSeries.ToPoints().Max(x => x.Value);
 
             //populate ui
             resultRow.SubItems.Add(squaredError.ToString(NumbersFormat));

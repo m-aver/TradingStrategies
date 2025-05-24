@@ -15,6 +15,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         private static bool FilterPerfomance(SystemPerformance performance)
         {
             return
+                performance is null ||
                 performance.Results.Positions.Count < 100 ||
                 performance.Results.NetProfit <= 0;
         }
@@ -54,9 +55,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private void RemoveRow(ListViewItem resultRow)
         {
-            //если честно не очень понимаю как это работает из ParallelExhaustiveOptimizer
-            //т.к. там ListViewItem создаются без какой-либо привязки к ListView, который должен бы быть null здесь
-            //но тем не менее это работает
+            //если ListView не привязан, то выбрасывается NRE и вызвающий код должен обработать/проигнорировать строку
+            //актуально в ParallelExhaustive оптимизерах
 
             var listView = resultRow.ListView;
 

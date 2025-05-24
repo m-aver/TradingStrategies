@@ -35,19 +35,18 @@ namespace TradingStrategies.Backtesting.Optimizers
     /// </summary>
     internal class ExecutionScope
     {
-        public TradingSystemExecutor Executor { get; set; }
-        public WealthScript Script { get; set; }
-        public StrategyScorecard Scorecard { get; set; }
+        public TradingSystemExecutor Executor { get; }
+        public WealthScript Script { get; }
+        public StrategyScorecard Scorecard { get; }
         public SystemPerformance Result { get; set; }
-        public Strategy Strategy { get; set; }
-        public List<Bars> BarsSet { get; set; }
-        public List<ListViewItem> ResultRows { get; set; }
+        public Strategy Strategy { get; }
+        public List<Bars> BarsSet { get; }
+        public List<ListViewItem> ResultRows { get; }
 
         public ExecutionScope(
             TradingSystemExecutor executor,
             WealthScript script,
             StrategyScorecard scorecard,
-            SystemPerformance result,
             Strategy strategy,
             List<Bars> barsSet,
             List<ListViewItem> resultRows)
@@ -55,7 +54,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             this.Executor = executor;
             this.Script = script;
             this.Scorecard = scorecard;
-            this.Result = result;
             this.Strategy = strategy;
             this.BarsSet = barsSet;
             this.ResultRows = resultRows;
@@ -75,7 +73,6 @@ namespace TradingStrategies.Backtesting.Optimizers
         private Dictionary<string, Bars> barsCache;
         private Dictionary<string, Bars> dataSetBars;
         private TradingSystemExecutor parentExecutor;
-        private ListView optimizationResultListView;
         private IStrategyParametersIterator parametersIterator;
         private IScorecardProvider scorecardProvider;
 
@@ -91,11 +88,11 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         public override void RunCompleted(OptimizationResultList results)
         {
-            countDown.Wait();
+            this.countDown.Wait();
             mainWatch.Reset();
             base.RunCompleted(results);
             PopulateUI();
-            countDown.Dispose();
+            this.countDown.Dispose();
 
             FullCollect();
         }
@@ -202,25 +199,21 @@ namespace TradingStrategies.Backtesting.Optimizers
             this.executors = new ExecutionScope[numThreads];
 
             var runs = (int)NumberOfRuns;
-            Parallel.For(0, numThreads,
-                i =>
-                {
-                    var offset = i * dataSetBars.Values.Count;
-                    this.executors[i] = new ExecutionScope(
-                        CopyExecutor(parentExecutor),
-                        strategyManager.GetWealthScriptObject(this.Strategy),
-                        CopySelectedScoreCard(),
-                        null,
-                        CopyStrategy(this.Strategy),
-                        dataSetBars.Values.Select((x, j) => x.Prepare(j + 1 + offset)).ToList(),
-                        new List<ListViewItem>(runs)
-                    );
-                    //this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
-                    //this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
-                    SynchronizeWealthScriptParameters(this.executors[i].Script, this.WealthScript);
-                });
-
-            optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
+            Parallel.For(0, numThreads, i =>
+            {
+                var offset = i * dataSetBars.Values.Count;
+                this.executors[i] = new ExecutionScope(
+                    CopyExecutor(parentExecutor),
+                    strategyManager.GetWealthScriptObject(this.Strategy),
+                    CopySelectedScoreCard(),
+                    CopyStrategy(this.Strategy),
+                    dataSetBars.Values.Select((x, j) => x.Prepare(j + 1 + offset)).ToList(),
+                    new List<ListViewItem>(runs)
+                );
+                //this.executors[i].Executor.ExternalSymbolRequested += this.OnLoadSymbol;
+                //this.executors[i].Executor.ExternalSymbolFromDataSetRequested += this.OnLoadSymbolFromDataSet;
+                SynchronizeWealthScriptParameters(this.executors[i].Script, this.WealthScript);
+            });
 
             //initialize perfomance metrics
             const int metricsCount = 10;
@@ -277,7 +270,7 @@ namespace TradingStrategies.Backtesting.Optimizers
                         // set params to execute by main thread after NextRun
                         for (int j = 0; j < this.paramValues.Count; j++)
                             this.WealthScript.Parameters[j].Value = this.paramValues[j].Value;
-                        countDown.Signal();
+                        this.countDown.Signal();
                         continue;
                     }
 
@@ -372,7 +365,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             var optimizationResult = new OptimizationResult()
             {
                 Symbol = executors.Executor.DataSet.Name,
-                ParameterValues = executors.Script.Parameters.Select(static x => x.Value).ToList(),
+                ParameterValues = executors.Script.Parameters.Select(x => x.Value).ToList(),
             };
             row.Tag = optimizationResult;
 
@@ -381,7 +374,9 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private void PopulateUI()
         {
-            var rows = executors.SelectMany(static x => x.ResultRows).ToArray();
+            var optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
+
+            var rows = executors.SelectMany(x => x.ResultRows).ToArray();
 
             if (optimizationResultListView.InvokeRequired)
             {
@@ -446,8 +441,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return iterator;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private TradingSystemExecutor CopyExecutor(TradingSystemExecutor source)
+        private static TradingSystemExecutor CopyExecutor(TradingSystemExecutor source)
         {
             var target = new TradingSystemExecutor();
 
@@ -460,11 +454,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             target.PosSize = CopyPositionSize(source.PosSize);
             target.BenchmarkBuyAndHoldON = false;
             target.StrategyWindowID = source.StrategyWindowID;
+            target.ExceptionEvents = false;
 
             return target;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static PositionSize CopyPositionSize(PositionSize source)
         {
             var target = new PositionSize()
@@ -489,7 +483,6 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Strategy CopyStrategy(Strategy source)
         {
             var target = new Strategy()
@@ -536,7 +529,7 @@ namespace TradingStrategies.Backtesting.Optimizers
         {
             var tsField = typeof(WealthScript)
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-                .First(static x => x.FieldType == typeof(TradingSystemExecutor));
+                .First(x => x.FieldType == typeof(TradingSystemExecutor));
             var tsExecutor = tsField.GetValue(script) as TradingSystemExecutor;
             return tsExecutor;
         }
@@ -606,7 +599,7 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         ~ParallelExhaustiveOptimizer()
         {
-            countDown?.Dispose();
+            this.countDown?.Dispose();
         }
     }
 }
