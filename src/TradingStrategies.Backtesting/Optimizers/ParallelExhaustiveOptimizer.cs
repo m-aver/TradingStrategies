@@ -397,7 +397,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
-        private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
+        internal static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource)
         {
             wsTarget.Parameters.Clear();
 
@@ -408,7 +408,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
-        private static StrategyParameter CopyParameter(StrategyParameter old)
+        internal static StrategyParameter CopyParameter(StrategyParameter old)
         {
             return new StrategyParameter(
                 name: old.Name,
@@ -441,7 +441,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return iterator;
         }
 
-        private static TradingSystemExecutor CopyExecutor(TradingSystemExecutor source)
+        internal static TradingSystemExecutor CopyExecutor(TradingSystemExecutor source)
         {
             var target = new TradingSystemExecutor();
 
@@ -459,7 +459,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
-        private static PositionSize CopyPositionSize(PositionSize source)
+        internal static PositionSize CopyPositionSize(PositionSize source)
         {
             var target = new PositionSize()
             {
@@ -483,7 +483,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
-        private static Strategy CopyStrategy(Strategy source)
+        internal static Strategy CopyStrategy(Strategy source)
         {
             var target = new Strategy()
             {
@@ -525,7 +525,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             return target;
         }
 
-        private static TradingSystemExecutor ExtractExecutor(WealthScript script)
+        internal static TradingSystemExecutor ExtractExecutor(WealthScript script)
         {
             var tsField = typeof(WealthScript)
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
@@ -591,7 +591,7 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
-        private static void FullCollect()
+        internal static void FullCollect()
         {
             GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
             GC.Collect();
