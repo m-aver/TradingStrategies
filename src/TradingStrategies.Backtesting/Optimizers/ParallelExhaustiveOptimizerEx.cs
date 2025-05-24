@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using TradingStrategies.Backtesting.Optimizers.Scorecards;
 using TradingStrategies.Backtesting.Optimizers.Utility;
+using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Ex;
@@ -47,7 +48,8 @@ internal class ExecutionScope
 /// Implements Multithreaded Optimization
 /// </summary>
 /// <remarks>
-/// Enhanced perfomance of <see cref="ParallelExhaustiveOptimizer"/> but may have broken progress bar
+/// Enhanced perfomance of <see cref="ParallelExhaustiveOptimizer"/> but may have broken progress bar.
+/// Specifically with optimization run filtration via <see cref="Strategies.FiltrationStrategyDecorator"/>
 /// </remarks>
 public class ParallelExhaustiveOptimizerEx : Optimizer
 {
@@ -108,7 +110,7 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
     {
         FullCollect();
 
-        parentExecutor = ExtractExecutor(this.WealthScript);
+        parentExecutor = WealthScriptHelper.ExtractExecutor(this.WealthScript)!;
         if (parentExecutor == null)
         {
             var message = $"cannot load executor, you must run strategy firstly on that dataset everywhere";
@@ -336,6 +338,5 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
     private static TradingSystemExecutor CopyExecutor(TradingSystemExecutor source) => ParallelExhaustiveOptimizer.CopyExecutor(source);
     private static PositionSize CopyPositionSize(PositionSize source) => ParallelExhaustiveOptimizer.CopyPositionSize(source);
     private static Strategy CopyStrategy(Strategy source) => ParallelExhaustiveOptimizer.CopyStrategy(source);
-    private static TradingSystemExecutor ExtractExecutor(WealthScript script) => ParallelExhaustiveOptimizer.ExtractExecutor(script);
     private static void FullCollect() => ParallelExhaustiveOptimizer.FullCollect();
 }

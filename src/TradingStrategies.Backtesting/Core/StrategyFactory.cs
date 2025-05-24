@@ -14,6 +14,18 @@ namespace TradingStrategies.Backtesting.Core
 
         public static IStrategyExecuter CreateStrategyInstance(WealthScriptWrapper wrapper)
         {
+            var strategy = CreateStrategyInstanceInternal(wrapper);
+
+            if (strategy is IStrategyResultFilter filter)
+            {
+                strategy = new FiltrationStrategyDecorator(wrapper, strategy, filter);
+            }
+
+            return strategy;
+        }
+
+        public static IStrategyExecuter CreateStrategyInstanceInternal(WealthScriptWrapper wrapper)
+        {
             if (wrapper is GeneratedWealthScriptWrapper generated)
             {
                 var strategy = GeneratedStrategyFactory.CreateStrategyInstance(generated);

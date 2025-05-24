@@ -331,7 +331,6 @@ namespace TradingStrategies.Backtesting.Strategies
         #endregion
     }
 
-
     #region Core code
     internal partial class CoupStrategy
     {
@@ -340,6 +339,18 @@ namespace TradingStrategies.Backtesting.Strategies
         public CoupStrategy(WealthScriptWrapper scriptWrapper)
         {
             _sw = scriptWrapper;
+        }
+    }
+    #endregion
+
+    #region Filter
+    internal partial class CoupStrategy : IStrategyResultFilter
+    {
+        public bool FilterResults()
+        {
+            return
+                equitySize <= startingCapital &&
+                _sw.TotalPositionsCount < 10;
         }
     }
     #endregion

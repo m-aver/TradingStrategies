@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
+using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
 namespace TradingStrategies.Backtesting.Core
@@ -51,6 +52,9 @@ namespace TradingStrategies.Backtesting.Core
                         $"method of implements of {nameof(IStrategyExecuter)} interface");
             }
         }
+
+        private TradingSystemExecutor? _executor;
+        public int TotalPositionsCount => _executor?.MasterPositions.Count ?? 0;
 
         public WealthScriptWrapper()
         {
@@ -145,6 +149,8 @@ namespace TradingStrategies.Backtesting.Core
             //StrategyWindowID is not set during regular optimization (from WealthLabPro.Optimization class), seems there's useful bug in WealthLab
             //but for example it is set while WFO-optimization, and maybe is not set while some other processes
             IsOptimizationRun = base.StrategyWindowID == 0;
+
+            _executor = WealthScriptHelper.ExtractExecutor(this);
 
             if (_symbolComparer.Equals(Bars.Symbol, StartSymbol ?? DataSetSymbols.First()))
             {
