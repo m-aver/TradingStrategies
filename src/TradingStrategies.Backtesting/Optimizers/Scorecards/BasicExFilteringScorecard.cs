@@ -4,6 +4,9 @@ using WealthLab;
 //вспомогательный скорекард
 //позволяет фильтровать результаты для упрощения ориентирования по таблице
 
+//WARN: не совместим c Exhaustive оптимизером
+//кажется проблема в контролах 1D/2D графиков
+
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
     internal class BasicExFilteringScorecard : BasicExScorecard
@@ -17,7 +20,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             return
                 performance is null ||
                 performance.Results.Positions.Count < 100 ||
-                performance.Results.NetProfit <= 0;
+                performance.Results.NetProfit <= performance.Strategy.StartingEquity;
         }
 
         private bool FilterResults(ListViewItem resultRow)
@@ -55,7 +58,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private void RemoveRow(ListViewItem resultRow)
         {
-            //если ListView не привязан, то выбрасывается NRE и вызвающий код должен обработать/проигнорировать строку
+            //если ListView не привязан, то выбрасывается NRE и вызывающий код должен обработать/проигнорировать строку
             //актуально в ParallelExhaustive оптимизерах
 
             var listView = resultRow.ListView;

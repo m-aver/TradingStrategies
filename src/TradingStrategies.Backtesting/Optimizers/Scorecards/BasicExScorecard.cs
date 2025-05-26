@@ -84,6 +84,12 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
             var equitySeries = performance.Results.EquityCurve;
 
+            if (equitySeries is null || equitySeries.Count == 0)
+            {
+                PopulateUndefined(resultRow);
+                return;
+            }
+
             var errorSeries = CalculateError(equitySeries);
             var monthReturnSeries = CalculateMonthReturns(equitySeries);
             var sharpe = CalculateSharpeRatio(monthReturnSeries, performance.CashReturnRate);
@@ -137,5 +143,14 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         {
             return IndicatorsCalculator.DrawdownPercentage(equitySeries.ToPoints()).ToSeries("drawdown");
         }
+
+        private void PopulateUndefined(ListViewItem resultRow)
+        {
+            foreach (var _ in columnNames)
+            {
+                resultRow.SubItems.Add(UndefinedLabel);
+            }
+        }
+        private static readonly string UndefinedLabel = double.NaN.ToString(NumbersFormat);
     }
 }
