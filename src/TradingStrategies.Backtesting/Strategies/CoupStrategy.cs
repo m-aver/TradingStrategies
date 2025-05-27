@@ -140,11 +140,10 @@ namespace TradingStrategies.Backtesting.Strategies
                 #endregion
 
                 DateTime currBarDate = _sw.Date[bar];
-                DateTime nextBarDate = _sw.Date[bar + 1];
 
                 //trade logic
                 if (currBarDate.Date >= entryDate.Date &&
-                    nextBarDate.Date < expireDate.Date &&
+                    currBarDate.Date < expireDate.Date &&
                     currBarDate.TimeOfDay > morningTime &&
                     currBarDate.TimeOfDay < eveningTime)
                 {
@@ -205,7 +204,7 @@ namespace TradingStrategies.Backtesting.Strategies
                 #endregion
                 #region EXIT ON EXPIRING
                 if (_sw.IsLastPositionActive &&
-                    nextBarDate.Date >= expireDate.Date)
+                    currBarDate.Date >= expireDate.Date)
                 {
                     equitySize += GetIncomeOfLastTrade(bar);
                     _sw.ExitAtClose(bar, Position.AllPositions, equitySize.ToString() + "_" + "Exit on expiring");
