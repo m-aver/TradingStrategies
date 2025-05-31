@@ -45,7 +45,7 @@ namespace TradingStrategies.Backtesting.Optimizers
     }
 
     /// <summary>
-    /// Implements Multithreaded Optimization
+    /// Implements multithreaded optimization
     /// </summary>
     public class ParallelExhaustiveOptimizer : OptimizerBase
     {
@@ -66,8 +66,8 @@ namespace TradingStrategies.Backtesting.Optimizers
         private Stopwatch mainWatch = new Stopwatch();
         private IOptimizerPerfomanceMetrics metrics;
 
-        public override string Description => "Parallel Optimizer (Exhaustive)";
-        public override string FriendlyName => Description;
+        public override string FriendlyName => "Parallel Optimizer (Exhaustive)";
+        public override string Description => "Implements multithreaded exhaustive optimization";
 
         public override void RunCompleted(OptimizationResultList results)
         {

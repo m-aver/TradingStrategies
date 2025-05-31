@@ -45,7 +45,7 @@ internal class ExecutionScope
 }
 
 /// <summary>
-/// Implements Multithreaded Optimization
+/// Implements multithreaded optimization
 /// </summary>
 /// <remarks>
 /// Enhanced perfomance of <see cref="ParallelExhaustiveOptimizer"/> but may have broken progress bar.
@@ -61,8 +61,8 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
     private Dictionary<string, Bars> dataSetBars;
     private TradingSystemExecutor parentExecutor;
 
-    public override string Description => "Parallel Optimizer (Exhaustive) Enhanced";
-    public override string FriendlyName => Description;
+    public override string FriendlyName => "Parallel Optimizer (Exhaustive) Enhanced";
+    public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. May have inaccurate progress bar";
 
     public override void RunCompleted(OptimizationResultList results)
     {
