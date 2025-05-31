@@ -5,8 +5,6 @@ using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
-//TODO: теряются результаты по сравнению с ParallelExhaustiveOptimizer (Basic Extended Scorecard)
-
 namespace TradingStrategies.Backtesting.Optimizers.Ex;
 
 /// <summary>
@@ -66,7 +64,13 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
 
     public override void RunCompleted(OptimizationResultList results)
     {
-        Task.WaitAll(executions, 100);
+        var isCompleted = Task.WaitAll(executions, 1000);
+
+        if (!isCompleted)
+        {
+            var message = "Not all threads have completed their runs. The result set will not be complete";
+            MessageBox.Show(message);
+        }
 
         base.RunCompleted(results);
 
