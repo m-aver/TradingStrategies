@@ -9,45 +9,80 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards;
 
 internal class LongShortScorecard : BasicExScorecard
 {
+    //settings
+    private const bool ApplyBaseResults = true;
+    private const bool ApplyLongResults = true;
+    private const bool ApplyShortResults = true;
+    private const bool ApplyVisualSeparation = true;
+
     public new const string DisplayName = "Long and Short Scorecard";
     public override string FriendlyName => DisplayName;
 
-    protected const string LongPostfix = "_Long";
-    protected const string ShortPostfix = "_Short";
+    public override IList<string> ColumnHeadersRawProfit => BuildColumnHeaders(base.ColumnHeadersRawProfit);
+    public override IList<string> ColumnHeadersPortfolioSim => BuildColumnHeaders(base.ColumnHeadersPortfolioSim);
+    public override IList<string> ColumnTypesRawProfit => BuildColumnTypes(base.ColumnTypesRawProfit);
+    public override IList<string> ColumnTypesPortfolioSim => BuildColumnTypes(base.ColumnTypesPortfolioSim);
 
-    private readonly string[] columnNames;
-    private readonly string[] columnTypes;
+    private const string LongPostfix = "_Long";
+    private const string ShortPostfix = "_Short";
 
-    public override IList<string> ColumnHeadersRawProfit => [.. base.ColumnHeadersRawProfit, .. columnNames];
-    public override IList<string> ColumnHeadersPortfolioSim => [.. base.ColumnHeadersPortfolioSim, .. columnNames];
-    public override IList<string> ColumnTypesRawProfit => [.. base.ColumnTypesRawProfit, .. columnTypes];
-    public override IList<string> ColumnTypesPortfolioSim => [.. base.ColumnTypesPortfolioSim, .. columnTypes];
+    //visual separation
+    private const string LongSeparatorColumnName = "LongSeparator";
+    private const string ShortSeparatorColumnName = "ShortSeparator";
+    private const string LongSeparator = "▲";
+    private const string ShortSeparator = "▼";
+    private const string SaperatorColumnType = "S";
 
-    public LongShortScorecard()
+    private static IList<string> BuildColumnHeaders(IList<string> baseHeaders)
     {
-        columnNames =
-            base.ColumnHeadersPortfolioSim.Select(x => x + LongPostfix)
-            .Concat(base.ColumnHeadersPortfolioSim.Select(x => x + ShortPostfix))
+        return Enumerable.Empty<string>()
+            .Concat(ApplyBaseResults ? baseHeaders : [])
+            .Concat(ApplyLongResults && ApplyVisualSeparation ? [LongSeparatorColumnName] : [])
+            .Concat(ApplyLongResults ? baseHeaders.Select(x => x + LongPostfix) : [])
+            .Concat(ApplyShortResults && ApplyVisualSeparation ? [ShortSeparatorColumnName] : [])
+            .Concat(ApplyShortResults ? baseHeaders.Select(x => x + ShortPostfix) : [])
             .ToArray();
+    }
 
-        columnTypes =
-            base.ColumnTypesPortfolioSim
-            .Concat(base.ColumnTypesPortfolioSim)
+    private static IList<string> BuildColumnTypes(IList<string> baseTypes)
+    {
+        return Enumerable.Empty<string>()
+            .Concat(ApplyBaseResults ? baseTypes : [])
+            .Concat(ApplyLongResults && ApplyVisualSeparation ? [SaperatorColumnType] : [])
+            .Concat(ApplyLongResults ? baseTypes : [])
+            .Concat(ApplyShortResults && ApplyVisualSeparation ? [SaperatorColumnType] : [])
+            .Concat(ApplyShortResults ? baseTypes : [])
             .ToArray();
     }
 
     public override void PopulateScorecard(ListViewItem resultRow, SystemPerformance performance)
     {
         var results = performance.Results;
-        base.PopulateScorecard(resultRow, performance);
-        
+
+        if (ApplyBaseResults)
+        {
+            base.PopulateScorecard(resultRow, performance);
+        }
+
         //long
-        SetResults(performance, performance.ResultsLong);
-        base.PopulateScorecard(resultRow, performance);
+        if (ApplyLongResults)
+        {
+            if (ApplyVisualSeparation)
+                resultRow.SubItems.Add(LongSeparator);
+
+            SetResults(performance, performance.ResultsLong);
+            base.PopulateScorecard(resultRow, performance);
+        }
 
         //short
-        SetResults(performance, performance.ResultsShort);
-        base.PopulateScorecard(resultRow, performance);
+        if (ApplyShortResults)
+        {
+            if (ApplyVisualSeparation)
+                resultRow.SubItems.Add(ShortSeparator);
+
+            SetResults(performance, performance.ResultsShort);
+            base.PopulateScorecard(resultRow, performance);
+        }
 
         //restore
         SetResults(performance, results);
