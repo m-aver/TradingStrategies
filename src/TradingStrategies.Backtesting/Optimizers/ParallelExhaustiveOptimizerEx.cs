@@ -1,11 +1,11 @@
-﻿using Fidelity.Components;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
-using TradingStrategies.Backtesting.Optimizers.Scorecards;
 using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
+
+//TODO: теряются результаты по сравнению с ParallelExhaustiveOptimizer (Basic Extended Scorecard)
 
 namespace TradingStrategies.Backtesting.Optimizers.Ex;
 
@@ -51,7 +51,7 @@ internal class ExecutionScope
 /// Enhanced perfomance of <see cref="ParallelExhaustiveOptimizer"/> but may have broken progress bar.
 /// Specifically with optimization run filtration via <see cref="Strategies.FiltrationStrategyDecorator"/>
 /// </remarks>
-public class ParallelExhaustiveOptimizerEx : Optimizer
+public class ParallelExhaustiveOptimizerEx : OptimizerBase
 {
     private int numThreads;
     private ExecutionScope[] executors;
@@ -60,8 +60,6 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
     private IStrategyParametersIterator parametersIterator;
     private Dictionary<string, Bars> dataSetBars;
     private TradingSystemExecutor parentExecutor;
-    private IScorecardProvider scorecardProvider;
-    private CancellationTokenSource cancellationTokenSource;
 
     public override string Description => "Parallel Optimizer (Exhaustive) Enhanced";
     public override string FriendlyName => Description;
@@ -81,14 +79,9 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
     /// </summary>
     public override void Initialize()
     {
+        base.Initialize();
+
         numThreads = Environment.ProcessorCount;
-
-        var settingsManager = new SettingsManager();
-        settingsManager.RootPath = Application.UserAppDataPath + Path.DirectorySeparatorChar + "Data";
-        settingsManager.FileName = "WealthLabConfig.txt";
-        settingsManager.LoadSettings();
-
-        scorecardProvider = ScorecardProviderFactory.Create(settingsManager, this);
     }
 
     //RunsRequired = NumberOfRuns * datasets-count
@@ -108,6 +101,8 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
     /// </summary>
     public override void FirstRun()
     {
+        base.FirstRun();
+
         FullCollect();
 
         parentExecutor = WealthScriptHelper.ExtractExecutor(this.WealthScript)!;
@@ -184,11 +179,6 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
         this.parametersIterator = iterators.Last();
         this.paramValues = parametersIterator.CurrentParameters.ToList();
 
-        //cancellation
-        cancellationTokenSource = new();
-        var cancelOptimizationButton = (Button)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[0].Controls[0].Controls[6];
-        cancelOptimizationButton.Click += (_, _) => cancellationTokenSource.Cancel();
-
         //run parallel optimization threads
         this.executions = executors.Select(RunScope).ToArray();
     }
@@ -196,9 +186,9 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
     private Task RunScope(ExecutionScope execution)
     {
         return Task.Factory.StartNew(
-            action: state => RunScopeInternal((ExecutionScope)state, cancellationTokenSource.Token),
+            action: state => RunScopeInternal((ExecutionScope)state, CancellationTokenSource.Token),
             state: execution,
-            cancellationToken: cancellationTokenSource.Token,
+            cancellationToken: CancellationTokenSource.Token,
             creationOptions: TaskCreationOptions.LongRunning,
             scheduler: TaskScheduler.Default);
     }
@@ -286,7 +276,7 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
 
     private void PopulateUI()
     {
-        var optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
+        var optimizationResultListView = OptimizationFormExtractor.ExtractOptimizationResultListView(this);
 
         var rows = executors.SelectMany(x => x.ResultRows).ToArray();
 
@@ -327,7 +317,7 @@ public class ParallelExhaustiveOptimizerEx : Optimizer
 
     private StrategyScorecard CopySelectedScoreCard()
     {
-        var scorecard = scorecardProvider.GetSelectedScorecard();
+        var scorecard = ScorecardProvider.GetSelectedScorecard();
         scorecard = (StrategyScorecard)Activator.CreateInstance(scorecard.GetType());
         return scorecard;
     }

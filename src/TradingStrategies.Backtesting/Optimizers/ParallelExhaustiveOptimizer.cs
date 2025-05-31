@@ -1,16 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using System.Diagnostics;
 using WealthLab;
-using Fidelity.Components;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime;
-using TradingStrategies.Backtesting.Optimizers.Scorecards;
 using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 
@@ -55,7 +47,7 @@ namespace TradingStrategies.Backtesting.Optimizers
     /// <summary>
     /// Implements Multithreaded Optimization
     /// </summary>
-    public class ParallelExhaustiveOptimizer : Optimizer
+    public class ParallelExhaustiveOptimizer : OptimizerBase
     {
         private int numThreads;
         private ExecutionScope[] executors;
@@ -66,7 +58,6 @@ namespace TradingStrategies.Backtesting.Optimizers
         private Dictionary<string, Bars> dataSetBars;
         private TradingSystemExecutor parentExecutor;
         private IStrategyParametersIterator parametersIterator;
-        private IScorecardProvider scorecardProvider;
 
         //for metrics
         private const bool writeMetrics = false;
@@ -89,19 +80,11 @@ namespace TradingStrategies.Backtesting.Optimizers
             FullCollect();
         }
 
-        /// <summary>
-        /// Initializes the optimizer. Called when optimization method has been selected. Run once for multiple optimization sessions.
-        /// </summary>
         public override void Initialize()
         {
+            base.Initialize();
+
             numThreads = Environment.ProcessorCount;
-
-            var settingsManager = new SettingsManager();
-            settingsManager.RootPath = Application.UserAppDataPath + Path.DirectorySeparatorChar + "Data";
-            settingsManager.FileName = "WealthLabConfig.txt";
-            settingsManager.LoadSettings();
-
-            scorecardProvider = ScorecardProviderFactory.Create(settingsManager, this);
         }
 
         //RunsRequired = NumberOfRuns * datasets-count
@@ -116,11 +99,10 @@ namespace TradingStrategies.Backtesting.Optimizers
             }
         }
 
-        /// <summary>
-        /// The very first run for this optimization. Sets up everything for the entire optimization. Run once for one optimization session.
-        /// </summary>
         public override void FirstRun()
         {
+            base.FirstRun();
+
             mainWatch.Restart();
 
             FullCollect();
@@ -366,7 +348,7 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private void PopulateUI()
         {
-            var optimizationResultListView = (ListView)((TabControl)((UserControl)this.Host).Controls[0]).TabPages[1].Controls[0];
+            var optimizationResultListView = OptimizationFormExtractor.ExtractOptimizationResultListView(this);
 
             var rows = executors.SelectMany(x => x.ResultRows).ToArray();
 
@@ -519,7 +501,7 @@ namespace TradingStrategies.Backtesting.Optimizers
 
         private StrategyScorecard CopySelectedScoreCard()
         {
-            var scorecard = scorecardProvider.GetSelectedScorecard();
+            var scorecard = ScorecardProvider.GetSelectedScorecard();
             scorecard = (StrategyScorecard)Activator.CreateInstance(scorecard.GetType());
             return scorecard;
         }

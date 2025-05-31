@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Windows.Forms;
+using TradingStrategies.Backtesting.Optimizers.Utility;
 using WealthLab;
 using WealthLab.Visualizers;
 using WealthLab.Visualizers.MS123;
@@ -37,7 +38,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         }
     }
 
-    internal interface IScorecardProvider
+    public interface IScorecardProvider
     {
         StrategyScorecard GetSelectedScorecard();
     }
@@ -59,7 +60,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         public ScorecardProvider(SettingsManager settingsManager, Optimizer optimizer)
         {
             _current = GetScorecardFromSettings(settingsManager);   //initially selected
-            var box = GetScorecardBox(optimizer);
+            var box = OptimizationFormExtractor.ExtractScorecardBox(optimizer);
             box.SelectedValueChanged += Box_SelectedValueChanged;   //updates from ui
         }
 
@@ -71,11 +72,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         private void Box_SelectedValueChanged(object sender, EventArgs args)
         {
             _current = (StrategyScorecard)((ComboBox)sender).SelectedItem;
-        }
-
-        private static ComboBox GetScorecardBox(Optimizer optimizer)
-        {
-            return (ComboBox)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[0].Controls[0].Controls[1];
         }
 
         private static StrategyScorecard GetScorecardFromSettings(SettingsManager settingsManager)
