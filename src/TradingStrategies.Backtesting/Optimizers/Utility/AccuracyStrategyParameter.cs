@@ -28,6 +28,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Utility
             Step = Convert.ToDecimal(nativeParameter.Step);
         }
 
+        public long StepsRetain => IsEnabled ? Math.Max(0, Convert.ToInt64(Math.Ceiling((Stop - Value) / Step))) : 0;
+
         public bool MoveValue()
         {
             if (!IsEnabled || Step == 0)

@@ -28,6 +28,7 @@ namespace TradingStrategies.Utilities
     {
         private long iterationTicks;
         private readonly DateTimeKind iterationTicksKind;
+        private static readonly long maxTicks = DateTime.MaxValue.Ticks;
 
         private readonly IReadOnlyDictionary<Bars, Node> barsMap;
         private readonly int barsCount;
@@ -53,6 +54,12 @@ namespace TradingStrategies.Utilities
         {
             barsCount = barCollection.Count;
 
+            if (barsCount == 0)
+            {
+                var msg = $"this implementation of {nameof(SynchronizedBarIterator)} does not support full empty dataset";
+                throw new ArgumentException(msg, nameof(barCollection));
+            }
+
             longPool = ArrayPoolHelper<long>.PreconfiguredShared;
             nodePool = ArrayPoolHelper<Node>.PreconfiguredShared;
 
@@ -61,8 +68,8 @@ namespace TradingStrategies.Utilities
 #endif
             nodes = nodePool.Rent(barsCount);
 
-            iterationTicks = long.MaxValue;
-            iterationTicksKind = barCollection.FirstOrDefault()?.Date.FirstOrDefault().Kind ?? default;
+            iterationTicks = maxTicks;
+            iterationTicksKind = barCollection.FirstOrDefault(static b => b.Date.Count > 0)?.Date.First().Kind ?? default;
 
             int i = 0;
             foreach (var bars in barCollection)
@@ -87,10 +94,9 @@ namespace TradingStrategies.Utilities
                 node.count = count;
                 nodes[i] = node;
 
-                var startTicks = ticks[0];
-                if (count > 0 && startTicks < iterationTicks)
+                if (count > 0 && ticks[0] < iterationTicks)
                 {
-                    iterationTicks = startTicks;
+                    iterationTicks = ticks[0];
                 }
 
                 i++;
@@ -146,7 +152,7 @@ namespace TradingStrategies.Utilities
 
         public bool Next()
         {
-            iterationTicks = long.MaxValue;
+            iterationTicks = maxTicks;
             bool isCompleted = true;
 
             var node = seek;

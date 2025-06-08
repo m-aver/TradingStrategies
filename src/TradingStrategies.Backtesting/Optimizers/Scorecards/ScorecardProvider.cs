@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Windows.Forms;
+using TradingStrategies.Backtesting.Optimizers.Utility;
 using WealthLab;
 using WealthLab.Visualizers;
 using WealthLab.Visualizers.MS123;
@@ -37,7 +38,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         }
     }
 
-    internal interface IScorecardProvider
+    public interface IScorecardProvider
     {
         StrategyScorecard GetSelectedScorecard();
     }
@@ -50,13 +51,16 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         const string ExtendedScorecard = "Extended Scorecard";
         const string MS123Scorecard = "MS123 Scorecard";
         const string MS123ScorecardLite = "MS123 Scorecard (No closed equity)";
+        const string BasicExtendedScorecard = Scorecards.BasicExScorecard.DisplayName;
+        const string FilteringScorecard = Scorecards.FilteringScorecard.DisplayName;
+        const string LongShortScorecard = Scorecards.LongShortScorecard.DisplayName;
 
         private StrategyScorecard _current;
 
         public ScorecardProvider(SettingsManager settingsManager, Optimizer optimizer)
         {
             _current = GetScorecardFromSettings(settingsManager);   //initially selected
-            var box = GetScorecardBox(optimizer);
+            var box = OptimizationFormExtractor.ExtractScorecardBox(optimizer);
             box.SelectedValueChanged += Box_SelectedValueChanged;   //updates from ui
         }
 
@@ -68,11 +72,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         private void Box_SelectedValueChanged(object sender, EventArgs args)
         {
             _current = (StrategyScorecard)((ComboBox)sender).SelectedItem;
-        }
-
-        private static ComboBox GetScorecardBox(Optimizer optimizer)
-        {
-            return (ComboBox)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[0].Controls[0].Controls[1];
         }
 
         private static StrategyScorecard GetScorecardFromSettings(SettingsManager settingsManager)
@@ -88,6 +87,9 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
                 ExtendedScorecard => new ExtendedScorecard(),
                 MS123Scorecard => new MS123Scorecard(),
                 MS123ScorecardLite => new MS123ScorecardLite(),
+                BasicExtendedScorecard => new BasicExScorecard(),
+                FilteringScorecard => new FilteringScorecard(),
+                LongShortScorecard => new LongShortScorecard(),
                 _ => new BasicScorecard(),
             };
         }

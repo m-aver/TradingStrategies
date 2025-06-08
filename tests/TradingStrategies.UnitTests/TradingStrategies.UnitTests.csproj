@@ -20,6 +20,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\TradingStrategies.Backtesting\TradingStrategies.Backtesting.csproj" />
 		<ProjectReference Include="..\..\src\TradingStrategies.Utilities\TradingStrategies.Utilities.csproj" />
+		<ProjectReference Include="..\..\src\TradingStrategies.Generators\TradingStrategies.Generators.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

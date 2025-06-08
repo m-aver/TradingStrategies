@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
+using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
 namespace TradingStrategies.Backtesting.Core
@@ -12,29 +10,25 @@ namespace TradingStrategies.Backtesting.Core
     /// </summary>
     public class WealthScriptWrapper : WealthScript
     {
-        private IStrategyExecuter _strategy;
+        private readonly IStrategyExecuter _strategy;
 
-        //Avoid using the default values for optimization parameters that match their start values. 
-        //This will generate the optimization start event for ever stategy run		
-        //OptimizationCycleStart event is not generated for the first optimization cycle. 
-        //Instead, use OptimizationStart event
-        public event Action OptimizationStart;
-        public event Action OptimizationCycleStart;
-        public event Action OptimizationComplete;
         public event Action SymbolProcessingStart;
         public event Action SymbolProcessingComplete;
         public event Action DataSetProcessingStart;
         public event Action DataSetProcessingComplete;
 
+        //WARN: use carefully and not for trading logic
+        //there is no guarantee that property was set to true during some optimization process and set to false in some non-optimization processes
         public bool IsOptimizationRun { get; private set; }
-        private List<double> _previousParamValues;
 
         private string _startSymbol;
         private string _finalSymbol;
 
+        private readonly IEqualityComparer<string> _symbolComparer = StringComparer.OrdinalIgnoreCase;
+
         public string StartSymbol
         {
-            get { return _startSymbol; }
+            get => _startSymbol;
             set
             {
                 if (IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize)))
@@ -47,7 +41,7 @@ namespace TradingStrategies.Backtesting.Core
         }
         public string FinalSymbol
         {
-            get { return _finalSymbol; }
+            get => _finalSymbol;
             set
             {
                 if (IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize)))
@@ -59,34 +53,52 @@ namespace TradingStrategies.Backtesting.Core
             }
         }
 
+        private TradingSystemExecutor? _executor;
+        public int TotalPositionsCount => _executor?.MasterPositions.Count ?? 0;
+
         public WealthScriptWrapper()
         {
             _strategy = StrategyFactory.CreateStrategyInstance(this);
             _strategy.Initialize();
         }
 
+        private bool ValidateBars()
+        {
+            //check for symbol bars (i.e. they may be filtered by ui)
+            var hasValidBars = Bars.Count > 0;
+
+            if (!hasValidBars)
+                PrintInvalidBarsWarning();
+
+            return hasValidBars;
+        }
+
         private bool ValidateSymbol()
         {
+            if (_startSymbol is null && _finalSymbol is null)
+            {
+                return true;
+            }
+
             //need since DataSetSymbols is null when constructor is called
-            if (_startSymbol != null && !DataSetSymbols.Contains(_startSymbol))
+            if (_startSymbol != null && !DataSetSymbols.Contains(_startSymbol, _symbolComparer))
                 throw new Exception($"{nameof(StartSymbol)} not correct symbol name, check existing dataset items");
-            if (_finalSymbol != null && !DataSetSymbols.Contains(_finalSymbol))
+            if (_finalSymbol != null && !DataSetSymbols.Contains(_finalSymbol, _symbolComparer))
                 throw new Exception($"{nameof(FinalSymbol)}: not correct symbol name, check existing dataset items");
 
             //check for null to avoid symbol filtering if they is not assigned from outside
+            var inStartRange = _startSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) >= DataSetSymbols.IndexOf(StartSymbol);
+            var inFinalRange = _finalSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) <= DataSetSymbols.IndexOf(FinalSymbol);
+
             return
-                (_startSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) >= DataSetSymbols.IndexOf(StartSymbol)) &&
-                (_finalSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) <= DataSetSymbols.IndexOf(FinalSymbol));
+                inStartRange &&
+                inFinalRange;
         }
 
         protected override void Execute()
         {
-            if (ValidateSymbol())
+            if (ValidateSymbol() && ValidateBars())
             {
-                OnOptimizationStart();
-
-                OnOptimizationCycleStart();
-
                 OnDataSetProcessingStart();
 
                 OnSymbolProcessingStart();
@@ -97,87 +109,14 @@ namespace TradingStrategies.Backtesting.Core
                 }
                 catch (Exception ex)
                 {
-                    PrintDebug
-                        (
-                        " (" + Bars.Symbol + ") " +
-                        "an exception was generated in the user execution method: " +
-                        ex.Message
-                        );
+                    var msg = $"an exception was generated in the user execution method: {ex.Message}";
+
+                    PrintDebug(msg);
                 }
 
                 OnSymbolProcessingComplete();
 
                 OnDataSetProcessingComplete();
-
-                OnOptimizationComplete();
-            }
-        }
-
-        private void OnOptimizationStart()
-        {
-            if (Bars.Symbol == (StartSymbol ?? DataSetSymbols.First()) &&
-                Parameters != null &&
-                Parameters.Count > 0 &&
-                Parameters.All(param => param.Value == param.Start))
-            {
-                try
-                {
-                    Action optimizationStart = OptimizationStart;
-                    if (optimizationStart != null)
-                        optimizationStart.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(" [optimization start handlers exception] " + ex.Message, ex);
-                }
-
-                IsOptimizationRun = true;
-                _previousParamValues = Parameters.Select(param => param.Start).ToList();
-            }
-        }
-
-        private void OnOptimizationCycleStart()
-        {
-            if (IsOptimizationRun &&
-                Bars.Symbol == (StartSymbol ?? DataSetSymbols.First()) &&
-                !Parameters.All(param => param.Value == _previousParamValues[Parameters.IndexOf(param)]))
-            {
-                try
-                {
-                    Action optimizationCycleStart = OptimizationCycleStart;
-                    if (optimizationCycleStart != null)
-                        optimizationCycleStart.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(" [optimization cycle start handlers exception] " + ex.Message, ex);
-                }
-
-                _previousParamValues = Parameters.Select(param => param.Value).ToList();
-            }
-        }
-
-        private void OnOptimizationComplete()
-        {
-            if (IsOptimizationRun &&
-                Bars.Symbol == (FinalSymbol ?? DataSetSymbols.Last()) &&
-                Parameters != null &&
-                Parameters.Count > 0 &&
-                Parameters.All(param => param.Value == param.Stop))
-            {
-                try
-                {
-                    Action optimizationComplete = OptimizationComplete;
-                    if (optimizationComplete != null)
-                        optimizationComplete.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(" [optimization complete handlers exception] " + ex.Message, ex);
-                }
-
-                IsOptimizationRun = false;
-                _previousParamValues.Clear();
             }
         }
 
@@ -185,10 +124,7 @@ namespace TradingStrategies.Backtesting.Core
         {
             try
             {
-                Action symbolProcessingStart = SymbolProcessingStart;
-
-                if (symbolProcessingStart != null)
-                    symbolProcessingStart.Invoke();
+                SymbolProcessingStart?.Invoke();
             }
             catch (Exception ex)
             {
@@ -200,10 +136,7 @@ namespace TradingStrategies.Backtesting.Core
         {
             try
             {
-                Action symbolProcessingComplete = SymbolProcessingComplete;
-
-                if (symbolProcessingComplete != null)
-                    symbolProcessingComplete.Invoke();
+                SymbolProcessingComplete?.Invoke();
             }
             catch (Exception ex)
             {
@@ -213,14 +146,17 @@ namespace TradingStrategies.Backtesting.Core
 
         private void OnDataSetProcessingStart()
         {
-            if (Bars.Symbol == (StartSymbol ?? DataSetSymbols.First()))
+            //StrategyWindowID is not set during regular optimization (from WealthLabPro.Optimization class), seems there's useful bug in WealthLab
+            //but for example it is set while WFO-optimization, and maybe is not set while some other processes
+            IsOptimizationRun = base.StrategyWindowID == 0;
+
+            _executor = WealthScriptHelper.ExtractExecutor(this);
+
+            if (_symbolComparer.Equals(Bars.Symbol, StartSymbol ?? DataSetSymbols.First()))
             {
                 try
                 {
-                    Action dataSetProcessingStart = DataSetProcessingStart;
-
-                    if (dataSetProcessingStart != null)
-                        dataSetProcessingStart.Invoke();
+                    DataSetProcessingStart?.Invoke();
                 }
                 catch (Exception ex)
                 {
@@ -231,14 +167,11 @@ namespace TradingStrategies.Backtesting.Core
 
         private void OnDataSetProcessingComplete()
         {
-            if (Bars.Symbol == (FinalSymbol ?? DataSetSymbols.Last()))
+            if (_symbolComparer.Equals(Bars.Symbol, FinalSymbol ?? DataSetSymbols.Last()))
             {
                 try
                 {
-                    Action dataSetProcessingComplete = DataSetProcessingComplete;
-
-                    if (dataSetProcessingComplete != null)
-                        dataSetProcessingComplete.Invoke();
+                    DataSetProcessingComplete?.Invoke();
                 }
                 catch (Exception ex)
                 {
@@ -247,18 +180,28 @@ namespace TradingStrategies.Backtesting.Core
             }
         }
 
+        private void PrintInvalidBarsWarning()
+        {
+            var msg = """
+                    invalid bars detected (i.e. filtered by ui), 
+                    it may be dangerous because dataset processing and optimization processing events may not be fired: 
+                    if filtered bars is first or last of entire dataset
+                    """;
+            PrintDebug(msg);
+        }
+
+        //interceptor for debug messages
+        new public void PrintDebug(string message)
+        {
+            var metaInfo = $"strategy: {StrategyName}; symbol: {Bars.Symbol}; date: {DateTime.Now.ToShortTimeString()};{Environment.NewLine}";
+            base.PrintDebug(metaInfo + message);
+        }
+
         //need for reason of protected access to default CreateParameter method
         new public StrategyParameter CreateParameter(string name, double defaultValue, double start, double stop, double step)
         {
-            if (defaultValue == start)
-                throw new ArgumentException(
-                    "Avoid using the default values for optimization parameters that match their start values." +
-                    "Instead, try to find other way to test these parameter values", nameof(defaultValue));
-            else
-            {
-                var param = base.CreateParameter(name, defaultValue, start, stop, step);
-                return param;
-            }
+            var param = base.CreateParameter(name, defaultValue, start, stop, step);
+            return param;
         }
 
         private bool IsCallFromInterface<T>(string methodName) where T : class

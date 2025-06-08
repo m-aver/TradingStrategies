@@ -9,6 +9,7 @@ namespace TradingStrategies.UnitTests
         [MemberData(nameof(GetBarDates), parameters: 1)]
         [MemberData(nameof(GetBarDates), parameters: 10)]
         [MemberData(nameof(GetRandomBarDates), parameters: 100)]
+        [MemberData(nameof(GetEmptyBarDates))]
         public void IterateIdentical(DateTime[][] barDates)
         {
             //arrange

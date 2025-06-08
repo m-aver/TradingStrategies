@@ -13,5 +13,7 @@ namespace TradingStrategies.Backtesting.Utility
             BuyFactor = buyFactor;
             SellFactor = sellFactor;
         }
+
+        public static LotsFactors Neutral = new(1, 1);
     }
 }

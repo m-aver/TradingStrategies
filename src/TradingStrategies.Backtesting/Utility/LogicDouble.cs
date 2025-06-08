@@ -5,7 +5,7 @@ namespace TradingStrategies.Backtesting.Utility
     /// <summary>
     /// Represents a double number that may take values only from the [0,1] span.
     /// </summary>
-    public struct LogicDouble
+    public readonly struct LogicDouble
     {
         public const double MaxValue = 1;
         public const double MinValue = 0;
@@ -29,6 +29,9 @@ namespace TradingStrategies.Backtesting.Utility
 
         public static double operator + (LogicDouble left, double right) => left.Value + right;
         public static double operator - (LogicDouble left, double right) => left.Value - right;
+        public static double operator *(LogicDouble left, double right) => left.Value * right;
+        public static double operator /(LogicDouble left, double right) => left.Value / right;
+
         public static implicit operator double (LogicDouble val) => val.Value;
         public static explicit operator LogicDouble(double val)
         {

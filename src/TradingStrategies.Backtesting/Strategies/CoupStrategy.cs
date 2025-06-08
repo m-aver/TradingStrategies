@@ -7,12 +7,14 @@ using WealthLab.Indicators;
 using TradingStrategies.Backtesting.Core;
 using TradingStrategies.Backtesting.Indicators;
 using TradingStrategies.Backtesting.Utility;
+using TradingStrategies.Backtesting.Tools;
 
 namespace TradingStrategies.Backtesting.Strategies
 {
     /// <summary>
     /// Simple coup strategy that based on the Bollinger Bands indicator.
     /// </summary>
+    [StrategyIntegration(nameof(CoupStrategy))]
     internal partial class CoupStrategy : IStrategyExecuter
     {
         //use the _sw variable to access the WealthScript state
@@ -64,9 +66,6 @@ namespace TradingStrategies.Backtesting.Strategies
             equitySize = startingCapital;
 
             //event handlers
-            _sw.OptimizationStart += OptimizationStartHandler;
-            _sw.OptimizationCycleStart += OptimizationCycleStartHandler;
-            _sw.OptimizationComplete += OptimizationCompleteHandler;
             _sw.SymbolProcessingStart += SymbolProcessingStartHandler;
             _sw.SymbolProcessingComplete += SymbolProcessingCompleteHandler;
             _sw.DataSetProcessingStart += DataSetProcessingStartHandler;
@@ -141,11 +140,10 @@ namespace TradingStrategies.Backtesting.Strategies
                 #endregion
 
                 DateTime currBarDate = _sw.Date[bar];
-                DateTime nextBarDate = _sw.Date[bar + 1];
 
                 //trade logic
                 if (currBarDate.Date >= entryDate.Date &&
-                    nextBarDate.Date < expireDate.Date &&
+                    currBarDate.Date < expireDate.Date &&
                     currBarDate.TimeOfDay > morningTime &&
                     currBarDate.TimeOfDay < eveningTime)
                 {
@@ -167,7 +165,8 @@ namespace TradingStrategies.Backtesting.Strategies
                     #region ENTRY TO TRADE
                     if (!_sw.IsLastPositionActive)
                     {
-                        LotsFactors lotsFactors = default(LotsFactors);
+                        var lotsFactors = LotsFactors.Neutral;
+
                         if (isSignalBuy || isSignalShort)
                         {
                             lotsFactors = CalculateFactors(bar);
@@ -175,19 +174,19 @@ namespace TradingStrategies.Backtesting.Strategies
 
                             stopUp = _sw.Close[bar] * (1 + stopPercent / 100);
                             stopDown = _sw.Close[bar] * (1 - stopPercent / 100);
-
-                            _sw.SetShareSize(lotNum);   //нужно после умножения на кэф
                         }
 
                         if (isSignalBuy)
                         {
                             lotNum *= lotsFactors.BuyFactor;
+                            _sw.SetShareSize(lotNum);
                             _sw.BuyAtClose(bar, "Buy");
                         }
 
                         if (isSignalShort)
                         {
                             lotNum *= lotsFactors.SellFactor;
+                            _sw.SetShareSize(lotNum);
                             _sw.ShortAtClose(bar, "Short");
                         }
                     }
@@ -205,7 +204,7 @@ namespace TradingStrategies.Backtesting.Strategies
                 #endregion
                 #region EXIT ON EXPIRING
                 if (_sw.IsLastPositionActive &&
-                    nextBarDate.Date >= expireDate.Date)
+                    currBarDate.Date >= expireDate.Date)
                 {
                     equitySize += GetIncomeOfLastTrade(bar);
                     _sw.ExitAtClose(bar, Position.AllPositions, equitySize.ToString() + "_" + "Exit on expiring");
@@ -306,19 +305,6 @@ namespace TradingStrategies.Backtesting.Strategies
         }
 
         #region EVENT HANDLERS
-        private void OptimizationStartHandler()
-        {
-            _sw.PrintDebug("optimization has been started");
-        }
-
-        private void OptimizationCycleStartHandler()
-        {
-        }
-
-        private void OptimizationCompleteHandler()
-        {
-        }
-
         private void SymbolProcessingStartHandler()
         {
             //_sw.PrintDebug(_sw.Bars.Symbol);	
@@ -344,7 +330,6 @@ namespace TradingStrategies.Backtesting.Strategies
         #endregion
     }
 
-
     #region Core code
     internal partial class CoupStrategy
     {
@@ -353,6 +338,18 @@ namespace TradingStrategies.Backtesting.Strategies
         public CoupStrategy(WealthScriptWrapper scriptWrapper)
         {
             _sw = scriptWrapper;
+        }
+    }
+    #endregion
+
+    #region Filter
+    internal partial class CoupStrategy : IStrategyResultFilter
+    {
+        public bool FilterResults()
+        {
+            return
+                equitySize <= startingCapital &&
+                _sw.TotalPositionsCount < 10;
         }
     }
     #endregion
