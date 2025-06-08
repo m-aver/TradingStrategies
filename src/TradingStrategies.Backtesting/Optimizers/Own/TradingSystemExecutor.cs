@@ -7,105 +7,105 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class TradingSystemExecutorOwn
 {
-    private EventHandler<StrategyEventArgs> eventHandler_0;
+    private EventHandler<StrategyEventArgs> _lookupStrategyEvent;
 
-    private EventHandler<DataSourceLookupEventArgs> eventHandler_1;
+    private EventHandler<DataSourceLookupEventArgs> _lookupDataSourceEvent;
 
-    private EventHandler<LoadSymbolEventArgs> eventHandler_2;
+    private EventHandler<LoadSymbolEventArgs> _externalSymbolRequestedEvent;
 
-    private EventHandler<LoadSymbolFromDataSetEventArgs> eventHandler_3;
+    private EventHandler<LoadSymbolFromDataSetEventArgs> _externalSymbolFromDataSetRequestedEvent;
 
-    private EventHandler<BarsEventArgs> eventHandler_4;
+    private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
 
-    private EventHandler<BarsEventArgs> eventHandler_5;
+    private EventHandler<BarsEventArgs> _executionCompletedForChildStrategySymbolEvent;
 
-    private EventHandler<WSExceptionEventArgs> eventHandler_6;
+    private EventHandler<WSExceptionEventArgs> _wealthScriptExceptionEvent;
 
-    private EventHandler<EventArgs> eventHandler_7;
+    private EventHandler<EventArgs> _flushDebugWindowEvent;
 
-    private EventHandler<EventArgs> eventHandler_8;
+    private EventHandler<EventArgs> _clearDebugWindowEvent;
 
-    private EventHandler<DebugStringEventArgs> eventHandler_9;
+    private EventHandler<DebugStringEventArgs> _printToStatusBarEvent;
 
-    private EventHandler<ChartBitmapEventArgs> eventHandler_10;
+    private EventHandler<ChartBitmapEventArgs> _chartBitmapRequestedEvent;
 
-    private EventHandler<TrendLineEventArgs> eventHandler_11;
+    private EventHandler<TrendLineEventArgs> _trendlineGetValueEvent;
 
-    private EventHandler<StrategyParameterEventArgs> eventHandler_12;
+    private EventHandler<StrategyParameterEventArgs> _setParameterValuesEvent;
 
     public int StrategyWindowID;
 
     private static bool bool_0 = false;
 
-    private ChartRenderer chartRenderer_0;
+    private ChartRenderer _renderer;
 
-    private BarsLoader barsLoader_0;
+    private BarsLoader _barsLoader;
 
-    private FundamentalsLoader fundamentalsLoader_0;
+    private FundamentalsLoader _fundamentalsLoader;
 
-    private bool bool_1 = true;
+    private bool _buildEquityCurves = true;
 
-    private bool bool_2;
+    private bool _exceptionEvents;
 
-    private Bars bars_0;
+    private Bars _barsBeingProcessed;
 
-    private Commission commission_0;
+    private Commission _commission;
 
-    private bool bool_3;
+    private bool _enableSlippage;
 
-    private bool bool_4;
+    private bool _worstTradeSimulation;
 
-    private string string_0;
+    private string _benchmarkSymbol;
 
-    private bool bool_5;
+    private bool _benchmarkBuyAndHoldOn;
 
-    private bool bool_6;
+    private bool _limitOrderSlippage;
 
-    private double double_0 = 1.0;
+    private double _slippageUnits = 1.0;
 
-    private int int_0 = 1;
+    private int _slippageTicks = 1;
 
-    private bool bool_7;
+    private bool _roundLots;
 
-    private bool bool_8;
+    private bool _roundLots50;
 
-    private bool bool_9;
+    private bool _applyCommission;
 
-    private List<string> list_0 = new List<string>();
+    private List<string> _debugStrings = new List<string>();
 
-    private bool bool_10;
+    private bool _isStreaming;
 
-    private double double_1;
+    private double _overrideShareSize;
 
-    private DataSource dataSource_0;
+    private DataSource _dataSet;
 
-    private double double_2;
+    private double _riskStopLevel;
 
-    private bool bool_11;
+    private bool _riskStopLevelNotSet;
 
     public List<Position> _activePositions = new List<Position>();
 
-    private bool bool_12;
+    private bool _limitDaySimulation;
 
-    private double double_3;
+    private double _cashRate;
 
-    private double double_4;
+    private double _marginRate;
 
-    private bool bool_13;
+    private bool _applyInterest;
 
-    private bool bool_14;
+    private bool _applyDividends;
 
-    private double double_5;
+    private double _cashAdjustmentFactor;
 
-    private double double_6;
+    private double _marginAdjustmentFactor;
 
-    private string string_1 = "";
+    private string _strategyName = "";
 
-    private bool bool_15;
+    private bool _reduceQtyBasedOnVolume;
 
-    private double double_7 = 10.0;
+    private double _redcuceQtyPct = 10.0;
 
-    private double double_8;
+    private double _autoProfitLevel;
 
     private PosSizer posSizer_0;
 
@@ -113,21 +113,21 @@ public class TradingSystemExecutorOwn
 
     private bool bool_16 = true;
 
-    private WealthScript wealthScript_0;
+    private WealthScript _wealthScriptExecuting;
 
     private List<Bars> list_1 = new List<Bars>();
 
     private List<Bars> list_2 = new List<Bars>();
 
-    private PositionSize positionSize_0 = new PositionSize();
+    private PositionSize _posSize = new PositionSize();
 
-    private List<Position> list_3 = new List<Position>();
+    private List<Position> _masterPositions = new List<Position>();
 
-    private List<Alert> list_4 = new List<Alert>();
+    private List<Alert> _masterAlerts = new List<Alert>();
 
-    private List<Position> list_5 = new List<Position>();
+    private List<Position> _currentPositions = new List<Position>();
 
-    private List<Alert> list_6 = new List<Alert>();
+    private List<Alert> _currentAlerts = new List<Alert>();
 
     private SystemPerformance systemPerformance_0;
 
@@ -137,9 +137,9 @@ public class TradingSystemExecutorOwn
 
     private Dictionary<string, Bars> dictionary_0 = new Dictionary<string, Bars>();
 
-    private static bool bool_17 = false;
+    private static bool _tnp = false;
 
-    private static double double_9 = 1.0;
+    private static double _tnpAdjustment = 1.0;
 
     private static int int_1 = 0;
 
@@ -148,46 +148,46 @@ public class TradingSystemExecutorOwn
     private List<Bars> list_7 = new List<Bars>();
 
     [CompilerGenerated]
-    private Strategy strategy_0;
+    private Strategy _strategy;
 
     [CompilerGenerated]
-    private bool bool_18;
+    private bool _isChildStrategy;
 
     [CompilerGenerated]
-    private SystemPerformance systemPerformance_1;
+    private SystemPerformance _parentSysPerf;
 
     [CompilerGenerated]
-    private string string_2;
+    private string _dividendItemName;
 
     [CompilerGenerated]
-    private bool bool_19;
+    private bool _applyWFODateRange;
 
     [CompilerGenerated]
-    private DateTime dateTime_0;
+    private DateTime _wFOStartDate;
 
     [CompilerGenerated]
-    private DateTime dateTime_1;
+    private DateTime _wFOEndDate;
 
     [CompilerGenerated]
-    private int int_2;
+    private int _pricingDecimalPlaces;
 
     [CompilerGenerated]
-    private bool bool_20;
+    private bool _noDecimalRoundingForLimitStopPrice;
 
     [CompilerGenerated]
-    private object object_0;
+    private object _tag;
 
     public Strategy Strategy
     {
         [CompilerGenerated]
         get
         {
-            return strategy_0;
+            return _strategy;
         }
         [CompilerGenerated]
         set
         {
-            strategy_0 = value;
+            _strategy = value;
         }
     }
 
@@ -196,12 +196,12 @@ public class TradingSystemExecutorOwn
         [CompilerGenerated]
         get
         {
-            return bool_18;
+            return _isChildStrategy;
         }
         [CompilerGenerated]
         set
         {
-            bool_18 = value;
+            _isChildStrategy = value;
         }
     }
 
@@ -210,12 +210,12 @@ public class TradingSystemExecutorOwn
         [CompilerGenerated]
         get
         {
-            return systemPerformance_1;
+            return _parentSysPerf;
         }
         [CompilerGenerated]
         set
         {
-            systemPerformance_1 = value;
+            _parentSysPerf = value;
         }
     }
 
@@ -224,12 +224,12 @@ public class TradingSystemExecutorOwn
         [CompilerGenerated]
         get
         {
-            return string_2;
+            return _dividendItemName;
         }
         [CompilerGenerated]
         set
         {
-            string_2 = value;
+            _dividendItemName = value;
         }
     }
 
@@ -237,11 +237,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return chartRenderer_0;
+            return _renderer;
         }
         set
         {
-            chartRenderer_0 = value;
+            _renderer = value;
         }
     }
 
@@ -249,11 +249,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return barsLoader_0;
+            return _barsLoader;
         }
         set
         {
-            barsLoader_0 = value;
+            _barsLoader = value;
         }
     }
 
@@ -261,11 +261,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return fundamentalsLoader_0;
+            return _fundamentalsLoader;
         }
         set
         {
-            fundamentalsLoader_0 = value;
+            _fundamentalsLoader = value;
         }
     }
 
@@ -273,11 +273,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return positionSize_0;
+            return _posSize;
         }
         set
         {
-            positionSize_0 = value;
+            _posSize = value;
         }
     }
 
@@ -285,11 +285,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return commission_0;
+            return _commission;
         }
         set
         {
-            commission_0 = value;
+            _commission = value;
         }
     }
 
@@ -297,11 +297,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_9;
+            return _applyCommission;
         }
         set
         {
-            bool_9 = value;
+            _applyCommission = value;
         }
     }
 
@@ -309,11 +309,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_13;
+            return _applyInterest;
         }
         set
         {
-            bool_13 = value;
+            _applyInterest = value;
         }
     }
 
@@ -321,12 +321,12 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return double_3;
+            return _cashRate;
         }
         set
         {
-            double_3 = value;
-            double_5 = Math.Exp(Math.Log(1.0 + double_3 / 100.0) / 365.25);
+            _cashRate = value;
+            _cashAdjustmentFactor = Math.Exp(Math.Log(1.0 + _cashRate / 100.0) / 365.25);
         }
     }
 
@@ -334,12 +334,12 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return double_4;
+            return _marginRate;
         }
         set
         {
-            double_4 = value;
-            double_6 = Math.Exp(Math.Log(1.0 + double_4 / 100.0) / 365.25);
+            _marginRate = value;
+            _marginAdjustmentFactor = Math.Exp(Math.Log(1.0 + _marginRate / 100.0) / 365.25);
         }
     }
 
@@ -347,7 +347,7 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_14;
+            return _applyDividends;
         }
         set
         {
@@ -359,12 +359,12 @@ public class TradingSystemExecutorOwn
         [CompilerGenerated]
         get
         {
-            return bool_19;
+            return _applyWFODateRange;
         }
         [CompilerGenerated]
         set
         {
-            bool_19 = value;
+            _applyWFODateRange = value;
         }
     }
 
@@ -372,11 +372,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_2;
+            return _exceptionEvents;
         }
         set
         {
-            bool_2 = value;
+            _exceptionEvents = value;
         }
     }
 
@@ -384,7 +384,7 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_1;
+            return _buildEquityCurves;
         }
         set
         {
@@ -395,11 +395,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return dataSource_0;
+            return _dataSet;
         }
         set
         {
-            dataSource_0 = value;
+            _dataSet = value;
         }
     }
 
@@ -407,11 +407,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return string_1;
+            return _strategyName;
         }
         set
         {
-            string_1 = value;
+            _strategyName = value;
         }
     }
 
@@ -419,11 +419,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_15;
+            return _reduceQtyBasedOnVolume;
         }
         set
         {
-            bool_15 = value;
+            _reduceQtyBasedOnVolume = value;
         }
     }
 
@@ -431,7 +431,7 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return double_7;
+            return _redcuceQtyPct;
         }
         set
         {
@@ -450,17 +450,17 @@ public class TradingSystemExecutorOwn
         }
     }
 
-    public IList<string> DebugStrings => list_0;
+    public IList<string> DebugStrings => _debugStrings;
 
     public bool WorstTradeSimulation
     {
         get
         {
-            return bool_4;
+            return _worstTradeSimulation;
         }
         set
         {
-            bool_4 = value;
+            _worstTradeSimulation = value;
         }
     }
 
@@ -468,11 +468,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_5;
+            return _benchmarkBuyAndHoldOn;
         }
         set
         {
-            bool_5 = value;
+            _benchmarkBuyAndHoldOn = value;
         }
     }
 
@@ -480,11 +480,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return string_0;
+            return _benchmarkSymbol;
         }
         set
         {
-            string_0 = value;
+            _benchmarkSymbol = value;
         }
     }
 
@@ -492,11 +492,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_3;
+            return _enableSlippage;
         }
         set
         {
-            bool_3 = value;
+            _enableSlippage = value;
         }
     }
 
@@ -504,11 +504,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_6;
+            return _limitOrderSlippage;
         }
         set
         {
-            bool_6 = value;
+            _limitOrderSlippage = value;
         }
     }
 
@@ -516,11 +516,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return double_0;
+            return _slippageUnits;
         }
         set
         {
-            double_0 = value;
+            _slippageUnits = value;
         }
     }
 
@@ -528,11 +528,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return int_0;
+            return _slippageTicks;
         }
         set
         {
-            int_0 = value;
+            _slippageTicks = value;
         }
     }
 
@@ -540,11 +540,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_12;
+            return _limitDaySimulation;
         }
         set
         {
-            bool_12 = value;
+            _limitDaySimulation = value;
         }
     }
 
@@ -552,11 +552,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_7;
+            return _roundLots;
         }
         set
         {
-            bool_7 = value;
+            _roundLots = value;
         }
     }
 
@@ -564,11 +564,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_8;
+            return _roundLots50;
         }
         set
         {
-            bool_8 = value;
+            _roundLots50 = value;
         }
     }
 
@@ -576,11 +576,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return bool_10;
+            return _isStreaming;
         }
         set
         {
-            bool_10 = value;
+            _isStreaming = value;
         }
     }
 
@@ -588,11 +588,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return double_1;
+            return _overrideShareSize;
         }
         set
         {
-            double_1 = value;
+            _overrideShareSize = value;
             if (PosSize.Mode == PosSizeMode.ScriptOverride)
             {
                 PosSize.OverrideShareSize = value;
@@ -605,12 +605,12 @@ public class TradingSystemExecutorOwn
         [CompilerGenerated]
         get
         {
-            return int_2;
+            return _pricingDecimalPlaces;
         }
         [CompilerGenerated]
         set
         {
-            int_2 = value;
+            _pricingDecimalPlaces = value;
         }
     }
 
@@ -619,20 +619,20 @@ public class TradingSystemExecutorOwn
         [CompilerGenerated]
         get
         {
-            return bool_20;
+            return _noDecimalRoundingForLimitStopPrice;
         }
         [CompilerGenerated]
         set
         {
-            bool_20 = value;
+            _noDecimalRoundingForLimitStopPrice = value;
         }
     }
 
-    public List<Position> MasterPositions => list_3;
+    public List<Position> MasterPositions => _masterPositions;
 
-    internal List<Position> CurrentPositions => list_5;
+    internal List<Position> CurrentPositions => _currentPositions;
 
-    internal List<Alert> CurrentAlerts => list_6;
+    internal List<Alert> CurrentAlerts => _currentAlerts;
 
     internal List<Position> ActivePositions => _activePositions;
 
@@ -640,11 +640,11 @@ public class TradingSystemExecutorOwn
     {
         get
         {
-            return double_2;
+            return _riskStopLevel;
         }
         set
         {
-            double_2 = value;
+            _riskStopLevel = value;
         }
     }
 
@@ -676,10 +676,10 @@ public class TradingSystemExecutorOwn
         Strategy = strategy_1;
         systemPerformance_0.Strategy = strategy_1;
         list_7.Clear();
-        double_2 = 0.0;
-        double_8 = 0.0;
-        list_0.Clear();
-        bool_11 = false;
+        _riskStopLevel = 0.0;
+        _autoProfitLevel = 0.0;
+        _debugStrings.Clear();
+        _riskStopLevelNotSet = false;
         if (barsCollection == null || barsCollection.Count == 0)
         {
             return;
@@ -695,7 +695,7 @@ public class TradingSystemExecutorOwn
         Performance.Scale = barsCollection[0].Scale;
         Performance.BarInterval = barsCollection[0].BarInterval;
         Performance.PositionSize = PosSize;
-        wealthScript_0 = wealthScript_1;
+        _wealthScriptExecuting = wealthScript_1;
         PositionSize posSize = PosSize;
         bool_16 = PosSize.RawProfitMode;
         if (!PosSize.RawProfitMode && PosSize.Mode != PosSizeMode.ScriptOverride)
@@ -713,10 +713,10 @@ public class TradingSystemExecutorOwn
                 foreach (CombinedStrategyInfo combinedStrategyChild in Strategy.CombinedStrategyChildren)
                 {
                     Strategy strategy = null;
-                    if (eventHandler_0 != null)
+                    if (_lookupStrategyEvent != null)
                     {
                         StrategyEventArgs strategyEventArgs = new StrategyEventArgs(combinedStrategyChild.StrategyID.ToString());
-                        eventHandler_0(this, strategyEventArgs);
+                        _lookupStrategyEvent(this, strategyEventArgs);
                         strategy = strategyEventArgs.Strategy;
                     }
 
@@ -744,10 +744,10 @@ public class TradingSystemExecutorOwn
                         list3.AddRange(list);
                         tradingSystemExecutor.DataSet = DataSet;
                     }
-                    else if (eventHandler_1 != null)
+                    else if (_lookupDataSourceEvent != null)
                     {
                         DataSourceLookupEventArgs dataSourceLookupEventArgs = new DataSourceLookupEventArgs(combinedStrategyChild.DataSetName);
-                        eventHandler_1(this, dataSourceLookupEventArgs);
+                        _lookupDataSourceEvent(this, dataSourceLookupEventArgs);
                         if (dataSourceLookupEventArgs.DataSource != null)
                         {
                             BarsLoader barsLoader = new BarsLoader();
@@ -802,8 +802,8 @@ public class TradingSystemExecutorOwn
 
                     WealthScript wealthScript = (WealthScript)strategy.Tag;
                     tradingSystemExecutor.ApplySettings(this);
-                    tradingSystemExecutor.LookupDataSource += eventHandler_1;
-                    tradingSystemExecutor.LookupStrategy += eventHandler_0;
+                    tradingSystemExecutor.LookupDataSource += _lookupDataSourceEvent;
+                    tradingSystemExecutor.LookupStrategy += _lookupStrategyEvent;
                     tradingSystemExecutor.PosSize = combinedStrategyChild.PositionSize;
                     double startingCapital = posSize.StartingCapital;
                     startingCapital = combinedStrategyChild.Allocation.Mode != PosSizeMode.PctEquity ? combinedStrategyChild.Allocation.DollarSize : startingCapital * (combinedStrategyChild.Allocation.PctSize / 100.0);
@@ -831,8 +831,8 @@ public class TradingSystemExecutorOwn
                     }
 
                     tradingSystemExecutor.ExecutionCompletedForSymbol += method_0;
-                    tradingSystemExecutor.ExternalSymbolRequested += eventHandler_2;
-                    tradingSystemExecutor.ExternalSymbolFromDataSetRequested += eventHandler_3;
+                    tradingSystemExecutor.ExternalSymbolRequested += _externalSymbolRequestedEvent;
+                    tradingSystemExecutor.ExternalSymbolFromDataSetRequested += _externalSymbolFromDataSetRequestedEvent;
                     tradingSystemExecutor.ExceptionEvents = true;
                     tradingSystemExecutor.WealthScriptException += method_1;
                     try
@@ -847,11 +847,11 @@ public class TradingSystemExecutorOwn
                     }
 
                     tradingSystemExecutor.ExecutionCompletedForSymbol -= method_0;
-                    tradingSystemExecutor.ExternalSymbolRequested -= eventHandler_2;
-                    tradingSystemExecutor.ExternalSymbolFromDataSetRequested -= eventHandler_3;
+                    tradingSystemExecutor.ExternalSymbolRequested -= _externalSymbolRequestedEvent;
+                    tradingSystemExecutor.ExternalSymbolFromDataSetRequested -= _externalSymbolFromDataSetRequestedEvent;
                     tradingSystemExecutor.WealthScriptException -= method_1;
                     list2.AddRange(tradingSystemExecutor.DebugStrings);
-                    foreach (Position item6 in tradingSystemExecutor.list_3)
+                    foreach (Position item6 in tradingSystemExecutor._masterPositions)
                     {
                         item6.CombinedPriority = combinedStrategyChild.Priority;
                         item6.CSI = combinedStrategyChild;
@@ -874,9 +874,9 @@ public class TradingSystemExecutorOwn
                         }
                     }
 
-                    list_3.AddRange(tradingSystemExecutor.list_3);
-                    tradingSystemExecutor.Performance.RawTrades = tradingSystemExecutor.list_3;
-                    list_4.AddRange(tradingSystemExecutor.Performance.Results.Alerts);
+                    _masterPositions.AddRange(tradingSystemExecutor._masterPositions);
+                    tradingSystemExecutor.Performance.RawTrades = tradingSystemExecutor._masterPositions;
+                    _masterAlerts.AddRange(tradingSystemExecutor.Performance.Results.Alerts);
                     if (!BenchmarkBuyAndHoldON)
                     {
                         foreach (Position position2 in tradingSystemExecutor.systemPerformance_0.ResultsBuyHold.Positions)
@@ -885,10 +885,10 @@ public class TradingSystemExecutorOwn
                         }
                     }
 
-                    tradingSystemExecutor.Performance.Results.TradesNSF = tradingSystemExecutor.list_3.Count - tradingSystemExecutor.Performance.Results.Positions.Count;
+                    tradingSystemExecutor.Performance.Results.TradesNSF = tradingSystemExecutor._masterPositions.Count - tradingSystemExecutor.Performance.Results.Positions.Count;
                     Performance.Results.TradesNSF += tradingSystemExecutor.Performance.Results.TradesNSF;
                     int num = 0;
-                    foreach (Position item8 in tradingSystemExecutor.list_3)
+                    foreach (Position item8 in tradingSystemExecutor._masterPositions)
                     {
                         if (item8.PositionType == PositionType.Long)
                         {
@@ -896,17 +896,17 @@ public class TradingSystemExecutorOwn
                         }
                     }
 
-                    int num2 = tradingSystemExecutor.list_3.Count - num;
+                    int num2 = tradingSystemExecutor._masterPositions.Count - num;
                     tradingSystemExecutor.Performance.ResultsLong.TradesNSF = num - tradingSystemExecutor.Performance.ResultsLong.Positions.Count;
                     Performance.ResultsLong.TradesNSF += tradingSystemExecutor.Performance.ResultsLong.TradesNSF;
                     tradingSystemExecutor.Performance.ResultsShort.TradesNSF = num2 - tradingSystemExecutor.Performance.ResultsShort.Positions.Count;
                     Performance.ResultsShort.TradesNSF += tradingSystemExecutor.Performance.ResultsShort.TradesNSF;
-                    tradingSystemExecutor.LookupDataSource -= eventHandler_1;
-                    tradingSystemExecutor.LookupStrategy -= eventHandler_0;
+                    tradingSystemExecutor.LookupDataSource -= _lookupDataSourceEvent;
+                    tradingSystemExecutor.LookupStrategy -= _lookupStrategyEvent;
                 }
 
-                list_0.Clear();
-                list_0.AddRange(list2);
+                _debugStrings.Clear();
+                _debugStrings.AddRange(list2);
             }
             finally
             {
@@ -921,7 +921,7 @@ public class TradingSystemExecutorOwn
             {
                 foreach (Bars item9 in barsCollection)
                 {
-                    ChartRenderer chartRenderer_ = barsCharted == item9 ? chartRenderer_0 : null;
+                    ChartRenderer chartRenderer_ = barsCharted == item9 ? _renderer : null;
                     method_2(item9, wealthScript_1, chartRenderer_);
                 }
             }
@@ -932,7 +932,7 @@ public class TradingSystemExecutorOwn
             }
         }
 
-        list_3.Sort(this);
+        _masterPositions.Sort(this);
         if (BuildEquityCurves)
         {
             ApplyPositionSize();
@@ -941,9 +941,9 @@ public class TradingSystemExecutorOwn
 
     private void method_0(object sender, BarsEventArgs e)
     {
-        if (eventHandler_5 != null)
+        if (_executionCompletedForChildStrategySymbolEvent != null)
         {
-            eventHandler_5(this, e);
+            _executionCompletedForChildStrategySymbolEvent(this, e);
         }
     }
 
@@ -973,13 +973,13 @@ public class TradingSystemExecutorOwn
         method_11();
         try
         {
-            bars_0 = bars_1;
+            _barsBeingProcessed = bars_1;
             bars_1.method_1();
             if (!bool_0)
             {
-                if (eventHandler_12 != null)
+                if (_setParameterValuesEvent != null)
                 {
-                    eventHandler_12(this, new StrategyParameterEventArgs(wealthScript_1, bars_1.Symbol));
+                    _setParameterValuesEvent(this, new StrategyParameterEventArgs(wealthScript_1, bars_1.Symbol));
                 }
             }
             else if (Strategy.UsePreferredValues)
@@ -987,7 +987,7 @@ public class TradingSystemExecutorOwn
                 Strategy.LoadPreferredValues(bars_1.Symbol, wealthScript_1);
             }
 
-            wealthScript_1.method_4(bars_1, chartRenderer_1, this, dataSource_0);
+            wealthScript_1.method_4(bars_1, chartRenderer_1, this, _dataSet);
             wealthScript_1.RestoreScale();
             bars_1.method_2();
         }
@@ -999,18 +999,18 @@ public class TradingSystemExecutorOwn
                 throw ex;
             }
 
-            if (eventHandler_6 != null)
+            if (_wealthScriptExceptionEvent != null)
             {
                 WSExceptionEventArgs wSExceptionEventArgs = new WSExceptionEventArgs(ex);
                 wSExceptionEventArgs.Strategy = Strategy;
                 wSExceptionEventArgs.Symbol = bars_1.Symbol;
-                eventHandler_6(this, wSExceptionEventArgs);
+                _wealthScriptExceptionEvent(this, wSExceptionEventArgs);
             }
         }
 
-        if (eventHandler_4 != null)
+        if (_executionCompletedForSymbolEvent != null)
         {
-            eventHandler_4(this, new BarsEventArgs(bars_1));
+            _executionCompletedForSymbolEvent(this, new BarsEventArgs(bars_1));
         }
     }
 
@@ -1077,7 +1077,7 @@ public class TradingSystemExecutorOwn
             return;
         }
 
-        systemPerformance_0.RawTrades = list_3;
+        systemPerformance_0.RawTrades = _masterPositions;
         systemPerformance_0.PositionSize = PosSize;
         SystemResults systemResults = new SystemResults(systemPerformance_0);
         if (!BenchmarkBuyAndHoldON)
@@ -1116,7 +1116,7 @@ public class TradingSystemExecutorOwn
             systemPerformance_0.CashReturnRate = 0.0;
         }
 
-        bool_11 = false;
+        _riskStopLevelNotSet = false;
         posSizer_0 = null;
         if (PosSize.Mode == PosSizeMode.SimuScript)
         {
@@ -1150,7 +1150,7 @@ public class TradingSystemExecutorOwn
 
         systemPerformance_0.Results.BuildEquityCurve(ilist_0, this, callbackToSizePositions: true, posSizer_0);
         systemPerformance_0.Results.method_7(bool_0: true);
-        foreach (Position item4 in list_3)
+        foreach (Position item4 in _masterPositions)
         {
             if (item4.Shares > 0.0)
             {
@@ -1178,7 +1178,7 @@ public class TradingSystemExecutorOwn
             }
         }
 
-        foreach (Alert item5 in list_4)
+        foreach (Alert item5 in _masterAlerts)
         {
             SystemPerformance systemPerformance = systemPerformance_0;
             if (item5.AlertType != 0 && item5.AlertType != TradeType.Short)
@@ -1356,10 +1356,10 @@ public class TradingSystemExecutorOwn
     {
         if (!avoidClearingTradeList)
         {
-            list_3.Clear();
+            _masterPositions.Clear();
         }
 
-        list_4.Clear();
+        _masterAlerts.Clear();
         systemPerformance_0.method_2();
         list_1.Clear();
         list_2.Clear();
@@ -1440,7 +1440,7 @@ public class TradingSystemExecutorOwn
 
                     if (RiskStopLevel <= 0.0)
                     {
-                        bool_11 = true;
+                        _riskStopLevelNotSet = true;
                         return 0.0;
                     }
 
@@ -1561,12 +1561,12 @@ public class TradingSystemExecutorOwn
 
     internal Bars method_10(string string_3, bool bool_21)
     {
-        if (wealthScript_0 == null)
+        if (_wealthScriptExecuting == null)
         {
             return new Bars(string_3, BarScale.Daily, 0);
         }
 
-        Bars bars = wealthScript_0.Bars;
+        Bars bars = _wealthScriptExecuting.Bars;
         Bars bars2 = null;
         if (string_3 == bars.Symbol)
         {
@@ -1590,8 +1590,8 @@ public class TradingSystemExecutorOwn
                 BarsLoader.OverrideOnDemandValue = true;
             }
 
-            BarsLoader.method_1(dataSource_0);
-            dataSource_0.Provider.IsStreamingRequest = IsStreaming;
+            BarsLoader.method_1(_dataSet);
+            _dataSet.Provider.IsStreamingRequest = IsStreaming;
             BarDataScale barDataScale = BarsLoader.BarDataScale;
             BarsLoader.Scale = bars.Scale;
             BarsLoader.BarInterval = bars.BarInterval;
@@ -1607,10 +1607,10 @@ public class TradingSystemExecutorOwn
             BarsLoader.BarDataScale = barDataScale;
         }
 
-        if ((bars2 == null || bars2.Count == 0) && eventHandler_2 != null)
+        if ((bars2 == null || bars2.Count == 0) && _externalSymbolRequestedEvent != null)
         {
             LoadSymbolEventArgs loadSymbolEventArgs = new LoadSymbolEventArgs(string_3, bars.Scale, bars.BarInterval);
-            eventHandler_2(this, loadSymbolEventArgs);
+            _externalSymbolRequestedEvent(this, loadSymbolEventArgs);
             bars2 = loadSymbolEventArgs.SymbolData;
             if (bars2 == null)
             {
@@ -1659,6 +1659,6 @@ public class TradingSystemExecutorOwn
 
     internal void method_15(string string_3)
     {
-        list_0.Add(string_3);
+        _debugStrings.Add(string_3);
     }
 }
