@@ -5,7 +5,7 @@ using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
-public class TradingSystemExecutor
+public class TradingSystemExecutorOwn
 {
     private EventHandler<StrategyEventArgs> eventHandler_0;
 
@@ -648,7 +648,7 @@ public class TradingSystemExecutor
         }
     }
 
-    public TradingSystemExecutor()
+    public TradingSystemExecutorOwn()
     {
         systemPerformance_0 = new SystemPerformance(null);
     }
@@ -725,7 +725,7 @@ public class TradingSystemExecutor
                         continue;
                     }
 
-                    TradingSystemExecutor tradingSystemExecutor = new TradingSystemExecutor();
+                    TradingSystemExecutorOwn tradingSystemExecutor = new TradingSystemExecutorOwn();
                     tradingSystemExecutor.isChildStrategy = true;
                     tradingSystemExecutor.BarsLoader = BarsLoader;
                     tradingSystemExecutor.StrategyName = strategy.Name;
@@ -949,7 +949,7 @@ public class TradingSystemExecutor
 
     private void method_1(object sender, WSExceptionEventArgs e)
     {
-        TradingSystemExecutor tradingSystemExecutor = sender as TradingSystemExecutor;
+        TradingSystemExecutorOwn tradingSystemExecutor = sender as TradingSystemExecutorOwn;
         tradingSystemExecutor.method_15("Exception in Combination Strategy Child: " + e.Strategy.Name);
         tradingSystemExecutor.method_15(e.Exception.Message);
     }
@@ -1016,7 +1016,7 @@ public class TradingSystemExecutor
 
     public void ApplyPositionSize()
     {
-        TradingSystemExecutor tradingSystemExecutor = new TradingSystemExecutor();
+        TradingSystemExecutorOwn tradingSystemExecutor = new TradingSystemExecutorOwn();
         if (BenchmarkBuyAndHoldON)
         {
             if (DataSet != null)
@@ -1365,7 +1365,7 @@ public class TradingSystemExecutor
         list_2.Clear();
     }
 
-    public void ApplySettings(TradingSystemExecutor executor)
+    public void ApplySettings(TradingSystemExecutorOwn executor)
     {
         ApplyCommission = executor.ApplyCommission;
         Commission = executor.Commission;
