@@ -36,11 +36,11 @@ public class TradingSystemExecutorOwn
 
     private static bool bool_0 = false;
     private Bars _barsBeingProcessed;
-    private List<string> _debugStrings = new List<string>();
+    private List<string> _debugStrings = new();
     private double _overrideShareSize;
     private bool _riskStopLevelNotSet;
 
-    public List<Position> _activePositions = new List<Position>();
+    public List<Position> _activePositions = new();
     private double _cashRate;
 
     private double _marginRate;
@@ -57,10 +57,10 @@ public class TradingSystemExecutorOwn
 
     private WealthScript _wealthScriptExecuting;
 
-    private List<Bars> list_1 = new List<Bars>();
+    private List<Bars> list_1 = new();
 
-    private List<Bars> list_2 = new List<Bars>();
-    private List<Alert> _masterAlerts = new List<Alert>();
+    private List<Bars> list_2 = new();
+    private List<Alert> _masterAlerts = new();
     private IList<Bars> ilist_0;
 
     private static PositionSize positionSize_1 = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
@@ -75,7 +75,7 @@ public class TradingSystemExecutorOwn
 
     public static List<PosSizer> PosSizers = null;
 
-    private List<Bars> list_7 = new List<Bars>();
+    private List<Bars> list_7 = new();
     private DateTime _wFOStartDate;
 
     private DateTime _wFOEndDate;
@@ -191,11 +191,11 @@ public class TradingSystemExecutorOwn
 
     public bool NoDecimalRoundingForLimitStopPrice { get; set; }
 
-    public List<Position> MasterPositions { get; } = new List<Position>();
+    public List<Position> MasterPositions { get; } = new();
 
-    internal List<Position> CurrentPositions { get; } = new List<Position>();
+    internal List<Position> CurrentPositions { get; } = new();
 
-    internal List<Alert> CurrentAlerts { get; } = new List<Alert>();
+    internal List<Alert> CurrentAlerts { get; } = new();
 
     internal List<Position> ActivePositions => _activePositions;
 
@@ -220,7 +220,7 @@ public class TradingSystemExecutorOwn
             wealthScript_1.StrategyWindowID = StrategyWindowID;
         }
 
-        List<Bars> list = new List<Bars>();
+        List<Bars> list = new();
         foreach (Bars item in barsCollection)
         {
             list.Add(item);
@@ -262,7 +262,7 @@ public class TradingSystemExecutorOwn
             try
             {
                 Performance.PositionSize = PosSize;
-                List<string> list2 = new List<string>();
+                List<string> list2 = new();
                 foreach (CombinedStrategyInfo combinedStrategyChild in Strategy.CombinedStrategyChildren)
                 {
                     Strategy strategy = null;
@@ -284,7 +284,7 @@ public class TradingSystemExecutorOwn
                     tradingSystemExecutor.StrategyName = strategy.Name;
                     tradingSystemExecutor.FundamentalsLoader = FundamentalsLoader;
                     tradingSystemExecutor.ParentSysPerf = Performance;
-                    List<Bars> list3 = new List<Bars>();
+                    List<Bars> list3 = new();
                     if (strategy.StrategyType == StrategyType.CombinedStrategy)
                     {
                         foreach (Bars item3 in list)
