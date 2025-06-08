@@ -13,11 +13,6 @@ public class TradingSystemExecutorOwn
     private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
     private EventHandler<BarsEventArgs> _executionCompletedForChildStrategySymbolEvent;
     private EventHandler<WSExceptionEventArgs> _wealthScriptExceptionEvent;
-    private EventHandler<EventArgs> _flushDebugWindowEvent;
-    private EventHandler<EventArgs> _clearDebugWindowEvent;
-    private EventHandler<DebugStringEventArgs> _printToStatusBarEvent;
-    private EventHandler<ChartBitmapEventArgs> _chartBitmapRequestedEvent;
-    private EventHandler<TrendLineEventArgs> _trendlineGetValueEvent;
     private EventHandler<StrategyParameterEventArgs> _setParameterValuesEvent;
 
     public int StrategyWindowID;
@@ -38,7 +33,7 @@ public class TradingSystemExecutorOwn
     private List<Bars> list_2 = new();
     private List<Alert> _masterAlerts = new();
     private IList<Bars> ilist_0;
-    private Dictionary<string, Bars> dictionary_0 = new Dictionary<string, Bars>();
+    private List<Bars> list_7 = new();
 
     private static bool bool_0 = false;
     private static PositionSize positionSize_1 = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
@@ -46,11 +41,6 @@ public class TradingSystemExecutorOwn
     private static double _tnpAdjustment = 1.0;
     private static int int_1 = 0;
     public static List<PosSizer> PosSizers = null;
-
-    private List<Bars> list_7 = new();
-    private DateTime _wFOStartDate;
-    private DateTime _wFOEndDate;
-    private object _tag;
 
     public Strategy Strategy { get; set; }
     public bool isChildStrategy { get; set; }
