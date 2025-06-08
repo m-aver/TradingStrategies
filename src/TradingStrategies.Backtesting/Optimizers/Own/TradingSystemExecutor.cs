@@ -1,12 +1,9 @@
-﻿using System.Drawing;
-using System.Windows.Forms;
-using WealthLab;
+﻿using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class TradingSystemExecutorOwn : IComparer<Position>
 {
-    private EventHandler<LoadSymbolEventArgs> _externalSymbolRequestedEvent;
     private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
     private EventHandler<WSExceptionEventArgs> _wealthScriptExceptionEvent;
     private EventHandler<StrategyParameterEventArgs> _setParameterValuesEvent;
@@ -40,7 +37,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     public Strategy Strategy { get; set; }
     public string DividendItemName { get; set; }
     public ChartRenderer Renderer { get; set; }
-    public BarsLoader BarsLoader { get; set; }
     public FundamentalsLoader FundamentalsLoader { get; set; }
     public PositionSize PosSize { get; set; } = new PositionSize();
     public Commission Commission { get; set; }
@@ -82,7 +78,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     public double RedcuceQtyPct { get; set; } = 10.0;
     public SystemPerformance Performance { get; set; }
     public bool WorstTradeSimulation { get; set; }
-    public bool BenchmarkBuyAndHoldON { get; set; }
     public string BenchmarkSymbol { get; set; }
     public bool EnableSlippage { get; set; }
     public bool LimitOrderSlippage { get; set; }
@@ -91,7 +86,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     public bool LimitDaySimulation { get; set; }
     public bool RoundLots { get; set; }
     public bool RoundLots50 { get; set; }
-    public bool IsStreaming { get; set; }
 
     public double OverrideShareSize
     {
@@ -263,61 +257,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
     public void ApplyPositionSize()
     {
-        TradingSystemExecutorOwn tradingSystemExecutor = new TradingSystemExecutorOwn();
-        if (BenchmarkBuyAndHoldON)
-        {
-            if (DataSet != null)
-            {
-                tradingSystemExecutor.ApplySettings(this);
-                Bars bars = DataSet.Provider.RequestData(DataSet, BenchmarkSymbol, DateTime.MinValue, DateTime.MaxValue, 0, includePartialBar: false);
-                if (bars.Count == 0)
-                {
-                    bars = method_10(BenchmarkSymbol, bool_21: false);
-                }
-
-                bars.SymbolInfo.SecurityType = SecurityType.MutualFund;
-                int count = ilist_0.Count;
-                DateTime minValue = DateTime.MinValue;
-                Bars bars2 = ilist_0[0];
-                minValue = ilist_0[0].Date[0];
-                foreach (Bars item in ilist_0)
-                {
-                    if (item.Count > 0 && item.Date[0] < minValue)
-                    {
-                        bars2 = item;
-                        minValue = item.Date[0];
-                    }
-                }
-
-                while (count-- > 0)
-                {
-                    if (ilist_0[count].Count > 0)
-                    {
-                        _ = ilist_0[count].Date[0] < minValue;
-                    }
-                }
-
-                if (bars.Count != 0)
-                {
-                    bars = BarScaleConverter.Synchronize(bars, bars2);
-                }
-
-                tradingSystemExecutor.ilist_0 = new Bars[1] { bars };
-                foreach (Bars item2 in tradingSystemExecutor.ilist_0)
-                {
-                    if (item2.Count > 0)
-                    {
-                        tradingSystemExecutor.Performance.method_1(item2);
-                    }
-                }
-
-                Performance.BenchmarkSymbolbars = bars;
-            }
-        }
-        else
-        {
-            Performance.BenchmarkSymbolbars = null;
-        }
+        Performance.BenchmarkSymbolbars = null;
 
         if (ilist_0 == null)
         {
@@ -326,14 +266,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         Performance.RawTrades = MasterPositions;
         Performance.PositionSize = PosSize;
-        SystemResults systemResults = new SystemResults(Performance);
-        if (!BenchmarkBuyAndHoldON)
-        {
-            foreach (Position position3 in Performance.ResultsBuyHold.Positions)
-            {
-                systemResults.method_4(position3);
-            }
-        }
 
         Performance.method_2();
 
@@ -427,92 +359,44 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         bool reduceQtyBasedOnVolume = ReduceQtyBasedOnVolume;
         ReduceQtyBasedOnVolume = false;
         int num = 0;
-        if (!BenchmarkBuyAndHoldON)
+
+        if (Strategy.StrategyType != StrategyType.CombinedStrategy)
         {
-            if (Strategy.StrategyType != StrategyType.CombinedStrategy)
+            foreach (Bars item6 in ilist_0)
             {
-                foreach (Bars item6 in ilist_0)
-                {
-                    if (item6.Count > 1)
-                    {
-                        num++;
-                    }
-                }
-
-                foreach (Bars item7 in ilist_0)
-                {
-                    if (item7.Count <= 1)
-                    {
-                        continue;
-                    }
-
-                    Position position = new Position(item7, PositionType.Long, Strategy.ID.ToString());
-                    if (PosSize.RawProfitMode)
-                    {
-                        position.Shares = CalcPositionSize(item7, 0, item7.Close[0], PositionType.Long, 0.0, 0.0);
-                    }
-                    else
-                    {
-                        double double_ = PosSize.StartingCapital * PosSize.MarginFactor / num;
-                        position.Shares = method_3(item7, double_);
-                    }
-
-                    if (position.Shares > 0.0)
-                    {
-                        position.EntryBar = 1;
-                        position.EntryPrice = item7.Open[1];
-                        position.BasisPrice = item7.Close[0];
-                        Performance.ResultsBuyHold.method_4(position);
-                        if (Commission != null && ApplyCommission)
-                        {
-                            position.EntryCommission = Commission.Calculate(TradeType.Buy, OrderType.Market, position.EntryPrice, position.Shares, item7);
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {
-            foreach (Bars item8 in tradingSystemExecutor.ilist_0)
-            {
-                if (item8.Count > 1)
+                if (item6.Count > 1)
                 {
                     num++;
                 }
             }
 
-            foreach (Bars item9 in tradingSystemExecutor.ilist_0)
+            foreach (Bars item7 in ilist_0)
             {
-                if (item9.Count <= 1)
+                if (item7.Count <= 1)
                 {
                     continue;
                 }
 
-                Position position2 = new Position(item9, PositionType.Long, Strategy.ID.ToString());
-                int i;
-                for (i = 0; i < item9.Count && item9.Close[i] == 0.0; i++)
-                {
-                }
-
+                Position position = new Position(item7, PositionType.Long, Strategy.ID.ToString());
                 if (PosSize.RawProfitMode)
                 {
-                    position2.Shares = CalcPositionSize(item9, i + 1, item9.Close[i], PositionType.Long, 0.0, 0.0);
+                    position.Shares = CalcPositionSize(item7, 0, item7.Close[0], PositionType.Long, 0.0, 0.0);
                 }
                 else
                 {
-                    double double_2 = PosSize.StartingCapital * PosSize.MarginFactor / num;
-                    position2.Shares = method_3(item9, double_2, i);
+                    double double_ = PosSize.StartingCapital * PosSize.MarginFactor / num;
+                    position.Shares = method_3(item7, double_);
                 }
 
-                if (position2.Shares > 0.0)
+                if (position.Shares > 0.0)
                 {
-                    position2.EntryBar = i + 1;
-                    position2.EntryPrice = item9.Open[i + 1];
-                    position2.BasisPrice = item9.Close[i];
-                    Performance.ResultsBuyHold.method_4(position2);
+                    position.EntryBar = 1;
+                    position.EntryPrice = item7.Open[1];
+                    position.BasisPrice = item7.Close[0];
+                    Performance.ResultsBuyHold.method_4(position);
                     if (Commission != null && ApplyCommission)
                     {
-                        position2.EntryCommission = Commission.Calculate(TradeType.Buy, OrderType.Market, position2.EntryPrice, position2.Shares, item9);
+                        position.EntryCommission = Commission.Calculate(TradeType.Buy, OrderType.Market, position.EntryPrice, position.Shares, item7);
                     }
                 }
             }
@@ -521,20 +405,10 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         ReduceQtyBasedOnVolume = reduceQtyBasedOnVolume;
         Performance.ResultsLong.BuildEquityCurve(ilist_0, this, callbackToSizePositions: false, posSizer_0);
         Performance.ResultsShort.BuildEquityCurve(ilist_0, this, callbackToSizePositions: false, posSizer_0);
-        Performance.ResultsBuyHold.method_8();
-        if (!BenchmarkBuyAndHoldON)
-        {
-            Performance.ResultsBuyHold.BuildEquityCurve(ilist_0, this, callbackToSizePositions: false, null);
-        }
-        else
-        {
-            if (tradingSystemExecutor.ilist_0[0].Count == 0)
-            {
-                tradingSystemExecutor.ilist_0[0] = ilist_0[0];
-            }
 
-            Performance.ResultsBuyHold.BuildEquityCurve(tradingSystemExecutor.ilist_0, tradingSystemExecutor, callbackToSizePositions: false, null);
-        }
+        //TODO: не смотря на то что BenchmarkBuyAndHoldON == false эти штуки все равно вызываются
+        Performance.ResultsBuyHold.method_8();
+        Performance.ResultsBuyHold.BuildEquityCurve(ilist_0, this, callbackToSizePositions: false, null);
 
         if (posSizer_0 != null)
         {
@@ -634,7 +508,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         RedcuceQtyPct = executor.RedcuceQtyPct;
         LimitDaySimulation = executor.LimitDaySimulation;
         WorstTradeSimulation = executor.WorstTradeSimulation;
-        BenchmarkBuyAndHoldON = executor.BenchmarkBuyAndHoldON;
         BenchmarkSymbol = executor.BenchmarkSymbol;
         OverrideShareSize = executor.OverrideShareSize;
         if (FundamentalsLoader == null)
@@ -806,96 +679,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         return CalcPositionSize(bars, int_3, basisPrice, positionType_0, riskStopLevel, equity, overrideShareSize, 0.0);
-    }
-
-    internal Bars method_10(string string_3, bool bool_21)
-    {
-        if (_wealthScriptExecuting == null)
-        {
-            return new Bars(string_3, BarScale.Daily, 0);
-        }
-
-        Bars bars = _wealthScriptExecuting.Bars;
-        Bars bars2 = null;
-        if (string_3 == bars.Symbol)
-        {
-            return bars;
-        }
-
-        foreach (Bars item in list_7)
-        {
-            if (item.Symbol == string_3)
-            {
-                bars2 = item;
-                break;
-            }
-        }
-
-        if (bars2 == null && BarsLoader != null)
-        {
-            if (IsStreaming)
-            {
-                BarsLoader.OverrideOnDemand = true;
-                BarsLoader.OverrideOnDemandValue = true;
-            }
-
-            BarsLoader.method_1(DataSet);
-            DataSet.Provider.IsStreamingRequest = IsStreaming;
-            BarDataScale barDataScale = BarsLoader.BarDataScale;
-            BarsLoader.Scale = bars.Scale;
-            BarsLoader.BarInterval = bars.BarInterval;
-            BarsLoader.AutoConvertScale = false;
-            bars2 = BarsLoader.method_3(string_3);
-            if (bars2 != null && bars2.Count > 0)
-            {
-                list_7.Add(bars2);
-            }
-
-            BarsLoader.AutoConvertScale = true;
-            BarsLoader.OverrideOnDemand = false;
-            BarsLoader.BarDataScale = barDataScale;
-        }
-
-        if ((bars2 == null || bars2.Count == 0) && _externalSymbolRequestedEvent != null)
-        {
-            LoadSymbolEventArgs loadSymbolEventArgs = new LoadSymbolEventArgs(string_3, bars.Scale, bars.BarInterval);
-            _externalSymbolRequestedEvent(this, loadSymbolEventArgs);
-            bars2 = loadSymbolEventArgs.SymbolData;
-            if (bars2 == null)
-            {
-                string text = "Invalid Benchmark Buy and Hold Symbol: " + string_3;
-                MessageBox.Show(text);
-                throw new ArgumentException(text);
-            }
-
-            if (bars2 != null && bars2.Count > 0)
-            {
-                list_7.Add(bars2);
-            }
-        }
-
-        Bars bars3 = new Bars(bars2);
-        bars3.Append(bars2);
-        bars2 = bars3;
-        if (bool_21 && bars2 != null && bars2.Count > 0)
-        {
-            bars2 = BarScaleConverter.Synchronize(bars2, bars);
-        }
-
-        if (bars2 != null)
-        {
-            bars2.method_1();
-            if (bool_21)
-            {
-                list_1.Add(bars2);
-            }
-            else
-            {
-                list_2.Add(bars2);
-            }
-        }
-
-        return bars2;
     }
 
     internal int method_11()
