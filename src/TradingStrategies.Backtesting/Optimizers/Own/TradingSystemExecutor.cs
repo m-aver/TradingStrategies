@@ -147,44 +147,32 @@ public class TradingSystemExecutorOwn
 
     private List<Bars> list_7 = new List<Bars>();
 
-    [CompilerGenerated]
     private Strategy _strategy;
 
-    [CompilerGenerated]
     private bool _isChildStrategy;
 
-    [CompilerGenerated]
     private SystemPerformance _parentSysPerf;
 
-    [CompilerGenerated]
     private string _dividendItemName;
 
-    [CompilerGenerated]
     private bool _applyWFODateRange;
 
-    [CompilerGenerated]
     private DateTime _wFOStartDate;
 
-    [CompilerGenerated]
     private DateTime _wFOEndDate;
 
-    [CompilerGenerated]
     private int _pricingDecimalPlaces;
 
-    [CompilerGenerated]
     private bool _noDecimalRoundingForLimitStopPrice;
 
-    [CompilerGenerated]
     private object _tag;
 
     public Strategy Strategy
     {
-        [CompilerGenerated]
         get
         {
             return _strategy;
         }
-        [CompilerGenerated]
         set
         {
             _strategy = value;
@@ -193,12 +181,10 @@ public class TradingSystemExecutorOwn
 
     public bool isChildStrategy
     {
-        [CompilerGenerated]
         get
         {
             return _isChildStrategy;
         }
-        [CompilerGenerated]
         set
         {
             _isChildStrategy = value;
@@ -207,12 +193,10 @@ public class TradingSystemExecutorOwn
 
     public SystemPerformance ParentSysPerf
     {
-        [CompilerGenerated]
         get
         {
             return _parentSysPerf;
         }
-        [CompilerGenerated]
         set
         {
             _parentSysPerf = value;
@@ -221,12 +205,10 @@ public class TradingSystemExecutorOwn
 
     public string DividendItemName
     {
-        [CompilerGenerated]
         get
         {
             return _dividendItemName;
         }
-        [CompilerGenerated]
         set
         {
             _dividendItemName = value;
@@ -356,12 +338,10 @@ public class TradingSystemExecutorOwn
 
     public bool ApplyWFODateRange
     {
-        [CompilerGenerated]
         get
         {
             return _applyWFODateRange;
         }
-        [CompilerGenerated]
         set
         {
             _applyWFODateRange = value;
@@ -602,12 +582,10 @@ public class TradingSystemExecutorOwn
 
     public int PricingDecimalPlaces
     {
-        [CompilerGenerated]
         get
         {
             return _pricingDecimalPlaces;
         }
-        [CompilerGenerated]
         set
         {
             _pricingDecimalPlaces = value;
@@ -616,12 +594,10 @@ public class TradingSystemExecutorOwn
 
     public bool NoDecimalRoundingForLimitStopPrice
     {
-        [CompilerGenerated]
         get
         {
             return _noDecimalRoundingForLimitStopPrice;
         }
-        [CompilerGenerated]
         set
         {
             _noDecimalRoundingForLimitStopPrice = value;
