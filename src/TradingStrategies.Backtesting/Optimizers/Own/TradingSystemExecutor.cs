@@ -6,18 +6,13 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class TradingSystemExecutorOwn
 {
-    private EventHandler<StrategyEventArgs> _lookupStrategyEvent;
-    private EventHandler<DataSourceLookupEventArgs> _lookupDataSourceEvent;
     private EventHandler<LoadSymbolEventArgs> _externalSymbolRequestedEvent;
-    private EventHandler<LoadSymbolFromDataSetEventArgs> _externalSymbolFromDataSetRequestedEvent;
     private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
-    private EventHandler<BarsEventArgs> _executionCompletedForChildStrategySymbolEvent;
     private EventHandler<WSExceptionEventArgs> _wealthScriptExceptionEvent;
     private EventHandler<StrategyParameterEventArgs> _setParameterValuesEvent;
 
     public int StrategyWindowID;
     private Bars _barsBeingProcessed;
-    private List<string> _debugStrings = new();
     private double _overrideShareSize;
     private bool _riskStopLevelNotSet;
     private double _cashRate;
@@ -43,8 +38,6 @@ public class TradingSystemExecutorOwn
     public static List<PosSizer> PosSizers = null;
 
     public Strategy Strategy { get; set; }
-    public bool isChildStrategy { get; set; }
-    public SystemPerformance ParentSysPerf { get; set; }
     public string DividendItemName { get; set; }
     public ChartRenderer Renderer { get; set; }
     public BarsLoader BarsLoader { get; set; }
@@ -85,11 +78,9 @@ public class TradingSystemExecutorOwn
     public bool ExceptionEvents { get; set; }
     public bool BuildEquityCurves { get; set; } = true;
     public DataSource DataSet { get; set; }
-    public string StrategyName { get; set; } = "";
     public bool ReduceQtyBasedOnVolume { get; set; }
     public double RedcuceQtyPct { get; set; } = 10.0;
     public SystemPerformance Performance { get; set; }
-    public IList<string> DebugStrings => _debugStrings;
     public bool WorstTradeSimulation { get; set; }
     public bool BenchmarkBuyAndHoldON { get; set; }
     public string BenchmarkSymbol { get; set; }
@@ -184,215 +175,7 @@ public class TradingSystemExecutorOwn
 
         if (Strategy.StrategyType == StrategyType.CombinedStrategy)
         {
-            bool_0 = true;
-            try
-            {
-                Performance.PositionSize = PosSize;
-                List<string> list2 = new();
-                foreach (CombinedStrategyInfo combinedStrategyChild in Strategy.CombinedStrategyChildren)
-                {
-                    Strategy strategy = null;
-                    if (_lookupStrategyEvent != null)
-                    {
-                        StrategyEventArgs strategyEventArgs = new StrategyEventArgs(combinedStrategyChild.StrategyID.ToString());
-                        _lookupStrategyEvent(this, strategyEventArgs);
-                        strategy = strategyEventArgs.Strategy;
-                    }
-
-                    if (strategy == null)
-                    {
-                        continue;
-                    }
-
-                    TradingSystemExecutorOwn tradingSystemExecutor = new TradingSystemExecutorOwn();
-                    tradingSystemExecutor.isChildStrategy = true;
-                    tradingSystemExecutor.BarsLoader = BarsLoader;
-                    tradingSystemExecutor.StrategyName = strategy.Name;
-                    tradingSystemExecutor.FundamentalsLoader = FundamentalsLoader;
-                    tradingSystemExecutor.ParentSysPerf = Performance;
-                    List<Bars> list3 = new();
-                    if (strategy.StrategyType == StrategyType.CombinedStrategy)
-                    {
-                        foreach (Bars item3 in list)
-                        {
-                            list3.Add(item3);
-                        }
-                    }
-                    else if (combinedStrategyChild.UseDefaultDataSet)
-                    {
-                        list3.AddRange(list);
-                        tradingSystemExecutor.DataSet = DataSet;
-                    }
-                    else if (_lookupDataSourceEvent != null)
-                    {
-                        DataSourceLookupEventArgs dataSourceLookupEventArgs = new DataSourceLookupEventArgs(combinedStrategyChild.DataSetName);
-                        _lookupDataSourceEvent(this, dataSourceLookupEventArgs);
-                        if (dataSourceLookupEventArgs.DataSource != null)
-                        {
-                            BarsLoader barsLoader = new BarsLoader();
-                            barsLoader.DataHost = BarsLoader.DataHost;
-                            barsLoader.BarDataScale = combinedStrategyChild.DataScale;
-                            barsLoader.StartDate = BarsLoader.StartDate;
-                            barsLoader.EndDate = BarsLoader.EndDate;
-                            barsLoader.MaxBars = BarsLoader.MaxBars;
-                            barsLoader.AutoCreateProvider = true;
-                            if (combinedStrategyChild.Symbol != "")
-                            {
-                                Bars data = barsLoader.GetData(dataSourceLookupEventArgs.DataSource, combinedStrategyChild.Symbol);
-                                if (data != null)
-                                {
-                                    list3.Add(data);
-                                }
-                            }
-                            else
-                            {
-                                foreach (string symbol in dataSourceLookupEventArgs.DataSource.Symbols)
-                                {
-                                    Bars data2 = barsLoader.GetData(dataSourceLookupEventArgs.DataSource, symbol);
-                                    if (data2 != null)
-                                    {
-                                        list3.Add(data2);
-                                    }
-                                }
-                            }
-
-                            tradingSystemExecutor.DataSet = dataSourceLookupEventArgs.DataSource;
-                        }
-                    }
-
-                    foreach (Bars item4 in list3)
-                    {
-                        string text = item4.ToString();
-                        bool flag = false;
-                        foreach (Bars item5 in ilist_0)
-                        {
-                            if (item5.ToString() == text && item5.DataScale == item4.DataScale)
-                            {
-                                flag = true;
-                                break;
-                            }
-                        }
-
-                        if (!flag)
-                        {
-                            ilist_0.Add(item4);
-                        }
-                    }
-
-                    WealthScript wealthScript = (WealthScript)strategy.Tag;
-                    tradingSystemExecutor.ApplySettings(this);
-                    tradingSystemExecutor.LookupDataSource += _lookupDataSourceEvent;
-                    tradingSystemExecutor.LookupStrategy += _lookupStrategyEvent;
-                    tradingSystemExecutor.PosSize = combinedStrategyChild.PositionSize;
-                    double startingCapital = posSize.StartingCapital;
-                    startingCapital = combinedStrategyChild.Allocation.Mode != PosSizeMode.PctEquity ? combinedStrategyChild.Allocation.DollarSize : startingCapital * (combinedStrategyChild.Allocation.PctSize / 100.0);
-                    tradingSystemExecutor.PosSize.StartingCapital = startingCapital;
-                    if (tradingSystemExecutor.PosSize.Mode == PosSizeMode.RawProfitDollar)
-                    {
-                        tradingSystemExecutor.PosSize.Mode = PosSizeMode.Dollar;
-                        tradingSystemExecutor.PosSize.DollarSize = tradingSystemExecutor.PosSize.RawProfitDollarSize;
-                    }
-
-                    if (tradingSystemExecutor.PosSize.Mode == PosSizeMode.RawProfitShare)
-                    {
-                        tradingSystemExecutor.PosSize.Mode = PosSizeMode.Share;
-                        tradingSystemExecutor.PosSize.ShareSize = tradingSystemExecutor.PosSize.RawProfitShareSize;
-                    }
-
-                    if (wealthScript != null)
-                    {
-                        for (int i = 0; i < combinedStrategyChild.ParameterValues.Count; i++)
-                        {
-                            wealthScript.Parameters[i].Value = combinedStrategyChild.ParameterValues[i];
-                        }
-
-                        strategy.UsePreferredValues = combinedStrategyChild.UsePreferredValues;
-                    }
-
-                    tradingSystemExecutor.ExecutionCompletedForSymbol += method_0;
-                    tradingSystemExecutor.ExternalSymbolRequested += _externalSymbolRequestedEvent;
-                    tradingSystemExecutor.ExternalSymbolFromDataSetRequested += _externalSymbolFromDataSetRequestedEvent;
-                    tradingSystemExecutor.ExceptionEvents = true;
-                    tradingSystemExecutor.WealthScriptException += method_1;
-                    try
-                    {
-                        wealthScript.Renderer = null;
-                        tradingSystemExecutor.Execute(strategy, wealthScript, null, list3);
-                    }
-                    catch (Exception ex)
-                    {
-                        tradingSystemExecutor.method_15("Exception in Combination Strategy Child: " + strategy.Name);
-                        tradingSystemExecutor.method_15(ex.Message);
-                    }
-
-                    tradingSystemExecutor.ExecutionCompletedForSymbol -= method_0;
-                    tradingSystemExecutor.ExternalSymbolRequested -= _externalSymbolRequestedEvent;
-                    tradingSystemExecutor.ExternalSymbolFromDataSetRequested -= _externalSymbolFromDataSetRequestedEvent;
-                    tradingSystemExecutor.WealthScriptException -= method_1;
-                    list2.AddRange(tradingSystemExecutor.DebugStrings);
-                    foreach (Position item6 in tradingSystemExecutor.MasterPositions)
-                    {
-                        item6.CombinedPriority = combinedStrategyChild.Priority;
-                        item6.CSI = combinedStrategyChild;
-                    }
-
-                    foreach (Alert alert in tradingSystemExecutor.Performance.Results.Alerts)
-                    {
-                        alert.Account = combinedStrategyChild.AccountNumber;
-                    }
-
-                    tradingSystemExecutor.ApplyPositionSize();
-                    foreach (Position position in tradingSystemExecutor.Performance.Results.Positions)
-                    {
-                        foreach (Bars item7 in ilist_0)
-                        {
-                            if (item7.ToString() == position.Bars.ToString())
-                            {
-                                position.method_0(item7);
-                            }
-                        }
-                    }
-
-                    MasterPositions.AddRange(tradingSystemExecutor.MasterPositions);
-                    tradingSystemExecutor.Performance.RawTrades = tradingSystemExecutor.MasterPositions;
-                    _masterAlerts.AddRange(tradingSystemExecutor.Performance.Results.Alerts);
-                    if (!BenchmarkBuyAndHoldON)
-                    {
-                        foreach (Position position2 in tradingSystemExecutor.Performance.ResultsBuyHold.Positions)
-                        {
-                            Performance.ResultsBuyHold.method_4(position2);
-                        }
-                    }
-
-                    tradingSystemExecutor.Performance.Results.TradesNSF = tradingSystemExecutor.MasterPositions.Count - tradingSystemExecutor.Performance.Results.Positions.Count;
-                    Performance.Results.TradesNSF += tradingSystemExecutor.Performance.Results.TradesNSF;
-                    int num = 0;
-                    foreach (Position item8 in tradingSystemExecutor.MasterPositions)
-                    {
-                        if (item8.PositionType == PositionType.Long)
-                        {
-                            num++;
-                        }
-                    }
-
-                    int num2 = tradingSystemExecutor.MasterPositions.Count - num;
-                    tradingSystemExecutor.Performance.ResultsLong.TradesNSF = num - tradingSystemExecutor.Performance.ResultsLong.Positions.Count;
-                    Performance.ResultsLong.TradesNSF += tradingSystemExecutor.Performance.ResultsLong.TradesNSF;
-                    tradingSystemExecutor.Performance.ResultsShort.TradesNSF = num2 - tradingSystemExecutor.Performance.ResultsShort.Positions.Count;
-                    Performance.ResultsShort.TradesNSF += tradingSystemExecutor.Performance.ResultsShort.TradesNSF;
-                    tradingSystemExecutor.LookupDataSource -= _lookupDataSourceEvent;
-                    tradingSystemExecutor.LookupStrategy -= _lookupStrategyEvent;
-                }
-
-                _debugStrings.Clear();
-                _debugStrings.AddRange(list2);
-            }
-            finally
-            {
-                PosSize = posSize;
-                list_7.Clear();
-                bool_0 = false;
-            }
+            //removed
         }
         else
         {
@@ -416,21 +199,6 @@ public class TradingSystemExecutorOwn
         {
             ApplyPositionSize();
         }
-    }
-
-    private void method_0(object sender, BarsEventArgs e)
-    {
-        if (_executionCompletedForChildStrategySymbolEvent != null)
-        {
-            _executionCompletedForChildStrategySymbolEvent(this, e);
-        }
-    }
-
-    private void method_1(object sender, WSExceptionEventArgs e)
-    {
-        TradingSystemExecutorOwn tradingSystemExecutor = sender as TradingSystemExecutorOwn;
-        tradingSystemExecutor.method_15("Exception in Combination Strategy Child: " + e.Strategy.Name);
-        tradingSystemExecutor.method_15(e.Exception.Message);
     }
 
     private void method_2(Bars bars_1, WealthScript wealthScript_1, ChartRenderer chartRenderer_1)
@@ -567,24 +335,7 @@ public class TradingSystemExecutorOwn
             }
         }
 
-        int tradesNSF = Performance.Results.TradesNSF;
-        int tradesNSF2 = Performance.ResultsLong.TradesNSF;
-        int tradesNSF3 = Performance.ResultsShort.TradesNSF;
         Performance.method_2();
-        if (Strategy.StrategyType == StrategyType.CombinedStrategy)
-        {
-            Performance.Results.TradesNSF = tradesNSF;
-            Performance.ResultsLong.TradesNSF = tradesNSF2;
-            Performance.ResultsShort.TradesNSF = tradesNSF3;
-        }
-
-        if (Strategy.StrategyType == StrategyType.CombinedStrategy && !BenchmarkBuyAndHoldON)
-        {
-            foreach (Position position4 in systemResults.Positions)
-            {
-                Performance.ResultsBuyHold.method_4(position4);
-            }
-        }
 
         if (ApplyInterest)
         {
@@ -1134,10 +885,5 @@ public class TradingSystemExecutorOwn
         list_1.Clear();
         list_2.Clear();
         return result;
-    }
-
-    internal void method_15(string string_3)
-    {
-        _debugStrings.Add(string_3);
     }
 }
