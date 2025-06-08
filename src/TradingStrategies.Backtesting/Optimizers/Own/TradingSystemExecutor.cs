@@ -4,7 +4,7 @@ using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
-public class TradingSystemExecutorOwn
+public class TradingSystemExecutorOwn : IComparer<Position>
 {
     private EventHandler<LoadSymbolEventArgs> _externalSymbolRequestedEvent;
     private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
@@ -593,6 +593,25 @@ public class TradingSystemExecutorOwn
         Performance.method_2();
         list_1.Clear();
         list_2.Clear();
+    }
+
+    public int Compare(Position position_1, Position position_2)
+    {
+        if (position_1.EntryDate == position_2.EntryDate)
+        {
+            if (position_1.CombinedPriority == position_2.CombinedPriority)
+            {
+                if (!WorstTradeSimulation)
+                {
+                    return -position_1.Priority.CompareTo(position_2.Priority);
+                }
+                return position_1.NetProfit.CompareTo(position_2.NetProfit);
+            }
+            return position_1.CombinedPriority.CompareTo(position_2.CombinedPriority);
+        }
+        _ = position_1.EntryDate;
+        _ = position_2.EntryDate;
+        return position_1.EntryDate.CompareTo(position_2.EntryDate);
     }
 
     public void ApplySettings(TradingSystemExecutorOwn executor)
