@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Windows.Forms;
+using WealthLab;
 
-namespace WealthLab;
+namespace TradingStrategies.Backtesting.Optimizers.Own;
 
-[ToolboxBitmap(typeof(TradingSystemExecutor), "TradingSystemExecutor")]
-public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
+public class TradingSystemExecutor
 {
     private EventHandler<StrategyEventArgs> eventHandler_0;
 
@@ -151,8 +147,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
 
     private List<Bars> list_7 = new List<Bars>();
 
-    private IContainer icontainer_0;
-
     [CompilerGenerated]
     private Strategy strategy_0;
 
@@ -287,8 +281,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
     }
 
-    [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Commission Commission
     {
         get
@@ -338,8 +330,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
     }
 
-    public double CashAdjustmentFactor => double_5;
-
     public double MarginRate
     {
         get
@@ -353,8 +343,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
     }
 
-    public double MarginAdjustmentFactor => double_6;
-
     public bool ApplyDividends
     {
         get
@@ -363,12 +351,9 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
         set
         {
-            bool_14 = value;
         }
     }
 
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    [Browsable(false)]
     public bool ApplyWFODateRange
     {
         [CompilerGenerated]
@@ -380,60 +365,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         set
         {
             bool_19 = value;
-        }
-    }
-
-    [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public DateTime WFOStartDate
-    {
-        [CompilerGenerated]
-        get
-        {
-            return dateTime_0;
-        }
-        [CompilerGenerated]
-        set
-        {
-            dateTime_0 = value;
-        }
-    }
-
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    [Browsable(false)]
-    public DateTime WFOEndDate
-    {
-        [CompilerGenerated]
-        get
-        {
-            return dateTime_1;
-        }
-        [CompilerGenerated]
-        set
-        {
-            dateTime_1 = value;
-        }
-    }
-
-    [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Bars BarsBeingProcessed => bars_0;
-
-    [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public WealthScript WealthScriptExecuting => wealthScript_0;
-
-    [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public bool RiskStopLevelNotSet
-    {
-        get
-        {
-            return bool_11;
-        }
-        set
-        {
-            bool_11 = value;
         }
     }
 
@@ -457,12 +388,9 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
         set
         {
-            bool_1 = value;
         }
     }
 
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    [Browsable(false)]
     public DataSource DataSet
     {
         get
@@ -507,12 +435,9 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
         set
         {
-            double_7 = value;
         }
     }
 
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    [Browsable(false)]
     public SystemPerformance Performance
     {
         get
@@ -703,87 +628,13 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
     }
 
-    [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public object Tag
-    {
-        [CompilerGenerated]
-        get
-        {
-            return object_0;
-        }
-        [CompilerGenerated]
-        set
-        {
-            object_0 = value;
-        }
-    }
-
-    internal PosSizer PosSizer => posSizer_0;
-
     public List<Position> MasterPositions => list_3;
-
-    internal List<Alert> MasterAlerts => list_4;
 
     internal List<Position> CurrentPositions => list_5;
 
     internal List<Alert> CurrentAlerts => list_6;
 
     internal List<Position> ActivePositions => _activePositions;
-
-    private static double _secureCode => DateTime.Now.Add(new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second)).ToOADate();
-
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    [Browsable(false)]
-    public double TNP
-    {
-        get
-        {
-            if (bool_17)
-            {
-                return DateTime.Now.ToOADate();
-            }
-
-            return _secureCode;
-        }
-        set
-        {
-            if (value < DateTime.FromOADate(_secureCode).Subtract(new TimeSpan(0, 0, 0, 1)).ToOADate())
-            {
-                bool_17 = true;
-            }
-        }
-    }
-
-    internal double TNPAdjustment
-    {
-        get
-        {
-            if (bool_17)
-            {
-                Random random = new Random();
-                if (--int_1 <= 0)
-                {
-                    int_1 = random.Next(10, 100);
-                    double_9 = random.NextDouble();
-                    if (double_9 <= 0.25)
-                    {
-                        double_9 += 1.0;
-                    }
-                    else if (double_9 <= 0.5)
-                    {
-                        double_9 = 1.0;
-                    }
-                    else if (double_9 <= 0.75)
-                    {
-                        double_9 += double_9;
-                    }
-                }
-            }
-
-            return double_9;
-        }
-    }
 
     internal double RiskStopLevel
     {
@@ -797,405 +648,9 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
     }
 
-    internal double AutoProfitLevel
-    {
-        get
-        {
-            return double_8;
-        }
-        set
-        {
-            double_8 = value;
-        }
-    }
-
-    public event EventHandler<StrategyEventArgs> LookupStrategy
-    {
-        add
-        {
-            EventHandler<StrategyEventArgs> eventHandler = eventHandler_0;
-            EventHandler<StrategyEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<StrategyEventArgs> value2 = (EventHandler<StrategyEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_0, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<StrategyEventArgs> eventHandler = eventHandler_0;
-            EventHandler<StrategyEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<StrategyEventArgs> value2 = (EventHandler<StrategyEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_0, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<DataSourceLookupEventArgs> LookupDataSource
-    {
-        add
-        {
-            EventHandler<DataSourceLookupEventArgs> eventHandler = eventHandler_1;
-            EventHandler<DataSourceLookupEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<DataSourceLookupEventArgs> value2 = (EventHandler<DataSourceLookupEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_1, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<DataSourceLookupEventArgs> eventHandler = eventHandler_1;
-            EventHandler<DataSourceLookupEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<DataSourceLookupEventArgs> value2 = (EventHandler<DataSourceLookupEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_1, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<LoadSymbolEventArgs> ExternalSymbolRequested
-    {
-        add
-        {
-            EventHandler<LoadSymbolEventArgs> eventHandler = eventHandler_2;
-            EventHandler<LoadSymbolEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<LoadSymbolEventArgs> value2 = (EventHandler<LoadSymbolEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_2, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<LoadSymbolEventArgs> eventHandler = eventHandler_2;
-            EventHandler<LoadSymbolEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<LoadSymbolEventArgs> value2 = (EventHandler<LoadSymbolEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_2, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<LoadSymbolFromDataSetEventArgs> ExternalSymbolFromDataSetRequested
-    {
-        add
-        {
-            EventHandler<LoadSymbolFromDataSetEventArgs> eventHandler = eventHandler_3;
-            EventHandler<LoadSymbolFromDataSetEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<LoadSymbolFromDataSetEventArgs> value2 = (EventHandler<LoadSymbolFromDataSetEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_3, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<LoadSymbolFromDataSetEventArgs> eventHandler = eventHandler_3;
-            EventHandler<LoadSymbolFromDataSetEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<LoadSymbolFromDataSetEventArgs> value2 = (EventHandler<LoadSymbolFromDataSetEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_3, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<BarsEventArgs> ExecutionCompletedForSymbol
-    {
-        add
-        {
-            EventHandler<BarsEventArgs> eventHandler = eventHandler_4;
-            EventHandler<BarsEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<BarsEventArgs> value2 = (EventHandler<BarsEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_4, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<BarsEventArgs> eventHandler = eventHandler_4;
-            EventHandler<BarsEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<BarsEventArgs> value2 = (EventHandler<BarsEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_4, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<BarsEventArgs> ExecutionCompletedForChildStrategySymbol
-    {
-        add
-        {
-            EventHandler<BarsEventArgs> eventHandler = eventHandler_5;
-            EventHandler<BarsEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<BarsEventArgs> value2 = (EventHandler<BarsEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_5, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<BarsEventArgs> eventHandler = eventHandler_5;
-            EventHandler<BarsEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<BarsEventArgs> value2 = (EventHandler<BarsEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_5, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<WSExceptionEventArgs> WealthScriptException
-    {
-        add
-        {
-            EventHandler<WSExceptionEventArgs> eventHandler = eventHandler_6;
-            EventHandler<WSExceptionEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<WSExceptionEventArgs> value2 = (EventHandler<WSExceptionEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_6, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<WSExceptionEventArgs> eventHandler = eventHandler_6;
-            EventHandler<WSExceptionEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<WSExceptionEventArgs> value2 = (EventHandler<WSExceptionEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_6, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<EventArgs> FlushDebugWindow
-    {
-        add
-        {
-            EventHandler<EventArgs> eventHandler = eventHandler_7;
-            EventHandler<EventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<EventArgs> value2 = (EventHandler<EventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_7, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<EventArgs> eventHandler = eventHandler_7;
-            EventHandler<EventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<EventArgs> value2 = (EventHandler<EventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_7, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<EventArgs> ClearDebugWindow
-    {
-        add
-        {
-            EventHandler<EventArgs> eventHandler = eventHandler_8;
-            EventHandler<EventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<EventArgs> value2 = (EventHandler<EventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_8, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<EventArgs> eventHandler = eventHandler_8;
-            EventHandler<EventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<EventArgs> value2 = (EventHandler<EventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_8, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<DebugStringEventArgs> PrintToStatusBar
-    {
-        add
-        {
-            EventHandler<DebugStringEventArgs> eventHandler = eventHandler_9;
-            EventHandler<DebugStringEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<DebugStringEventArgs> value2 = (EventHandler<DebugStringEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_9, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<DebugStringEventArgs> eventHandler = eventHandler_9;
-            EventHandler<DebugStringEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<DebugStringEventArgs> value2 = (EventHandler<DebugStringEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_9, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<ChartBitmapEventArgs> ChartBitmapRequested
-    {
-        add
-        {
-            EventHandler<ChartBitmapEventArgs> eventHandler = eventHandler_10;
-            EventHandler<ChartBitmapEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<ChartBitmapEventArgs> value2 = (EventHandler<ChartBitmapEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_10, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<ChartBitmapEventArgs> eventHandler = eventHandler_10;
-            EventHandler<ChartBitmapEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<ChartBitmapEventArgs> value2 = (EventHandler<ChartBitmapEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_10, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<TrendLineEventArgs> TrendlineGetValue
-    {
-        add
-        {
-            EventHandler<TrendLineEventArgs> eventHandler = eventHandler_11;
-            EventHandler<TrendLineEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<TrendLineEventArgs> value2 = (EventHandler<TrendLineEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_11, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<TrendLineEventArgs> eventHandler = eventHandler_11;
-            EventHandler<TrendLineEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<TrendLineEventArgs> value2 = (EventHandler<TrendLineEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_11, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public event EventHandler<StrategyParameterEventArgs> SetParameterValues
-    {
-        add
-        {
-            EventHandler<StrategyParameterEventArgs> eventHandler = eventHandler_12;
-            EventHandler<StrategyParameterEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<StrategyParameterEventArgs> value2 = (EventHandler<StrategyParameterEventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_12, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<StrategyParameterEventArgs> eventHandler = eventHandler_12;
-            EventHandler<StrategyParameterEventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<StrategyParameterEventArgs> value2 = (EventHandler<StrategyParameterEventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_12, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
     public TradingSystemExecutor()
     {
         systemPerformance_0 = new SystemPerformance(null);
-        method_21();
-    }
-
-    public TradingSystemExecutor(IContainer container)
-    {
-        systemPerformance_0 = new SystemPerformance(null);
-        container.Add(this);
-        method_21();
-    }
-
-    public void Execute(WealthScript wealthScript_1, Bars bars)
-    {
-        Execute(new Strategy(), wealthScript_1, bars);
-    }
-
-    public void Execute(Strategy strategy_1, WealthScript wealthScript_1, Bars bars)
-    {
-        List<Bars> list = new List<Bars>();
-        list.Add(bars);
-        Execute(strategy_1, wealthScript_1, bars, list);
     }
 
     public void Initialize()
@@ -1351,7 +806,7 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
                     tradingSystemExecutor.LookupStrategy += eventHandler_0;
                     tradingSystemExecutor.PosSize = combinedStrategyChild.PositionSize;
                     double startingCapital = posSize.StartingCapital;
-                    startingCapital = ((combinedStrategyChild.Allocation.Mode != PosSizeMode.PctEquity) ? combinedStrategyChild.Allocation.DollarSize : (startingCapital * (combinedStrategyChild.Allocation.PctSize / 100.0)));
+                    startingCapital = combinedStrategyChild.Allocation.Mode != PosSizeMode.PctEquity ? combinedStrategyChild.Allocation.DollarSize : startingCapital * (combinedStrategyChild.Allocation.PctSize / 100.0);
                     tradingSystemExecutor.PosSize.StartingCapital = startingCapital;
                     if (tradingSystemExecutor.PosSize.Mode == PosSizeMode.RawProfitDollar)
                     {
@@ -1466,7 +921,7 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
             {
                 foreach (Bars item9 in barsCollection)
                 {
-                    ChartRenderer chartRenderer_ = ((barsCharted == item9) ? chartRenderer_0 : null);
+                    ChartRenderer chartRenderer_ = barsCharted == item9 ? chartRenderer_0 : null;
                     method_2(item9, wealthScript_1, chartRenderer_);
                 }
             }
@@ -1768,7 +1223,7 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
                     }
                     else
                     {
-                        double double_ = PosSize.StartingCapital * PosSize.MarginFactor / (double)num;
+                        double double_ = PosSize.StartingCapital * PosSize.MarginFactor / num;
                         position.Shares = method_3(item7, double_);
                     }
 
@@ -1815,7 +1270,7 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
                 }
                 else
                 {
-                    double double_2 = PosSize.StartingCapital * PosSize.MarginFactor / (double)num;
+                    double double_2 = PosSize.StartingCapital * PosSize.MarginFactor / num;
                     position2.Shares = method_3(item9, double_2, i);
                 }
 
@@ -1910,28 +1365,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         list_2.Clear();
     }
 
-    public int Compare(Position position_1, Position position_2)
-    {
-        if (position_1.EntryDate == position_2.EntryDate)
-        {
-            if (position_1.CombinedPriority == position_2.CombinedPriority)
-            {
-                if (!WorstTradeSimulation)
-                {
-                    return -position_1.Priority.CompareTo(position_2.Priority);
-                }
-
-                return position_1.NetProfit.CompareTo(position_2.NetProfit);
-            }
-
-            return position_1.CombinedPriority.CompareTo(position_2.CombinedPriority);
-        }
-
-        _ = position_1.EntryDate;
-        _ = position_2.EntryDate;
-        return position_1.EntryDate.CompareTo(position_2.EntryDate);
-    }
-
     public void ApplySettings(TradingSystemExecutor executor)
     {
         ApplyCommission = executor.ApplyCommission;
@@ -1981,13 +1414,13 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         switch (PosSize.Mode)
         {
             case PosSizeMode.RawProfitDollar:
-                num = ((bars_1.SymbolInfo.SecurityType != SecurityType.Future) ? ((bars_1.SymbolInfo.SecurityType != SecurityType.StockOption) ? (PosSize.RawProfitDollarSize / double_10) : (PosSize.RawProfitDollarSize / (double_10 * 100.0))) : (PosSize.RawProfitDollarSize / bars_1.SymbolInfo.Margin));
+                num = bars_1.SymbolInfo.SecurityType != SecurityType.Future ? bars_1.SymbolInfo.SecurityType != SecurityType.StockOption ? PosSize.RawProfitDollarSize / double_10 : PosSize.RawProfitDollarSize / (double_10 * 100.0) : PosSize.RawProfitDollarSize / bars_1.SymbolInfo.Margin;
                 break;
             case PosSizeMode.RawProfitShare:
                 num = PosSize.RawProfitShareSize;
                 break;
             case PosSizeMode.Dollar:
-                num = ((bars_1.SymbolInfo.SecurityType != SecurityType.Future) ? ((bars_1.SymbolInfo.SecurityType != SecurityType.StockOption) ? (PosSize.DollarSize / double_10) : (PosSize.DollarSize / (double_10 * 100.0))) : (PosSize.DollarSize / bars_1.SymbolInfo.Margin));
+                num = bars_1.SymbolInfo.SecurityType != SecurityType.Future ? bars_1.SymbolInfo.SecurityType != SecurityType.StockOption ? PosSize.DollarSize / double_10 : PosSize.DollarSize / (double_10 * 100.0) : PosSize.DollarSize / bars_1.SymbolInfo.Margin;
                 break;
             case PosSizeMode.Share:
                 num = PosSize.ShareSize;
@@ -1995,7 +1428,7 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
             case PosSizeMode.PctEquity:
                 {
                     double num2 = PosSize.PctSize / 100.0 * double_12;
-                    num = ((bars_1.SymbolInfo.SecurityType != SecurityType.Future) ? ((bars_1.SymbolInfo.SecurityType != SecurityType.StockOption) ? (num2 / double_10) : (num2 / (double_10 * 100.0))) : (num2 / bars_1.SymbolInfo.Margin));
+                    num = bars_1.SymbolInfo.SecurityType != SecurityType.Future ? bars_1.SymbolInfo.SecurityType != SecurityType.StockOption ? num2 / double_10 : num2 / (double_10 * 100.0) : num2 / bars_1.SymbolInfo.Margin;
                     break;
                 }
             case PosSizeMode.MaxRisk:
@@ -2013,7 +1446,7 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
 
                     double num3 = PosSize.RiskSize / 100.0;
                     num3 *= double_12;
-                    double num4 = ((positionType_0 == PositionType.Long) ? (double_10 - double_11) : (double_11 - double_10));
+                    double num4 = positionType_0 == PositionType.Long ? double_10 - double_11 : double_11 - double_10;
                     try
                     {
                         num = num3 / (num4 * bars_1.SymbolInfo.PointValue);
@@ -2085,10 +1518,10 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         else
         {
             int num7 = (int)(num * 1000.0);
-            num = (double)num7 / 1000.0;
+            num = num7 / 1000.0;
         }
 
-        if (((bool_21 && bool_16) || !bool_21) && RoundLots && bars_1.SymbolInfo.SecurityType == SecurityType.Equity && num > 0.0)
+        if ((bool_21 && bool_16 || !bool_21) && RoundLots && bars_1.SymbolInfo.SecurityType == SecurityType.Equity && num > 0.0)
         {
             double a = num / 100.0;
             a = Math.Round(a) * 100.0;
@@ -2115,18 +1548,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         return CalcPositionSize(bars, int_3, basisPrice, positionType_0, riskStopLevel, currentEquity, overrideShareSize, 0.0);
     }
 
-    public double CalcPositionSize(Bars bars, int int_3, double basisPrice, PositionType positionType_0, double riskStopLevel, bool comingFromWealthScript)
-    {
-        double currentEquity = systemPerformance_0.Results.CurrentEquity;
-        double double_ = 0.0;
-        if (PosSize.Mode == PosSizeMode.ScriptOverride)
-        {
-            double_ = PosSize.OverrideShareSize;
-        }
-
-        return method_4(bars, int_3, basisPrice, positionType_0, riskStopLevel, currentEquity, double_, 0.0, comingFromWealthScript);
-    }
-
     public double CalcPositionSize(Bars bars, int int_3, double basisPrice, PositionType positionType_0, double riskStopLevel, double equity)
     {
         double overrideShareSize = 0.0;
@@ -2136,94 +1557,6 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         }
 
         return CalcPositionSize(bars, int_3, basisPrice, positionType_0, riskStopLevel, equity, overrideShareSize, 0.0);
-    }
-
-    public double CalcPositionSize(Position position_1, Bars bars, int int_3, double basisPrice, PositionType positionType_0, double riskStopLevel, bool useOverRide, double overrideShareSize, double thisBarCash)
-    {
-        if (Strategy != null && Strategy.StrategyType == StrategyType.CombinedStrategy)
-        {
-            return position_1.Shares;
-        }
-
-        position_0 = position_1;
-        double currentEquity = systemPerformance_0.Results.CurrentEquity;
-        double num = CalcPositionSize(bars, int_3, basisPrice, positionType_0, riskStopLevel, currentEquity, overrideShareSize, thisBarCash);
-        position_0 = null;
-        if (bool_17)
-        {
-            num *= TNPAdjustment;
-        }
-
-        return num;
-    }
-
-    internal void method_5(Position position_1)
-    {
-        MasterPositions.Add(position_1);
-        CurrentPositions.Add(position_1);
-        ActivePositions.Add(position_1);
-    }
-
-    internal void method_6(Alert alert_0)
-    {
-        if (alert_0.Shares > 0.0)
-        {
-            alert_0.PosSize = PosSize;
-            MasterAlerts.Add(alert_0);
-            CurrentAlerts.Add(alert_0);
-        }
-    }
-
-    internal Bars method_7(string string_3, BarScale barScale_0, int int_3, bool bool_21)
-    {
-        if (bool_21)
-        {
-            return method_8(string_3, barScale_0, int_3, list_1);
-        }
-
-        return method_8(string_3, barScale_0, int_3, list_2);
-    }
-
-    private Bars method_8(string string_3, BarScale barScale_0, int int_3, List<Bars> list_8)
-    {
-        foreach (Bars item in list_8)
-        {
-            if (item.Symbol == string_3 && item.Scale == barScale_0 && item.BarInterval == int_3)
-            {
-                return item;
-            }
-        }
-
-        return null;
-    }
-
-    internal Bars method_9(string string_3, string string_4, bool bool_21)
-    {
-        Bars bars = wealthScript_0.Bars;
-        Bars bars2 = null;
-        string key = string_3 + "|" + string_4;
-        if (dictionary_0.ContainsKey(key))
-        {
-            bars2 = dictionary_0[key];
-        }
-
-        if (bars2 == null && eventHandler_3 != null)
-        {
-            LoadSymbolFromDataSetEventArgs loadSymbolFromDataSetEventArgs = new LoadSymbolFromDataSetEventArgs(string_3, string_4);
-            eventHandler_3(this, loadSymbolFromDataSetEventArgs);
-            bars2 = loadSymbolFromDataSetEventArgs.Bars;
-            if (bars2 != null)
-            {
-                dictionary_0[key] = bars2;
-            }
-        }
-
-        if (bool_21 && bars2 != null && bars2.Count > 0)
-        {
-            bars2 = BarScaleConverter.Synchronize(bars2, bars);
-        }
-
-        return bars2;
     }
 
     internal Bars method_10(string string_3, bool bool_21)
@@ -2324,147 +1657,8 @@ public class TradingSystemExecutor : Component, IComparer<Position>, INotifier
         return result;
     }
 
-    internal int method_12(string string_3)
-    {
-        int num = 0;
-        for (int num2 = list_1.Count - 1; num2 >= 0; num2--)
-        {
-            if (list_1[num2].Symbol == string_3)
-            {
-                list_1.RemoveAt(num2);
-                num++;
-            }
-        }
-
-        for (int num3 = list_2.Count - 1; num3 >= 0; num3--)
-        {
-            if (list_2[num3].Symbol == string_3)
-            {
-                list_2.RemoveAt(num3);
-                num++;
-            }
-        }
-
-        return num;
-    }
-
-    internal void method_13(Bars bars_1, bool bool_21)
-    {
-        bars_1.method_1();
-        if (bool_21)
-        {
-            list_1.Add(bars_1);
-        }
-        else
-        {
-            list_2.Add(bars_1);
-        }
-    }
-
-    internal double method_14(double double_10, bool bool_21, Bars bars_1)
-    {
-        if (!EnableSlippage)
-        {
-            return 0.0;
-        }
-
-        if (bool_21 && !LimitOrderSlippage)
-        {
-            return 0.0;
-        }
-
-        if (bars_1.SymbolInfo.SecurityType == SecurityType.Future)
-        {
-            return (double)SlippageTicks * bars_1.SymbolInfo.Tick;
-        }
-
-        return 0.01 * SlippageUnits * double_10;
-    }
-
     internal void method_15(string string_3)
     {
         list_0.Add(string_3);
-    }
-
-    internal void method_16()
-    {
-        if (eventHandler_7 != null)
-        {
-            eventHandler_7(this, EventArgs.Empty);
-        }
-    }
-
-    internal void method_17()
-    {
-        list_0.Clear();
-        if (eventHandler_8 != null)
-        {
-            eventHandler_8(this, EventArgs.Empty);
-        }
-    }
-
-    internal void method_18(string string_3)
-    {
-        if (eventHandler_9 != null)
-        {
-            eventHandler_9(this, new DebugStringEventArgs(string_3));
-        }
-    }
-
-    internal Bitmap method_19(int int_3, int int_4)
-    {
-        Bitmap bitmap = null;
-        if (chartRenderer_0 == null)
-        {
-            return null;
-        }
-
-        if (eventHandler_10 != null)
-        {
-            ChartBitmapEventArgs chartBitmapEventArgs = new ChartBitmapEventArgs(int_3, int_4);
-            eventHandler_10(this, chartBitmapEventArgs);
-            bitmap = chartBitmapEventArgs.Bitmap;
-        }
-
-        if (bitmap == null)
-        {
-            bitmap = new Bitmap(int_3, int_4);
-            Graphics graphics = Graphics.FromImage(bitmap);
-            using (graphics)
-            {
-                chartRenderer_0.Executing = false;
-                chartRenderer_0.Render(bars_0, graphics, int_3, int_4, chartRenderer_0.ChartStyle);
-                chartRenderer_0.Executing = true;
-            }
-        }
-
-        return bitmap;
-    }
-
-    internal double method_20(int int_3, string string_3)
-    {
-        if (eventHandler_11 == null)
-        {
-            return 0.0;
-        }
-
-        TrendLineEventArgs trendLineEventArgs = new TrendLineEventArgs(string_3, int_3);
-        eventHandler_11(this, trendLineEventArgs);
-        return trendLineEventArgs.Value;
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing && icontainer_0 != null)
-        {
-            icontainer_0.Dispose();
-        }
-
-        base.Dispose(disposing);
-    }
-
-    private void method_21()
-    {
-        icontainer_0 = new Container();
     }
 }
