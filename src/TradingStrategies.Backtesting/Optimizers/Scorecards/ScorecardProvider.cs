@@ -51,9 +51,9 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         const string ExtendedScorecard = "Extended Scorecard";
         const string MS123Scorecard = "MS123 Scorecard";
         const string MS123ScorecardLite = "MS123 Scorecard (No closed equity)";
-        const string BasicExtendedScorecard = BasicExScorecard.DisplayName;
-        const string BasicExtendedFilteringScorecard = BasicExFilteringScorecard.DisplayName;
-        const string LongAndShortScorecard = LongShortScorecard.DisplayName;
+        const string BasicExtendedScorecard = Scorecards.BasicExScorecard.DisplayName;
+        const string FilteringScorecard = Scorecards.FilteringScorecard.DisplayName;
+        const string LongShortScorecard = Scorecards.LongShortScorecard.DisplayName;
 
         private StrategyScorecard _current;
 
@@ -88,8 +88,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
                 MS123Scorecard => new MS123Scorecard(),
                 MS123ScorecardLite => new MS123ScorecardLite(),
                 BasicExtendedScorecard => new BasicExScorecard(),
-                BasicExtendedFilteringScorecard => new BasicExFilteringScorecard(),
-                LongAndShortScorecard => new LongShortScorecard(),
+                FilteringScorecard => new FilteringScorecard(),
+                LongShortScorecard => new LongShortScorecard(),
                 _ => new BasicScorecard(),
             };
         }

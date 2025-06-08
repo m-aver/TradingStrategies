@@ -24,7 +24,7 @@ namespace TradingStrategies.Backtesting.Core
             return strategy;
         }
 
-        public static IStrategyExecuter CreateStrategyInstanceInternal(WealthScriptWrapper wrapper)
+        private static IStrategyExecuter CreateStrategyInstanceInternal(WealthScriptWrapper wrapper)
         {
             if (wrapper is GeneratedWealthScriptWrapper generated)
             {
@@ -36,7 +36,7 @@ namespace TradingStrategies.Backtesting.Core
             return CreateDefautStrategyInstance(wrapper);
         }
 
-        public static IStrategyExecuter CreateDefautStrategyInstance(WealthScriptWrapper wrapper)
+        private static IStrategyExecuter CreateDefautStrategyInstance(WealthScriptWrapper wrapper)
         {
             return new CoupStrategy(wrapper);
         }

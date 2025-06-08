@@ -9,10 +9,9 @@ using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
-    internal class BasicExFilteringScorecard : BasicExScorecard
+    internal class FilteringScorecard : BasicExScorecard
     {
-        public new const string DisplayName = "Basic Extended Filtering Scorecard";
-
+        public new const string DisplayName = "Filtering Scorecard";
         public override string FriendlyName => DisplayName;
 
         private static bool FilterPerfomance(SystemPerformance performance)
