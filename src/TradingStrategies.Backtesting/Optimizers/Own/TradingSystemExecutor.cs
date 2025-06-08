@@ -7,100 +7,61 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 public class TradingSystemExecutorOwn
 {
     private EventHandler<StrategyEventArgs> _lookupStrategyEvent;
-
     private EventHandler<DataSourceLookupEventArgs> _lookupDataSourceEvent;
-
     private EventHandler<LoadSymbolEventArgs> _externalSymbolRequestedEvent;
-
     private EventHandler<LoadSymbolFromDataSetEventArgs> _externalSymbolFromDataSetRequestedEvent;
-
     private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
-
     private EventHandler<BarsEventArgs> _executionCompletedForChildStrategySymbolEvent;
-
     private EventHandler<WSExceptionEventArgs> _wealthScriptExceptionEvent;
-
     private EventHandler<EventArgs> _flushDebugWindowEvent;
-
     private EventHandler<EventArgs> _clearDebugWindowEvent;
-
     private EventHandler<DebugStringEventArgs> _printToStatusBarEvent;
-
     private EventHandler<ChartBitmapEventArgs> _chartBitmapRequestedEvent;
-
     private EventHandler<TrendLineEventArgs> _trendlineGetValueEvent;
-
     private EventHandler<StrategyParameterEventArgs> _setParameterValuesEvent;
 
     public int StrategyWindowID;
-
-    private static bool bool_0 = false;
     private Bars _barsBeingProcessed;
     private List<string> _debugStrings = new();
     private double _overrideShareSize;
     private bool _riskStopLevelNotSet;
-
-    public List<Position> _activePositions = new();
     private double _cashRate;
-
     private double _marginRate;
     private double _cashAdjustmentFactor;
-
     private double _marginAdjustmentFactor;
     private double _autoProfitLevel;
-
     private PosSizer posSizer_0;
-
     private Position position_0;
-
     private bool bool_16 = true;
-
     private WealthScript _wealthScriptExecuting;
-
     private List<Bars> list_1 = new();
-
     private List<Bars> list_2 = new();
     private List<Alert> _masterAlerts = new();
     private IList<Bars> ilist_0;
-
-    private static PositionSize positionSize_1 = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
-
     private Dictionary<string, Bars> dictionary_0 = new Dictionary<string, Bars>();
 
+    private static bool bool_0 = false;
+    private static PositionSize positionSize_1 = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
     private static bool _tnp = false;
-
     private static double _tnpAdjustment = 1.0;
-
     private static int int_1 = 0;
-
     public static List<PosSizer> PosSizers = null;
 
     private List<Bars> list_7 = new();
     private DateTime _wFOStartDate;
-
     private DateTime _wFOEndDate;
     private object _tag;
 
     public Strategy Strategy { get; set; }
-
     public bool isChildStrategy { get; set; }
-
     public SystemPerformance ParentSysPerf { get; set; }
-
     public string DividendItemName { get; set; }
-
     public ChartRenderer Renderer { get; set; }
-
     public BarsLoader BarsLoader { get; set; }
-
     public FundamentalsLoader FundamentalsLoader { get; set; }
-
     public PositionSize PosSize { get; set; } = new PositionSize();
-
     public Commission Commission { get; set; }
-
     public bool ApplyCommission { get; set; }
-
     public bool ApplyInterest { get; set; }
 
     public double CashRate
@@ -130,45 +91,25 @@ public class TradingSystemExecutorOwn
     }
 
     public bool ApplyDividends { get; set; }
-
     public bool ApplyWFODateRange { get; set; }
-
     public bool ExceptionEvents { get; set; }
-
     public bool BuildEquityCurves { get; set; } = true;
-
     public DataSource DataSet { get; set; }
-
     public string StrategyName { get; set; } = "";
-
     public bool ReduceQtyBasedOnVolume { get; set; }
-
     public double RedcuceQtyPct { get; set; } = 10.0;
-
     public SystemPerformance Performance { get; set; }
-
     public IList<string> DebugStrings => _debugStrings;
-
     public bool WorstTradeSimulation { get; set; }
-
     public bool BenchmarkBuyAndHoldON { get; set; }
-
     public string BenchmarkSymbol { get; set; }
-
     public bool EnableSlippage { get; set; }
-
     public bool LimitOrderSlippage { get; set; }
-
     public double SlippageUnits { get; set; } = 1.0;
-
     public int SlippageTicks { get; set; } = 1;
-
     public bool LimitDaySimulation { get; set; }
-
     public bool RoundLots { get; set; }
-
     public bool RoundLots50 { get; set; }
-
     public bool IsStreaming { get; set; }
 
     public double OverrideShareSize
@@ -188,18 +129,13 @@ public class TradingSystemExecutorOwn
     }
 
     public int PricingDecimalPlaces { get; set; }
-
     public bool NoDecimalRoundingForLimitStopPrice { get; set; }
+    internal double RiskStopLevel { get; set; }
 
     public List<Position> MasterPositions { get; } = new();
-
     internal List<Position> CurrentPositions { get; } = new();
-
     internal List<Alert> CurrentAlerts { get; } = new();
-
-    internal List<Position> ActivePositions => _activePositions;
-
-    internal double RiskStopLevel { get; set; }
+    internal List<Position> ActivePositions { get; } = new();
 
     public TradingSystemExecutorOwn()
     {
