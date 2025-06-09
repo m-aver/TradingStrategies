@@ -132,7 +132,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.Strategy = strategy_1;
         RiskStopLevel = 0.0;
         _autoProfitLevel = 0.0;
-        _debugStrings.Clear();
         _riskStopLevelNotSet = false;
         if (barsCollection == null || barsCollection.Count == 0)
         {
@@ -346,60 +345,8 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
-        bool reduceQtyBasedOnVolume = ReduceQtyBasedOnVolume;
-        ReduceQtyBasedOnVolume = false;
-        int num = 0;
-
-        //этот блок походу только чтобы посчитать позицию для ResultsBuyHold
-        if (Strategy.StrategyType != StrategyType.CombinedStrategy)
-        {
-            foreach (Bars item6 in _barsSet)
-            {
-                if (item6.Count > 1)
-                {
-                    num++;
-                }
-            }
-
-            foreach (Bars item7 in _barsSet)
-            {
-                if (item7.Count <= 1)
-                {
-                    continue;
-                }
-
-                Position position = new Position(item7, PositionType.Long, Strategy.ID.ToString());
-                if (PosSize.RawProfitMode)
-                {
-                    position.Shares = CalcPositionSize(item7, 0, item7.Close[0], PositionType.Long, 0.0, 0.0);
-                }
-                else
-                {
-                    double double_ = PosSize.StartingCapital * PosSize.MarginFactor / num;
-                    position.Shares = method_3(item7, double_);
-                }
-
-                if (position.Shares > 0.0)
-                {
-                    position.EntryBar = 1;
-                    position.EntryPrice = item7.Open[1];
-                    position.BasisPrice = item7.Close[0];
-                    Performance.ResultsBuyHold.method_4(position);
-                    if (Commission != null && ApplyCommission)
-                    {
-                        position.EntryCommission = Commission.Calculate(TradeType.Buy, OrderType.Market, position.EntryPrice, position.Shares, item7);
-                    }
-                }
-            }
-        }
-
-        ReduceQtyBasedOnVolume = reduceQtyBasedOnVolume;
         Performance.ResultsLong.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
         Performance.ResultsShort.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
-
-        //TODO: не смотря на то что BenchmarkBuyAndHoldON == false эти штуки все равно вызываются
-        Performance.ResultsBuyHold.method_8(); //соритровка внутреннего списка позиций
-        Performance.ResultsBuyHold.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, null);
 
         if (posSizer_0 != null)
         {
@@ -457,8 +404,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         _masterAlerts.Clear();
         Performance.method_2();
-        list_1.Clear();
-        list_2.Clear();
     }
 
     public int Compare(Position position_1, Position position_2)
