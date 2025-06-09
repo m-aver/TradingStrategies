@@ -156,24 +156,17 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             PosSize = positionSize_1;
         }
 
-        if (Strategy.StrategyType == StrategyType.CombinedStrategy)
+        try
         {
-            //removed
+            foreach (Bars item9 in barsCollection)
+            {
+                ChartRenderer chartRenderer_ = barsCharted == item9 ? Renderer : null;
+                method_2(item9, wealthScript_1, chartRenderer_);
+            }
         }
-        else
+        finally
         {
-            try
-            {
-                foreach (Bars item9 in barsCollection)
-                {
-                    ChartRenderer chartRenderer_ = barsCharted == item9 ? Renderer : null;
-                    method_2(item9, wealthScript_1, chartRenderer_);
-                }
-            }
-            finally
-            {
-                PosSize = posSize;
-            }
+            PosSize = posSize;
         }
 
         MasterPositions.Sort(this);
