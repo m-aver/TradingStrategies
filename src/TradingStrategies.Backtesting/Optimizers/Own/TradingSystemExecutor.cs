@@ -182,7 +182,8 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             ApplyPositionSize();
         }
     }
-
+    
+    //execute на одном инструменте (bars)
     private void method_2(Bars bars_1, WealthScript wealthScript_1, ChartRenderer chartRenderer_1)
     {
         CurrentPositions.Clear();
@@ -202,7 +203,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         try
         {
             _barsBeingProcessed = bars_1;
-            bars_1.method_1();
+            bars_1.method_1(); //block
             if (!bool_0)
             {
                 if (_setParameterValuesEvent != null)
@@ -217,7 +218,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
             wealthScript_1.method_4(bars_1, chartRenderer_1, this, DataSet);
             wealthScript_1.RestoreScale();
-            bars_1.method_2();
+            bars_1.method_2(); //unblock
         }
         catch (Exception ex)
         {
@@ -301,6 +302,8 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         Performance.Results.BuildEquityCurve(_barsSet, this, callbackToSizePositions: true, posSizer_0);
         Performance.Results.method_7(bool_0: true); //очистка
+
+        //заполняем long и short резалты
         foreach (Position item4 in MasterPositions)
         {
             if (item4.Shares > 0.0)
@@ -372,6 +375,9 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         //считает MAE/MFE каждой позиции в каждом резалте
+        //https://smart-lab.ru/blog/676929.php?ysclid=mbpkgf92rm589150064
+        //довольно накладная хрень, надо делать опциональным
+
         Performance.method_0();
     }
 
@@ -462,6 +468,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         return method_4(bars, int_3, basisPrice, positionType_0, riskStopLevel, equity, overrideShareSize, currentCash, bool_21: false);
     }
 
+    //calc pos size
     internal double method_4(Bars bars_1, int int_3, double double_10, PositionType positionType_0, double double_11, double double_12, double double_13, double double_14, bool bool_21)
     {
         double num = 0.0;
