@@ -19,13 +19,10 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     private double _autoProfitLevel;
     private PosSizer posSizer_0;
     private Position position_0;
-    private bool bool_16 = true;
+    private bool _rawProfitMode = true;
     private WealthScript _wealthScriptExecuting;
-    private List<Bars> list_1 = new();
-    private List<Bars> list_2 = new();
     private List<Alert> _masterAlerts = new();
-    private IList<Bars> ilist_0;
-    private List<Bars> list_7 = new();
+    private IList<Bars> _barsSet;
 
     private static bool bool_0 = false;
     private static PositionSize positionSize_1 = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
@@ -131,15 +128,8 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             wealthScript_1.StrategyWindowID = StrategyWindowID;
         }
 
-        List<Bars> list = new();
-        foreach (Bars item in barsCollection)
-        {
-            list.Add(item);
-        }
-
         Strategy = strategy_1;
         Performance.Strategy = strategy_1;
-        list_7.Clear();
         RiskStopLevel = 0.0;
         _autoProfitLevel = 0.0;
         _debugStrings.Clear();
@@ -150,7 +140,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         Clear(avoidClearingTradeList);
-        ilist_0 = barsCollection;
+        _barsSet = barsCollection;
         foreach (Bars item2 in barsCollection)
         {
             Performance.method_1(item2);
@@ -161,7 +151,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.PositionSize = PosSize;
         _wealthScriptExecuting = wealthScript_1;
         PositionSize posSize = PosSize;
-        bool_16 = PosSize.RawProfitMode;
+        _rawProfitMode = PosSize.RawProfitMode;
         if (!PosSize.RawProfitMode && PosSize.Mode != PosSizeMode.ScriptOverride)
         {
             PosSize = positionSize_1;
@@ -184,7 +174,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             finally
             {
                 PosSize = posSize;
-                list_7.Clear();
             }
         }
 
@@ -211,7 +200,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
-        method_11();
         try
         {
             _barsBeingProcessed = bars_1;
@@ -259,7 +247,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     {
         Performance.BenchmarkSymbolbars = null;
 
-        if (ilist_0 == null)
+        if (_barsSet == null)
         {
             return;
         }
@@ -267,6 +255,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.RawTrades = MasterPositions;
         Performance.PositionSize = PosSize;
 
+        //очистка
         Performance.method_2();
 
         if (ApplyInterest)
@@ -305,18 +294,19 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
-        foreach (Bars item3 in ilist_0)
+        //добавить бар во внутренний лист
+        foreach (Bars item3 in _barsSet)
         {
             Performance.method_1(item3);
         }
 
-        Performance.Results.BuildEquityCurve(ilist_0, this, callbackToSizePositions: true, posSizer_0);
-        Performance.Results.method_7(bool_0: true);
+        Performance.Results.BuildEquityCurve(_barsSet, this, callbackToSizePositions: true, posSizer_0);
+        Performance.Results.method_7(bool_0: true); //очистка
         foreach (Position item4 in MasterPositions)
         {
             if (item4.Shares > 0.0)
             {
-                Performance.Results.method_4(item4);
+                Performance.Results.method_4(item4); //добавить позицию во внутренний лист
                 if (item4.PositionType == PositionType.Long)
                 {
                     Performance.ResultsLong.method_4(item4);
@@ -360,9 +350,10 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         ReduceQtyBasedOnVolume = false;
         int num = 0;
 
+        //этот блок походу только чтобы посчитать позицию для ResultsBuyHold
         if (Strategy.StrategyType != StrategyType.CombinedStrategy)
         {
-            foreach (Bars item6 in ilist_0)
+            foreach (Bars item6 in _barsSet)
             {
                 if (item6.Count > 1)
                 {
@@ -370,7 +361,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
                 }
             }
 
-            foreach (Bars item7 in ilist_0)
+            foreach (Bars item7 in _barsSet)
             {
                 if (item7.Count <= 1)
                 {
@@ -403,16 +394,16 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         ReduceQtyBasedOnVolume = reduceQtyBasedOnVolume;
-        Performance.ResultsLong.BuildEquityCurve(ilist_0, this, callbackToSizePositions: false, posSizer_0);
-        Performance.ResultsShort.BuildEquityCurve(ilist_0, this, callbackToSizePositions: false, posSizer_0);
+        Performance.ResultsLong.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
+        Performance.ResultsShort.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
 
         //TODO: не смотря на то что BenchmarkBuyAndHoldON == false эти штуки все равно вызываются
-        Performance.ResultsBuyHold.method_8();
-        Performance.ResultsBuyHold.BuildEquityCurve(ilist_0, this, callbackToSizePositions: false, null);
+        Performance.ResultsBuyHold.method_8(); //соритровка внутреннего списка позиций
+        Performance.ResultsBuyHold.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, null);
 
         if (posSizer_0 != null)
         {
-            Performance.Results.method_9(posSizer_0);
+            Performance.Results.method_9(posSizer_0); //выставить списки позиций резалта в позсайзер
         }
 
         if (Strategy.StrategyType != StrategyType.CombinedStrategy)
@@ -433,6 +424,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
+        //считает MAE/MFE каждой позиции в каждом резалте
         Performance.method_0();
     }
 
@@ -643,7 +635,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             num = num7 / 1000.0;
         }
 
-        if ((bool_21 && bool_16 || !bool_21) && RoundLots && bars_1.SymbolInfo.SecurityType == SecurityType.Equity && num > 0.0)
+        if ((bool_21 && _rawProfitMode || !bool_21) && RoundLots && bars_1.SymbolInfo.SecurityType == SecurityType.Equity && num > 0.0)
         {
             double a = num / 100.0;
             a = Math.Round(a) * 100.0;
@@ -679,13 +671,5 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         return CalcPositionSize(bars, int_3, basisPrice, positionType_0, riskStopLevel, equity, overrideShareSize, 0.0);
-    }
-
-    internal int method_11()
-    {
-        int result = list_1.Count + list_2.Count;
-        list_1.Clear();
-        list_2.Clear();
-        return result;
     }
 }
