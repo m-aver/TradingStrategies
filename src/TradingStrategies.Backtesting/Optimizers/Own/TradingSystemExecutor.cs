@@ -2,7 +2,7 @@
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
-public class TradingSystemExecutorOwn : IComparer<Position>
+public class TradingSystemExecutorOwn // : IComparer<Position>
 {
     private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
     private EventHandler<WSExceptionEventArgs> _wealthScriptExceptionEvent;
@@ -297,6 +297,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.Results.method_7(bool_0: true); //очистка
 
         //заполняем long и short резалты
+        /*
         foreach (Position item4 in MasterPositions)
         {
             if (item4.Shares > 0.0)
@@ -343,12 +344,14 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         Performance.ResultsLong.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
         Performance.ResultsShort.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
+        */
 
         if (posSizer_0 != null)
         {
             Performance.Results.method_9(posSizer_0); //выставить списки позиций резалта в позсайзер
         }
 
+        /*
         if (Strategy.StrategyType != StrategyType.CombinedStrategy)
         {
             foreach (Alert alert in Performance.Results.Alerts)
@@ -366,12 +369,13 @@ public class TradingSystemExecutorOwn : IComparer<Position>
                 }
             }
         }
+        */
 
         //считает MAE/MFE каждой позиции в каждом резалте
         //https://smart-lab.ru/blog/676929.php?ysclid=mbpkgf92rm589150064
         //довольно накладная хрень, надо делать опциональным
 
-        Performance.method_0();
+        //Performance.method_0();
     }
 
     private int method_3(Bars bars_1, double double_10, int int_3 = 0)
@@ -405,6 +409,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.method_2();
     }
 
+    /*
     public int Compare(Position position_1, Position position_2)
     {
         if (position_1.EntryDate == position_2.EntryDate)
@@ -423,6 +428,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         _ = position_2.EntryDate;
         return position_1.EntryDate.CompareTo(position_2.EntryDate);
     }
+    */
 
     public void ApplySettings(TradingSystemExecutorOwn executor)
     {
@@ -456,6 +462,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         DividendItemName = executor.DividendItemName;
     }
 
+    /*
     public double CalcPositionSize(Bars bars, int int_3, double basisPrice, PositionType positionType_0, double riskStopLevel, double equity, double overrideShareSize, double currentCash)
     {
         return method_4(bars, int_3, basisPrice, positionType_0, riskStopLevel, equity, overrideShareSize, currentCash, bool_21: false);
@@ -617,4 +624,5 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         return CalcPositionSize(bars, int_3, basisPrice, positionType_0, riskStopLevel, equity, overrideShareSize, 0.0);
     }
+    */
 }
