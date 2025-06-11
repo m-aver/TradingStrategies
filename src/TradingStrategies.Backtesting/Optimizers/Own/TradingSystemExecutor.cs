@@ -109,16 +109,19 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
     internal List<Alert> CurrentAlerts { get; } = new();
     internal List<Position> ActivePositions { get; } = new();
 
-    public TradingSystemExecutorOwn()
+    private TradingSystemExecutor _nativeExecutor;
+
+    public TradingSystemExecutorOwn(TradingSystemExecutor nativeExecutor)
     {
         Performance = new SystemPerformance(null);
+        _nativeExecutor = nativeExecutor;   
     }
 
     public void Initialize()
     {
-        Performance.PositionSize = PosSize;
-        Performance.Results.CurrentCash = PosSize.StartingCapital;
-        Performance.Results.CurrentEquity = PosSize.StartingCapital;
+        Performance.Set("PositionSize", PosSize);
+        Performance.Results.Set("CurrentCash", PosSize.StartingCapital);
+        Performance.Results.Set("CurrentEquity", PosSize.StartingCapital);
     }
 
     public void Execute(Strategy strategy_1, WealthScript wealthScript_1, Bars barsCharted, List<Bars> barsCollection, bool avoidClearingTradeList = false)
@@ -142,12 +145,13 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         _barsSet = barsCollection;
         foreach (Bars item2 in barsCollection)
         {
-            Performance.method_1(item2);
+            Performance.Call("method_1", item2);
         }
 
-        Performance.Scale = barsCollection[0].Scale;
-        Performance.BarInterval = barsCollection[0].BarInterval;
-        Performance.PositionSize = PosSize;
+        Performance.Set("Scale", barsCollection[0].Scale);
+        Performance.Set("BarInterval", barsCollection[0].BarInterval);
+        Performance.Set("PositionSize", PosSize);
+
         _wealthScriptExecuting = wealthScript_1;
         PositionSize posSize = PosSize;
         _rawProfitMode = PosSize.RawProfitMode;
@@ -169,7 +173,7 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
             PosSize = posSize;
         }
 
-        MasterPositions.Sort(this);
+        MasterPositions.Sort(_nativeExecutor);
         if (BuildEquityCurves)
         {
             ApplyPositionSize();
@@ -196,7 +200,7 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         try
         {
             _barsBeingProcessed = bars_1;
-            bars_1.method_1(); //block
+            bars_1.Call("method_1"); //block
             if (!bool_0)
             {
                 if (_setParameterValuesEvent != null)
@@ -209,13 +213,13 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
                 Strategy.LoadPreferredValues(bars_1.Symbol, wealthScript_1);
             }
 
-            wealthScript_1.method_4(bars_1, chartRenderer_1, this, DataSet);
+            wealthScript_1.Call("method_4", bars_1, chartRenderer_1, _nativeExecutor, DataSet);
             wealthScript_1.RestoreScale();
-            bars_1.method_2(); //unblock
+            bars_1.Call("method_2"); //unblock
         }
         catch (Exception ex)
         {
-            bars_1.method_2();
+            bars_1.Call("method_2");
             if (!ExceptionEvents)
             {
                 throw ex;
@@ -245,11 +249,11 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
             return;
         }
 
-        Performance.RawTrades = MasterPositions;
-        Performance.PositionSize = PosSize;
+        Performance.Set("RawTrades", MasterPositions);
+        Performance.Set("PositionSize", PosSize);
 
         //очистка
-        Performance.method_2();
+        Performance.Call("method_2");
 
         if (ApplyInterest)
         {
@@ -290,11 +294,11 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         //добавить бар во внутренний лист
         foreach (Bars item3 in _barsSet)
         {
-            Performance.method_1(item3);
+            Performance.Call("method_1", item3);
         }
 
-        Performance.Results.BuildEquityCurve(_barsSet, this, callbackToSizePositions: true, posSizer_0);
-        Performance.Results.method_7(bool_0: true); //очистка
+        Performance.Results.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: true, posSizer_0);
+        Performance.Results.Call("method_7", true); //очистка
 
         //заполняем long и short резалты
         /*
@@ -348,7 +352,7 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
 
         if (posSizer_0 != null)
         {
-            Performance.Results.method_9(posSizer_0); //выставить списки позиций резалта в позсайзер
+            Performance.Results.Call("method_9", posSizer_0); //выставить списки позиций резалта в позсайзер
         }
 
         /*
@@ -375,7 +379,7 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         //https://smart-lab.ru/blog/676929.php?ysclid=mbpkgf92rm589150064
         //довольно накладная хрень, надо делать опциональным
 
-        //Performance.method_0();
+        //Performance.Call("method_0", );
     }
 
     private int method_3(Bars bars_1, double double_10, int int_3 = 0)
@@ -406,7 +410,7 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         }
 
         _masterAlerts.Clear();
-        Performance.method_2();
+        Performance.Call("method_2");
     }
 
     /*
