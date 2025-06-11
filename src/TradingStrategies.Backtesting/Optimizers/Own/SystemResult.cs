@@ -8,77 +8,43 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class SystemResultsOwn : IComparer<Position>
 {
-    private List<Position> list_0 = new List<Position>();
+    private List<Position> _positions = new List<Position>();
 
-    private IList<Position> ilist_0;
+    private IList<Position> _positionsRo;
 
-    private SystemPerformance systemPerformance_0;
-
-    private DataSeries dataSeries_0 = new DataSeries("Equity");
-
-    private DataSeries dataSeries_1 = new DataSeries("Cash");
-
-    private double double_0;
-
-    private double double_1;
-
-    private double double_2;
-
-    private List<Alert> list_1 = new List<Alert>();
-
-    private int int_0;
-
-    private double double_3;
-
-    private double double_4;
-
-    private double double_5;
-
+    private SystemPerformance _systemPerfomance;
     private static int int_1 = -1;
 
     private static Random random_0 = new Random();
 
-    private DataSeries dataSeries_2 = new DataSeries("DrawDown");
+    private DataSeries _drawdownCurve = new DataSeries("DrawDown");
 
-    private DataSeries dataSeries_3 = new DataSeries("DrawDownPct");
+    private DataSeries _drawdownPercentCurve = new DataSeries("DrawDownPct");
 
-    private double double_6;
+    private double _currentMaxEquity; //for drawdown
 
-    private List<Position> list_2 = new List<Position>();
+    private List<Position> _currentPositionsPs = new List<Position>();
 
-    private List<Position> list_3 = new List<Position>();
+    private List<Position> _closedPositionsPs = new List<Position>();
 
-    private List<Position> list_4 = new List<Position>();
+    private List<Position> _positionsPs = new List<Position>();
 
-    [CompilerGenerated]
-    private DataSeries dataSeries_4;
-
-    public int TradesNSF
-    {
-        get
-        {
-            return int_0;
-        }
-        set
-        {
-            int_0 = value;
-        }
-    }
+    public int TradesNSF { get; set; }
 
     public IList<Position> Positions
     {
         get
         {
-            if (ilist_0 == null)
+            if (_positionsRo == null)
             {
-                ilist_0 = list_0.AsReadOnly();
+                _positionsRo = _positions.AsReadOnly();
             }
 
-            return ilist_0;
+            return _positionsRo;
         }
     }
 
-    public List<Alert> Alerts => list_1;
+    public List<Alert> Alerts { get; } = new List<Alert>();
 
     public double NetProfit
     {
@@ -90,7 +56,7 @@ public class SystemResultsOwn : IComparer<Position>
                 num += position.NetProfit;
             }
 
-            return num + double_3 + double_4 + double_5;
+            return num + CashReturn + MarginInterest + DividendsPaid;
         }
     }
 
@@ -106,7 +72,7 @@ public class SystemResultsOwn : IComparer<Position>
                 num += position.BarsHeld;
             }
 
-            num2 = num2 + double_3 + double_4 + double_5;
+            num2 = num2 + CashReturn + MarginInterest + DividendsPaid;
             if (num == 0.0)
             {
                 return 0.0;
@@ -120,38 +86,18 @@ public class SystemResultsOwn : IComparer<Position>
     {
         get
         {
-            if (dataSeries_0.Count == 0)
+            if (EquityCurve.Count == 0)
             {
                 return 0.0;
             }
 
-            return NetProfit / dataSeries_0.Count;
+            return NetProfit / EquityCurve.Count;
         }
     }
 
-    public DataSeries EquityCurve
-    {
-        get
-        {
-            return dataSeries_0;
-        }
-        internal set
-        {
-            dataSeries_0 = value;
-        }
-    }
+    public DataSeries EquityCurve { get; internal set; } = new DataSeries("Equity");
 
-    public DataSeries CashCurve
-    {
-        get
-        {
-            return dataSeries_1;
-        }
-        internal set
-        {
-            dataSeries_1 = value;
-        }
-    }
+    public DataSeries CashCurve { get; internal set; } = new DataSeries("Cash");
 
     public double APR
     {
@@ -174,89 +120,27 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    public double TotalCommission => double_2;
+    public double TotalCommission { get; private set; }
 
-    public double CashReturn
-    {
-        get
-        {
-            return double_3;
-        }
-        internal set
-        {
-            double_3 = value;
-        }
-    }
+    public double CashReturn { get; internal set; }
 
-    public double MarginInterest
-    {
-        get
-        {
-            return double_4;
-        }
-        internal set
-        {
-            double_4 = value;
-        }
-    }
+    public double MarginInterest { get; internal set; }
 
-    public double DividendsPaid
-    {
-        get
-        {
-            return double_5;
-        }
-        internal set
-        {
-            double_5 = value;
-        }
-    }
+    public double DividendsPaid { get; internal set; }
 
-    public DataSeries OpenPositionCount
-    {
-        [CompilerGenerated]
-        get
-        {
-            return dataSeries_4;
-        }
-        [CompilerGenerated]
-        set
-        {
-            dataSeries_4 = value;
-        }
-    }
+    public DataSeries OpenPositionCount { get; set; }
 
     private static double _secureCode => DateTime.Now.Add(new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second)).ToOADate();
 
     private static double _secureCodeMin => DateTime.FromOADate(_secureCode).Subtract(new TimeSpan(0, 0, 0, 1)).ToOADate();
 
-    internal double CurrentEquity
-    {
-        get
-        {
-            return double_0;
-        }
-        set
-        {
-            double_0 = value;
-        }
-    }
+    internal double CurrentEquity { get; set; }
 
-    internal double CurrentCash
-    {
-        get
-        {
-            return double_1;
-        }
-        set
-        {
-            double_1 = value;
-        }
-    }
+    internal double CurrentCash { get; set; }
 
     public SystemResultsOwn(SystemPerformance sysPerf)
     {
-        systemPerformance_0 = sysPerf;
+        _systemPerfomance = sysPerf;
         if (int_1 == -1)
         {
             int_1 = random_0.Next(100);
@@ -286,13 +170,13 @@ public class SystemResultsOwn : IComparer<Position>
         //IL_020d: Unknown result type (might be due to invalid IL or missing references)
         //IL_0214: Expected O, but got Unknown
         method_2(tradingSystemExecutor_0);
-        double_2 = 0.0;
-        dataSeries_0 = new DataSeries("Equity");
-        dataSeries_1 = new DataSeries("Cash");
-        dataSeries_2 = new DataSeries("DrawDown");
-        dataSeries_3 = new DataSeries("DrawDownPct");
-        double_6 = double.MinValue;
-        PositionSize positionSize = systemPerformance_0.PositionSize;
+        TotalCommission = 0.0;
+        EquityCurve = new DataSeries("Equity");
+        CashCurve = new DataSeries("Cash");
+        _drawdownCurve = new DataSeries("DrawDown");
+        _drawdownPercentCurve = new DataSeries("DrawDownPct");
+        _currentMaxEquity = double.MinValue;
+        PositionSize positionSize = _systemPerfomance.PositionSize;
         double double_ = 0.0;
         OpenPositionCount = new DataSeries("OpenPositions");
         List<Bars> list = new List<Bars>();
@@ -341,9 +225,9 @@ public class SystemResultsOwn : IComparer<Position>
             }
         }
 
-        list_2.Clear();
-        list_4.Clear();
-        list_3.Clear();
+        _currentPositionsPs.Clear();
+        _positionsPs.Clear();
+        _closedPositionsPs.Clear();
         SynchronizedBarIterator val = new SynchronizedBarIterator((ICollection<Bars>)list);
         if (!(val.Date != DateTime.MaxValue))
         {
@@ -369,29 +253,29 @@ public class SystemResultsOwn : IComparer<Position>
 
         if (posSizer != null)
         {
-            posSizer.method_0(tradingSystemExecutor_0, list_2, list_4, list_3, dataSeries_0, dataSeries_1, dataSeries_2, dataSeries_3);
+            posSizer.method_0(tradingSystemExecutor_0, _currentPositionsPs, _positionsPs, _closedPositionsPs, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
             posSizer.Initialize();
         }
 
-        double_1 = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
-        double_0 = double_1;
+        CurrentCash = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
+        CurrentEquity = CurrentCash;
         method_1(tradingSystemExecutor_0);
         do
         {
             double num = 0.0;
-            for (int num2 = list_2.Count - 1; num2 >= 0; num2--)
+            for (int num2 = _currentPositionsPs.Count - 1; num2 >= 0; num2--)
             {
-                Position position = list_2[num2];
+                Position position = _currentPositionsPs[num2];
                 if (!position.Active && position.ExitDate == val.Date && position.ExitOrderType == OrderType.Market)
                 {
-                    list_2.RemoveAt(num2);
+                    _currentPositionsPs.RemoveAt(num2);
                     list4.Add(position);
-                    list_3.Add(position);
+                    _closedPositionsPs.Add(position);
                     double_ += position.NetProfit;
-                    double_1 += position.Size;
-                    double_1 += position.NetProfit;
+                    CurrentCash += position.Size;
+                    CurrentCash += position.NetProfit;
                     num += position.NetProfit;
-                    double_1 += position.EntryCommission;
+                    CurrentCash += position.EntryCommission;
                 }
             }
 
@@ -409,7 +293,7 @@ public class SystemResultsOwn : IComparer<Position>
                 posSizer.Candidates = list5;
             }
 
-            double num3 = double_1;
+            double num3 = CurrentCash;
             while (list3.Count > 0)
             {
                 Position position2 = list3[0];
@@ -436,11 +320,11 @@ public class SystemResultsOwn : IComparer<Position>
                 list3.RemoveAt(0);
                 if (position2.Shares > 0.0)
                 {
-                    double num5 = double_1;
+                    double num5 = CurrentCash;
                     if (!tradingSystemExecutor_0.PosSize.RawProfitMode)
                     {
-                        double num6 = double_0 - double_1;
-                        num5 = double_0 * tradingSystemExecutor_0.PosSize.MarginFactor - num6;
+                        double num6 = CurrentEquity - CurrentCash;
+                        num5 = CurrentEquity * tradingSystemExecutor_0.PosSize.MarginFactor - num6;
                     }
 
                     bool flag;
@@ -451,13 +335,13 @@ public class SystemResultsOwn : IComparer<Position>
 
                     if (flag)
                     {
-                        double_1 -= position2.Size;
-                        double_1 -= position2.EntryCommission;
+                        CurrentCash -= position2.Size;
+                        CurrentCash -= position2.EntryCommission;
                         num5 -= position2.Size;
                         num5 -= position2.EntryCommission;
-                        list_2.Add(position2);
-                        list_4.Add(position2);
-                        double_2 += position2.EntryCommission + position2.ExitCommission;
+                        _currentPositionsPs.Add(position2);
+                        _positionsPs.Add(position2);
+                        TotalCommission += position2.EntryCommission + position2.ExitCommission;
                     }
                     else
                     {
@@ -466,48 +350,48 @@ public class SystemResultsOwn : IComparer<Position>
                 }
             }
 
-            for (int num7 = list_2.Count - 1; num7 >= 0; num7--)
+            for (int num7 = _currentPositionsPs.Count - 1; num7 >= 0; num7--)
             {
-                Position position3 = list_2[num7];
+                Position position3 = _currentPositionsPs[num7];
                 if (!position3.Active && position3.ExitDate == val.Date)
                 {
-                    list_2.RemoveAt(num7);
+                    _currentPositionsPs.RemoveAt(num7);
                     list4.Add(position3);
-                    list_3.Add(position3);
+                    _closedPositionsPs.Add(position3);
                     double_ += position3.NetProfit;
-                    double_1 += position3.Size;
-                    double_1 += position3.NetProfit;
+                    CurrentCash += position3.Size;
+                    CurrentCash += position3.NetProfit;
                     num += position3.NetProfit;
-                    double_1 += position3.EntryCommission;
+                    CurrentCash += position3.EntryCommission;
                 }
             }
 
-            double_0 = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
-            foreach (Position item3 in list_2)
+            CurrentEquity = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
+            foreach (Position item3 in _currentPositionsPs)
             {
                 int num8 = val.Bar(item3.Bars);
-                double_0 += item3.NetProfitAsOfBar(num8);
+                CurrentEquity += item3.NetProfitAsOfBar(num8);
                 method_3(item3, num8, ref double_);
             }
 
             foreach (Position item4 in list4)
             {
                 int num9 = val.Bar(item4.Bars);
-                double_0 += item4.NetProfitAsOfBar(num9);
+                CurrentEquity += item4.NetProfitAsOfBar(num9);
                 method_3(item4, num9, ref double_);
             }
 
             list4.Clear();
-            double_0 += double_ - num;
-            dataSeries_0.Add(double_0, val.Date);
-            dataSeries_1.Add(double_1, val.Date);
-            OpenPositionCount.Add(list_2.Count, val.Date);
-            int num10 = dataSeries_1.Count - 1;
-            if (tradingSystemExecutor_0.ApplyInterest && !tradingSystemExecutor_0.PosSize.RawProfitMode && dataSeries_1.Count > 1 && dataSeries_1.Date[num10].Date != dataSeries_1.Date[num10 - 1].Date)
+            CurrentEquity += double_ - num;
+            EquityCurve.Add(CurrentEquity, val.Date);
+            CashCurve.Add(CurrentCash, val.Date);
+            OpenPositionCount.Add(_currentPositionsPs.Count, val.Date);
+            int num10 = CashCurve.Count - 1;
+            if (tradingSystemExecutor_0.ApplyInterest && !tradingSystemExecutor_0.PosSize.RawProfitMode && CashCurve.Count > 1 && CashCurve.Date[num10].Date != CashCurve.Date[num10 - 1].Date)
             {
-                TimeSpan timeSpan = dataSeries_1.Date[num10] - dataSeries_1.Date[num10 - 1];
+                TimeSpan timeSpan = CashCurve.Date[num10] - CashCurve.Date[num10 - 1];
                 double num11 = 1.0;
-                double num12 = dataSeries_1[num10];
+                double num12 = CashCurve[num10];
                 if (num12 > 0.0)
                 {
                     num11 = tradingSystemExecutor_0.CashAdjustmentFactor;
@@ -522,7 +406,7 @@ public class SystemResultsOwn : IComparer<Position>
                     num12 *= num11;
                 }
 
-                num11 = num12 - dataSeries_1[num10];
+                num11 = num12 - CashCurve[num10];
                 if (num12 > 0.0)
                 {
                     CashReturn += num11;
@@ -532,24 +416,24 @@ public class SystemResultsOwn : IComparer<Position>
                     MarginInterest += num11;
                 }
 
-                dataSeries_1[num10] = num12;
-                dataSeries_0[num10] += num11;
-                double_1 = dataSeries_1[num10];
-                double_0 = dataSeries_0[num10];
+                CashCurve[num10] = num12;
+                EquityCurve[num10] += num11;
+                CurrentCash = CashCurve[num10];
+                CurrentEquity = EquityCurve[num10];
                 double_ += num11;
             }
 
             if (posSizer != null)
             {
-                if (double_0 > double_6)
+                if (CurrentEquity > _currentMaxEquity)
                 {
-                    double_6 = double_0;
+                    _currentMaxEquity = CurrentEquity;
                 }
 
-                double num13 = double_0 - double_6;
-                double value = num13 * 100.0 / double_6;
-                dataSeries_2.Add(num13, dataSeries_0.Date[num10]);
-                dataSeries_3.Add(value, dataSeries_0.Date[num10]);
+                double num13 = CurrentEquity - _currentMaxEquity;
+                double value = num13 * 100.0 / _currentMaxEquity;
+                _drawdownCurve.Add(num13, EquityCurve.Date[num10]);
+                _drawdownPercentCurve.Add(value, EquityCurve.Date[num10]);
             }
         }
         while (val.Next());
@@ -559,7 +443,7 @@ public class SystemResultsOwn : IComparer<Position>
     {
         if (tradingSystemExecutor_0.TNP < _secureCodeMin)
         {
-            double_0 *= tradingSystemExecutor_0.TNPAdjustment;
+            CurrentEquity *= tradingSystemExecutor_0.TNPAdjustment;
         }
     }
 
@@ -616,7 +500,7 @@ public class SystemResultsOwn : IComparer<Position>
                         num = 0.0 - num;
                     }
 
-                    double_1 += num;
+                    CurrentCash += num;
                     double_7 += num;
                     DividendsPaid += num;
                     if (list.Count == 0)
@@ -637,7 +521,7 @@ public class SystemResultsOwn : IComparer<Position>
                         num2 = 0.0 - num2;
                     }
 
-                    double_1 += num2;
+                    CurrentCash += num2;
                     double_7 += num2;
                     DividendsPaid += num2;
                     if (list.Count == 0)
@@ -656,7 +540,7 @@ public class SystemResultsOwn : IComparer<Position>
                     num3 = 0.0 - num3;
                 }
 
-                double_1 += num3;
+                CurrentCash += num3;
                 double_7 += num3;
                 DividendsPaid += num3;
                 if (list.Count == 0)
@@ -671,52 +555,52 @@ public class SystemResultsOwn : IComparer<Position>
 
     internal void method_4(Position position_0)
     {
-        list_0.Add(position_0);
+        _positions.Add(position_0);
     }
 
     internal void method_5(Alert alert_0)
     {
-        list_1.Add(alert_0);
+        Alerts.Add(alert_0);
     }
 
     internal void method_6()
     {
-        int_0 = 0;
-        double_3 = 0.0;
-        double_4 = 0.0;
-        double_5 = 0.0;
-        list_0.Clear();
-        list_1.Clear();
-        if (dataSeries_0 != null)
+        TradesNSF = 0;
+        CashReturn = 0.0;
+        MarginInterest = 0.0;
+        DividendsPaid = 0.0;
+        _positions.Clear();
+        Alerts.Clear();
+        if (EquityCurve != null)
         {
-            dataSeries_0.method_2();
-            dataSeries_1.method_2();
-            dataSeries_2.method_2();
-            dataSeries_3.method_2();
+            EquityCurve.method_2();
+            CashCurve.method_2();
+            _drawdownCurve.method_2();
+            _drawdownPercentCurve.method_2();
         }
     }
 
     internal void method_7(bool bool_0)
     {
-        list_0.Clear();
+        _positions.Clear();
         if (!bool_0)
         {
-            dataSeries_0.method_2();
-            dataSeries_1.method_2();
-            dataSeries_2.method_2();
-            dataSeries_3.method_2();
+            EquityCurve.method_2();
+            CashCurve.method_2();
+            _drawdownCurve.method_2();
+            _drawdownPercentCurve.method_2();
         }
     }
 
     internal void method_8()
     {
-        list_0.Sort(this);
+        _positions.Sort(this);
     }
 
     internal void method_9(PosSizer posSizer_0)
     {
-        posSizer_0.ActivePositions = list_2;
-        posSizer_0.Positions = list_4;
-        posSizer_0.ClosedPositions = list_3;
+        posSizer_0.ActivePositions = _currentPositionsPs;
+        posSizer_0.Positions = _positionsPs;
+        posSizer_0.ClosedPositions = _closedPositionsPs;
     }
 }
