@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using TradingStrategies.Utilities;
 using WealthLab;
+using SynchronizedBarIterator = TradingStrategies.Utilities.SynchronizedBarIterator;
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
@@ -89,11 +90,7 @@ public class SystemResultsOwn : IComparer<Position>
         PositionSize positionSize = _systemPerfomance.PositionSize;
         double double_ = 0.0;
         OpenPositionCount = new DataSeries("OpenPositions");
-        List<Bars> list = new List<Bars>();
-        foreach (Bars bars in barsList)
-        {
-            list.Add(bars);
-        }
+        List<Bars> list = barsList.ToList();
 
         foreach (Position masterPosition in tradingSystemExecutor_0.MasterPositions)
         {
@@ -170,6 +167,7 @@ public class SystemResultsOwn : IComparer<Position>
         CurrentCash = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
         CurrentEquity = CurrentCash;
 
+        //цикл по SynchronizedBarIterator
         do
         {
             double num = 0.0;
@@ -281,14 +279,14 @@ public class SystemResultsOwn : IComparer<Position>
             {
                 int num8 = val.Bar(item3.Bars);
                 CurrentEquity += item3.NetProfitAsOfBar(num8);
-                method_3(item3, num8, ref double_);
+                ApplyDividents(item3, num8, ref double_);
             }
 
             foreach (Position item4 in list4)
             {
                 int num9 = val.Bar(item4.Bars);
                 CurrentEquity += item4.NetProfitAsOfBar(num9);
-                method_3(item4, num9, ref double_);
+                ApplyDividents(item4, num9, ref double_);
             }
 
             list4.Clear();
@@ -349,78 +347,64 @@ public class SystemResultsOwn : IComparer<Position>
         while (val.Next());
     }
 
-    private void method_3(Position position_0, int int_2, ref double double_7)
+    private void ApplyDividents(Position position, int bar, ref double valueToApply)
     {
-        if (position_0.Bars.DivTag == null)
+        if (position.Bars.DivTag == null)
         {
             return;
         }
 
-        IList<FundamentalItem> list = (IList<FundamentalItem>)position_0.Bars.DivTag;
-        DateTime date = position_0.Bars.Date[int_2].Date;
-        DateTime dateTime = int_2 < 1 ? position_0.Bars.Date[int_2].Date.AddYears(-1) : position_0.Bars.Date[int_2 - 1].Date;
-        foreach (FundamentalItem item in list)
+        IList<FundamentalItem> dividents = (IList<FundamentalItem>)position.Bars.DivTag;
+        DateTime barDate = position.Bars.Date[bar].Date;
+        DateTime prevBarDate = bar < 1 ? position.Bars.Date[bar].Date.AddYears(-1) : position.Bars.Date[bar - 1].Date;
+
+        foreach (FundamentalItem divident in dividents)
         {
-            DateTime date2 = item.Date;
-            if (position_0.Bars.IsIntraday)
+            DateTime divDate = divident.Date;
+            if (position.Bars.IsIntraday)
             {
-                if (date2 == date && position_0.Bars.IntradayBarNumber(int_2) == 0 && position_0.EntryDate.Date != date2.Date)
+                if (divDate == barDate && 
+                    position.Bars.IntradayBarNumber(bar) == 0 && 
+                    position.EntryDate.Date != divDate.Date)
                 {
-                    double num = item.Value * position_0.Shares;
-                    if (position_0.PositionType == PositionType.Short)
-                    {
-                        num = 0.0 - num;
-                    }
-
-                    CurrentCash += num;
-                    double_7 += num;
-                    DividendsPaid += num;
-                    if (list.Count == 0)
-                    {
-                        position_0.Bars.DivTag = null;
-                    }
-
+                    ApplyDivident(divident, ref valueToApply);
                     break;
                 }
             }
-            else if (position_0.Bars.Scale == BarScale.Daily)
+            else if (position.Bars.Scale == BarScale.Daily)
             {
-                if (date2 == date && position_0.EntryDate < date2)
+                if (divDate == barDate && 
+                    position.EntryDate < divDate)
                 {
-                    double num2 = item.Value * position_0.Shares;
-                    if (position_0.PositionType == PositionType.Short)
-                    {
-                        num2 = 0.0 - num2;
-                    }
-
-                    CurrentCash += num2;
-                    double_7 += num2;
-                    DividendsPaid += num2;
-                    if (list.Count == 0)
-                    {
-                        position_0.Bars.DivTag = null;
-                    }
-
+                    ApplyDivident(divident, ref valueToApply);
                     break;
                 }
             }
-            else if (date2 <= date && date2 > dateTime && position_0.EntryDate < date2 && (position_0.Active || position_0.ExitDate >= date2))
+            else //это видимо когда шаг свечи больше дня
             {
-                double num3 = item.Value * position_0.Shares;
-                if (position_0.PositionType == PositionType.Short)
+                if (divDate <= barDate && 
+                    divDate > prevBarDate && 
+                    position.EntryDate < divDate && 
+                    (position.Active || position.ExitDate >= divDate))
                 {
-                    num3 = 0.0 - num3;
+                    ApplyDivident(divident, ref valueToApply);
+                    break;
                 }
+            }
+        }
 
-                CurrentCash += num3;
-                double_7 += num3;
-                DividendsPaid += num3;
-                if (list.Count == 0)
-                {
-                    position_0.Bars.DivTag = null;
-                }
+        void ApplyDivident(FundamentalItem divident, ref double valueToApply)
+        {
+            double divs = divident.Value * position.Shares;
+            divs = position.PositionType == PositionType.Short ? -divs : divs;
 
-                break;
+            CurrentCash += divs;
+            valueToApply += divs; //видимо equity, но пока не уверен
+            DividendsPaid += divs;
+
+            if (dividents.Count == 0)
+            {
+                position.Bars.DivTag = null;
             }
         }
     }
