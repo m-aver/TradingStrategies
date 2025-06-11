@@ -300,13 +300,24 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         Performance.Results.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: true, posSizer_0);
         Performance.Results.Call("method_7", true); //очистка
 
+        foreach (Position item4 in MasterPositions)
+        {
+            if (item4.Shares > 0.0)
+            {
+                Performance.Results.Call("method_4", item4); //добавить позицию во внутренний лист
+            }
+            else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
+            {
+                Performance.Results.TradesNSF++;
+            }
+        }
+
         //заполняем long и short резалты
         /*
         foreach (Position item4 in MasterPositions)
         {
             if (item4.Shares > 0.0)
             {
-                Performance.Results.method_4(item4); //добавить позицию во внутренний лист
                 if (item4.PositionType == PositionType.Long)
                 {
                     Performance.ResultsLong.method_4(item4);
@@ -318,7 +329,6 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
             }
             else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
             {
-                Performance.Results.TradesNSF++;
                 if (item4.PositionType == PositionType.Long)
                 {
                     Performance.ResultsLong.TradesNSF++;
@@ -379,7 +389,7 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         //https://smart-lab.ru/blog/676929.php?ysclid=mbpkgf92rm589150064
         //довольно накладная хрень, надо делать опциональным
 
-        //Performance.Call("method_0", );
+        //Performance.Call("method_0");
     }
 
     private int method_3(Bars bars_1, double double_10, int int_3 = 0)

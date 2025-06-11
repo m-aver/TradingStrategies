@@ -235,13 +235,13 @@ public class SystemResultsOwn : IComparer<Position>
                         num5 = CurrentEquity * tradingSystemExecutor_0.PosSize.MarginFactor - num6;
                     }
 
-                    bool flag;
-                    if (!(flag = !callbackToSizePositions))
+                    bool isSufficient = !callbackToSizePositions;
+                    if (!isSufficient)
                     {
-                        flag = positionSize.RawProfitMode || num5 >= position2.Size + position2.EntryCommission;
+                        isSufficient = positionSize.RawProfitMode || num5 >= position2.Size + position2.EntryCommission;
                     }
 
-                    if (flag)
+                    if (isSufficient)
                     {
                         CurrentCash -= position2.Size;
                         CurrentCash -= position2.EntryCommission;
@@ -253,6 +253,8 @@ public class SystemResultsOwn : IComparer<Position>
                     }
                     else
                     {
+                        //это похоже обнуление позиции если она не удовлетворяет потрфелю
+                        //потом на основе этого проставляется TradesNSF из TradingSystemExecutor
                         position2.Shares = 0.0;
                     }
                 }
