@@ -388,6 +388,7 @@ public class TradingSystemExecutorOwn // : IComparer<Position>
         //считает MAE/MFE каждой позиции в каждом резалте
         //https://smart-lab.ru/blog/676929.php?ysclid=mbpkgf92rm589150064
         //довольно накладная хрень, надо делать опциональным
+        //вообще эти штуки расчитываются автоматом при закрытии позиции, зачем их пересчитать еще раз хз, мб актуально только для открытых позиций
 
         //Performance.Call("method_0");
     }

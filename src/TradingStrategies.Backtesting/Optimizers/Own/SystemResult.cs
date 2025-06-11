@@ -6,11 +6,21 @@ using SynchronizedBarIterator = TradingStrategies.Utilities.SynchronizedBarItera
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
+//вообще идея PosSizer видимо в том, чтобы отделить логику торговых сигналов от размера позиций
+//удобно когда торги ведутся одновременно по множеству бумаг/систем
+//в конкретной системе можно не заморачиваться и не считать текущую многосоставную эквити, чтобы посчитать размер позиции
+//а задавать размер уже постфактум, в отдельном модуле (своя перегрузка PosSizer или готовый), основываясь на текущей эквити (или других метриках), которую передат фреймворк
+//думаю не стоит прям отказываться от него так сразу
+
 public class SystemResultsOwn : IComparer<Position>
 {
     private List<Position> _positions = new List<Position>();
     private IList<Position> _positionsRo;
     private SystemPerformance _systemPerfomance;
+
+    //эти штуки используются только для передачи в PosSizer,
+    //если он null (а вроде при PosSizeMode == ScriptOverride он дб null), то можно оптимизнуть и не создавать серии
+    //расчет просадок например и не выполняется, если PosSizer null
     private DataSeries _drawdownCurve = new DataSeries("DrawDown");
     private DataSeries _drawdownPercentCurve = new DataSeries("DrawDownPct");
     private double _currentMaxEquity; //for drawdown
@@ -212,7 +222,11 @@ public class SystemResultsOwn : IComparer<Position>
 
                 if (callbackToSizePositions)
                 {
-                    position2.Shares = tradingSystemExecutor_0.CalcPositionSize(position2, position2.Bars, position2.EntryBar, position2.BasisPrice, position2.PositionType, position2.RiskStopLevel, useOverRide: true, position2.OverrideShareSize, num3) * position2.SplitFactor;
+                    //вызывает PosSizer, переданный и сконфигурированный выше, если PosSizeMode == SimuScript
+                    //если PosSizeMode == ScriptOverride, то просто использует OverrideShareSize, установленный через WealthScript.SetShareSize перед открытием позиции
+                    //но может дополнительно скорректироваться по ReduceQtyBasedOnVolume, RoundLots и пр.
+                    var sharesSize = tradingSystemExecutor_0.CalcPositionSize(position2, position2.Bars, position2.EntryBar, position2.BasisPrice, position2.PositionType, position2.RiskStopLevel, useOverRide: true, position2.OverrideShareSize, num3);
+                    position2.Shares = sharesSize * position2.SplitFactor;
                     double num4 = position2.Shares * position2.EntryPrice + position2.EntryCommission;
                     num3 -= num4;
                     if (tradingSystemExecutor_0.Commission != null && tradingSystemExecutor_0.ApplyCommission)
@@ -421,6 +435,7 @@ public class SystemResultsOwn : IComparer<Position>
         Alerts.Add(alert_0);
     }
 
+    //полная очистка
     internal void method_6()
     {
         TradesNSF = 0;
@@ -438,6 +453,7 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
+    //очистка
     internal void method_7(bool bool_0)
     {
         _positions.Clear();
