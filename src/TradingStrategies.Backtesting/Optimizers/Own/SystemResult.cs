@@ -34,90 +34,27 @@ public class SystemResultsOwn : IComparer<Position>
     public double DividendsPaid { get; internal set; }
     public DataSeries OpenPositionCount { get; set; }
 
-    public IList<Position> Positions
-    {
-        get
-        {
-            if (_positionsRo == null)
-            {
-                _positionsRo = _positions.AsReadOnly();
-            }
+    public IList<Position> Positions => _positionsRo ??= _positions.AsReadOnly();
 
-            return _positionsRo;
-        }
-    }
-
-    public double NetProfit
-    {
-        get
-        {
-            double num = 0.0;
-            foreach (Position position in Positions)
-            {
-                num += position.NetProfit;
-            }
-
-            return num + CashReturn + MarginInterest + DividendsPaid;
-        }
-    }
-
-    public double ProfitPerBar
-    {
-        get
-        {
-            double num = 0.0;
-            double num2 = 0.0;
-            foreach (Position position in Positions)
-            {
-                num2 += position.NetProfit;
-                num += position.BarsHeld;
-            }
-
-            num2 = num2 + CashReturn + MarginInterest + DividendsPaid;
-            if (num == 0.0)
-            {
-                return 0.0;
-            }
-
-            return num2 / num;
-        }
-    }
-
-    public double AverageProfitAcrossTotalTimeSpan
-    {
-        get
-        {
-            if (EquityCurve.Count == 0)
-            {
-                return 0.0;
-            }
-
-            return NetProfit / EquityCurve.Count;
-        }
-    }
-
+    public double NetProfit => Positions.Sum(x => x.NetProfit) + CashReturn + MarginInterest + DividendsPaid;
+    public double ProfitPerBar => Positions.Count == 0 ? 0.0 : NetProfit / Positions.Sum(x => x.BarsHeld);
+    public double AverageProfitAcrossTotalTimeSpan => EquityCurve.Count == 0 ? 0.0 : NetProfit / EquityCurve.Count;
 
     public double APR
     {
         get
         {
-            if (EquityCurve.Count < 2)
+            if (EquityCurve.Count < 2 || EquityCurve[0] == 0.0)
             {
                 return 0.0;
             }
 
-            if (EquityCurve[0] == 0.0)
-            {
-                return 0.0;
-            }
-
-            TimeSpan timeSpan = EquityCurve.Date[EquityCurve.Count - 1] - EquityCurve.Date[0];
-            double num = EquityCurve[0];
-            double num2 = EquityCurve[EquityCurve.Count - 1];
-            return (Math.Pow(num2 / num, 365.25 / timeSpan.Days) - 1.0) * 100.0;
+            TimeSpan timeSpan = EquityCurve.Date.Last() - EquityCurve.Date.First();
+            double startEquity = EquityCurve[0];
+            double finalEquity = EquityCurve[EquityCurve.Count - 1];
+            return (Math.Pow(finalEquity / startEquity, 365.25 / timeSpan.Days) - 1.0) * 100.0;
         }
     }
-
 
     private static double _secureCode => DateTime.Now.Add(new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second)).ToOADate();
     private static double _secureCodeMin => DateTime.FromOADate(_secureCode).Subtract(new TimeSpan(0, 0, 0, 1)).ToOADate();
@@ -141,6 +78,7 @@ public class SystemResultsOwn : IComparer<Position>
         return position_0.EntryDate.CompareTo(position_1.EntryDate);
     }
 
+    //MFE/MAE
     internal void method_0()
     {
         foreach (Position position in Positions)
