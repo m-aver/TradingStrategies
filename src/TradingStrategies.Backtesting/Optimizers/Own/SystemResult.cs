@@ -10,8 +10,6 @@ public class SystemResultsOwn : IComparer<Position>
     private List<Position> _positions = new List<Position>();
     private IList<Position> _positionsRo;
     private SystemPerformance _systemPerfomance;
-    private static int int_1 = -1;
-    private static Random random_0 = new Random();
     private DataSeries _drawdownCurve = new DataSeries("DrawDown");
     private DataSeries _drawdownPercentCurve = new DataSeries("DrawDownPct");
     private double _currentMaxEquity; //for drawdown
@@ -56,16 +54,9 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    private static double _secureCode => DateTime.Now.Add(new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second)).ToOADate();
-    private static double _secureCodeMin => DateTime.FromOADate(_secureCode).Subtract(new TimeSpan(0, 0, 0, 1)).ToOADate();
-
     public SystemResultsOwn(SystemPerformance sysPerf)
     {
         _systemPerfomance = sysPerf;
-        if (int_1 == -1)
-        {
-            int_1 = random_0.Next(100);
-        }
     }
 
     public int Compare(Position position_0, Position position_1)
@@ -89,9 +80,6 @@ public class SystemResultsOwn : IComparer<Position>
 
     public void BuildEquityCurve(IList<Bars> barsList, TradingSystemExecutor tradingSystemExecutor_0, bool callbackToSizePositions, PosSizer posSizer)
     {
-        //IL_020d: Unknown result type (might be due to invalid IL or missing references)
-        //IL_0214: Expected O, but got Unknown
-        method_2(tradingSystemExecutor_0);
         TotalCommission = 0.0;
         EquityCurve = new DataSeries("Equity");
         CashCurve = new DataSeries("Cash");
@@ -181,7 +169,7 @@ public class SystemResultsOwn : IComparer<Position>
 
         CurrentCash = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
         CurrentEquity = CurrentCash;
-        method_1(tradingSystemExecutor_0);
+
         do
         {
             double num = 0.0;
@@ -359,44 +347,6 @@ public class SystemResultsOwn : IComparer<Position>
             }
         }
         while (val.Next());
-    }
-
-    private void method_1(TradingSystemExecutor tradingSystemExecutor_0)
-    {
-        if (tradingSystemExecutor_0.TNP < _secureCodeMin)
-        {
-            CurrentEquity *= tradingSystemExecutor_0.TNPAdjustment;
-        }
-    }
-
-    private void method_2(TradingSystemExecutor tradingSystemExecutor_0)
-    {
-        if (!(tradingSystemExecutor_0.TNP < _secureCodeMin))
-        {
-            return;
-        }
-
-        int num = random_0.Next(100);
-        bool flag = false;
-        if (int_1 == 0)
-        {
-            flag = true;
-        }
-        else if (num == 66)
-        {
-            if (int_1 < 1)
-            {
-                flag = true;
-            }
-            else
-            {
-                int_1--;
-            }
-        }
-
-        while (flag)
-        {
-        }
     }
 
     private void method_3(Position position_0, int int_2, ref double double_7)
