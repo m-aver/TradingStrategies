@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using TradingStrategies.Utilities;
 using WealthLab;
 
@@ -9,27 +8,31 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 public class SystemResultsOwn : IComparer<Position>
 {
     private List<Position> _positions = new List<Position>();
-
     private IList<Position> _positionsRo;
-
     private SystemPerformance _systemPerfomance;
     private static int int_1 = -1;
-
     private static Random random_0 = new Random();
-
     private DataSeries _drawdownCurve = new DataSeries("DrawDown");
-
     private DataSeries _drawdownPercentCurve = new DataSeries("DrawDownPct");
-
     private double _currentMaxEquity; //for drawdown
 
     private List<Position> _currentPositionsPs = new List<Position>();
-
     private List<Position> _closedPositionsPs = new List<Position>();
-
     private List<Position> _positionsPs = new List<Position>();
 
     public int TradesNSF { get; set; }
+    public List<Alert> Alerts { get; } = new List<Alert>();
+
+    public DataSeries EquityCurve { get; internal set; } = new DataSeries("Equity");
+    public DataSeries CashCurve { get; internal set; } = new DataSeries("Cash");
+    internal double CurrentEquity { get; set; }
+    internal double CurrentCash { get; set; }
+
+    public double TotalCommission { get; private set; }
+    public double CashReturn { get; internal set; }
+    public double MarginInterest { get; internal set; }
+    public double DividendsPaid { get; internal set; }
+    public DataSeries OpenPositionCount { get; set; }
 
     public IList<Position> Positions
     {
@@ -43,8 +46,6 @@ public class SystemResultsOwn : IComparer<Position>
             return _positionsRo;
         }
     }
-
-    public List<Alert> Alerts { get; } = new List<Alert>();
 
     public double NetProfit
     {
@@ -95,9 +96,6 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    public DataSeries EquityCurve { get; internal set; } = new DataSeries("Equity");
-
-    public DataSeries CashCurve { get; internal set; } = new DataSeries("Cash");
 
     public double APR
     {
@@ -120,23 +118,9 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    public double TotalCommission { get; private set; }
-
-    public double CashReturn { get; internal set; }
-
-    public double MarginInterest { get; internal set; }
-
-    public double DividendsPaid { get; internal set; }
-
-    public DataSeries OpenPositionCount { get; set; }
 
     private static double _secureCode => DateTime.Now.Add(new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second)).ToOADate();
-
     private static double _secureCodeMin => DateTime.FromOADate(_secureCode).Subtract(new TimeSpan(0, 0, 0, 1)).ToOADate();
-
-    internal double CurrentEquity { get; set; }
-
-    internal double CurrentCash { get; set; }
 
     public SystemResultsOwn(SystemPerformance sysPerf)
     {
