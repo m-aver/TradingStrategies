@@ -105,6 +105,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
     public bool CalcResultsLong { get; set; } = true;
     public bool CalcResultsShort { get; set; } = true;
+    public bool CalcMfeMae { get; set; } = true;
 
     private TradingSystemExecutor _nativeExecutor;
 
@@ -351,7 +352,10 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         //довольно накладная хрень, надо делать опциональным
         //вообще эти штуки расчитываются автоматом при закрытии позиции, зачем их пересчитать еще раз хз, мб актуально только для открытых позиций
 
-        Performance.CalculateMfeMae();
+        if (CalcMfeMae)
+        {
+            Performance.CalculateMfeMae();
+        }
     }
 
     public void Clear(bool avoidClearingTradeList = false)
