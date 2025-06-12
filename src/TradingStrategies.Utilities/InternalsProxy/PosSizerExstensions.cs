@@ -4,10 +4,6 @@ namespace TradingStrategies.Utilities.InternalsProxy;
 
 public static class PosSizerExstensions
 {
-    //public static void SetActivePositions(this PosSizer posSizer, List<Position> positions) => posSizer.ActivePositions = positions;
-    //public static void SetPositions(this PosSizer posSizer, List<Position> positions) => posSizer.Positions = positions;
-    //public static void SetClosedPositions(this PosSizer posSizer, List<Position> positions) => posSizer.ClosedPositions = positions;
-
     extension(PosSizer posSizer)
     {
         public List<Position> ActivePositionsProxy { get => posSizer.ActivePositions; set => posSizer.ActivePositions = value; }
