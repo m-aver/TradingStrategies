@@ -431,11 +431,11 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     /*
     public double CalcPositionSize(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, double currentEquity, double overrideShareSize, double currentCash)
     {
-        return method_4(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, overrideShareSize, currentCash, bool_21: false);
+        return method_4(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, overrideShareSize, currentCash, comingFromWealthScript: false);
     }
 
     //calc pos size
-    internal double method_4(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, double currentEquity, double overrideShareSize, double currentCash, bool bool_21)
+    internal double method_4(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, double currentEquity, double overrideShareSize, double currentCash, bool comingFromWealthScript)
     {
         double resultSize = 0.0;
         if (bars.SymbolInfo.SecurityType == SecurityType.Future && bars.SymbolInfo.Margin <= 0.0)
@@ -553,7 +553,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             resultSize = num7 / 1000.0;
         }
 
-        if ((bool_21 && _rawProfitMode || !bool_21) && RoundLots && bars.SymbolInfo.SecurityType == SecurityType.Equity && resultSize > 0.0)
+        if ((comingFromWealthScript && _rawProfitMode || !comingFromWealthScript) && RoundLots && bars.SymbolInfo.SecurityType == SecurityType.Equity && resultSize > 0.0)
         {
             double a = resultSize / 100.0;
             a = Math.Round(a) * 100.0;
@@ -580,6 +580,18 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         return CalcPositionSize(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, overrideShareSize, 0.0);
     }
 
+    public double CalcPositionSize(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, bool comingFromWealthScript)
+    {
+        double currentEquity = Performance.Results.CurrentEquity;
+        double double_ = 0.0;
+        if (PosSize.Mode == PosSizeMode.ScriptOverride)
+        {
+            double_ = PosSize.OverrideShareSize;
+        }
+
+        return method_4(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, double_, 0.0, comingFromWealthScript);
+    }
+
     public double CalcPositionSize(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, double equity)
     {
         double overrideShareSize = 0.0;
@@ -589,6 +601,21 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         return CalcPositionSize(bars, barNum, basisPrice, positionType, riskStopLevel, equity, overrideShareSize, 0.0);
+    }
+
+    public double CalcPositionSize(Position position, Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, bool useOverRide, double overrideShareSize, double thisBarCash)
+    {
+        if (Strategy != null && Strategy.StrategyType == StrategyType.CombinedStrategy)
+        {
+            return position.Shares;
+        }
+
+        position_0 = position;
+        double currentEquity = Performance.Results.CurrentEquity;
+        double num = CalcPositionSize(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, overrideShareSize, thisBarCash);
+        position_0 = null;
+
+        return num;
     }
     */
 }
