@@ -18,7 +18,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     private double _cashAdjustmentFactor;
     private double _marginAdjustmentFactor;
     private double _autoProfitLevel;
-    private PosSizer posSizer_0;
+    private PosSizer posSizer;
     private Position position_0;
     private bool _rawProfitMode = true;
     private WealthScript _wealthScriptExecuting;
@@ -26,10 +26,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     private IList<Bars> _barsSet;
 
     private static bool bool_0 = false;
-    private static PositionSize positionSize_1 = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
-    private static bool _tnp = false;
-    private static double _tnpAdjustment = 1.0;
-    private static int int_1 = 0;
+    private static PositionSize positionSize = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
     public static List<PosSizer> PosSizers = null;
 
     public Strategy Strategy { get; set; }
@@ -122,15 +119,15 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.Results.CurrentEquity = PosSize.StartingCapital;
     }
 
-    public void Execute(Strategy strategy_1, WealthScript wealthScript_1, List<Bars> barsCollection, bool avoidClearingTradeList = false)
+    public void Execute(Strategy strategy, WealthScript wealthScript, List<Bars> barsCollection, bool avoidClearingTradeList = false)
     {
-        if (wealthScript_1 != null)
+        if (wealthScript != null)
         {
-            wealthScript_1.StrategyWindowID = StrategyWindowID;
+            wealthScript.StrategyWindowID = StrategyWindowID;
         }
 
-        Strategy = strategy_1;
-        Performance.Strategy = strategy_1;
+        Strategy = strategy;
+        Performance.Strategy = strategy;
         RiskStopLevel = 0.0;
         _autoProfitLevel = 0.0;
         _riskStopLevelNotSet = false;
@@ -150,19 +147,19 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.BarIntervalProxy = barsCollection[0].BarInterval;
         Performance.PositionSizeProxy = PosSize;
 
-        _wealthScriptExecuting = wealthScript_1;
+        _wealthScriptExecuting = wealthScript;
         PositionSize posSize = PosSize;
         _rawProfitMode = PosSize.RawProfitMode;
         if (!PosSize.RawProfitMode && PosSize.Mode != PosSizeMode.ScriptOverride)
         {
-            PosSize = positionSize_1;
+            PosSize = positionSize;
         }
 
         try
         {
-            foreach (Bars item9 in barsCollection)
+            foreach (Bars bars in barsCollection)
             {
-                method_2(item9, wealthScript_1);
+                ExecuteOneBars(bars, wealthScript);
             }
         }
         finally
@@ -171,14 +168,14 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         MasterPositions.Sort(_nativeExecutor);
+
         if (BuildEquityCurves)
         {
             ApplyPositionSize();
         }
     }
 
-    //execute на одном инструменте (bars)
-    private void method_2(Bars bars_1, WealthScript wealthScript_1)
+    private void ExecuteOneBars(Bars bars, WealthScript wealthScript)
     {
         CurrentPositions.Clear();
         CurrentAlerts.Clear();
@@ -186,20 +183,20 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         try
         {
-            _barsBeingProcessed = bars_1;
-            bars_1.Block();
+            _barsBeingProcessed = bars;
+            bars.Block();
 
             if (bool_0 && Strategy.UsePreferredValues)
             {
-                Strategy.LoadPreferredValues(bars_1.Symbol, wealthScript_1);
+                Strategy.LoadPreferredValues(bars.Symbol, wealthScript);
             }
 
-            wealthScript_1.Execute(bars_1, null, _nativeExecutor, DataSet);
-            wealthScript_1.RestoreScale();
+            wealthScript.Execute(bars, null, _nativeExecutor, DataSet);
+            wealthScript.RestoreScale();
         }
         finally
         {
-            bars_1.Unblock();
+            bars.Unblock();
         }
     }
 
@@ -227,7 +224,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         _riskStopLevelNotSet = false;
-        posSizer_0 = null;
+        posSizer = null;
         if (PosSize.Mode == PosSizeMode.SimuScript)
         {
             foreach (PosSizer posSizer in PosSizers)
@@ -237,12 +234,12 @@ public class TradingSystemExecutorOwn : IComparer<Position>
                     continue;
                 }
 
-                posSizer_0 = (PosSizer)Activator.CreateInstance(posSizer.GetType());
+                this.posSizer = (PosSizer)Activator.CreateInstance(posSizer.GetType());
                 if (PosSize.PosSizerConfig != "" && (PosSize.SimuScriptName == PosSize.PosSizerThatWasConfigured || PosSize.PosSizerThatWasConfigured == ""))
                 {
                     try
                     {
-                        posSizer_0.ApplyConfigString(PosSizer.ParseConfigString(PosSize.PosSizerConfig));
+                        this.posSizer.ApplyConfigString(PosSizer.ParseConfigString(PosSize.PosSizerConfig));
                     }
                     catch
                     {
@@ -254,19 +251,19 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         //добавить бар во внутренний лист
-        foreach (Bars item3 in _barsSet)
+        foreach (Bars bars in _barsSet)
         {
-            Performance.AddBars(item3);
+            Performance.AddBars(bars);
         }
 
-        Performance.Results.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: true, posSizer_0);
+        Performance.Results.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: true, posSizer);
         Performance.Results.Clear(avoidClearingEquity: true);
 
-        foreach (Position item4 in MasterPositions)
+        foreach (Position position in MasterPositions)
         {
-            if (item4.Shares > 0.0)
+            if (position.Shares > 0.0)
             {
-                Performance.Results.AddPosition(item4);
+                Performance.Results.AddPosition(position);
             }
             else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
             {
@@ -276,22 +273,22 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         //заполняем long и short резалты
         /*
-        foreach (Position item4 in MasterPositions)
+        foreach (Position position in MasterPositions)
         {
-            if (item4.Shares > 0.0)
+            if (position.Shares > 0.0)
             {
-                if (item4.PositionType == PositionType.Long)
+                if (position.PositionType == PositionType.Long)
                 {
-                    Performance.ResultsLong.AddPosition(item4);
+                    Performance.ResultsLong.AddPosition(position);
                 }
                 else
                 {
-                    Performance.ResultsShort.AddPosition(item4);
+                    Performance.ResultsShort.AddPosition(position);
                 }
             }
             else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
             {
-                if (item4.PositionType == PositionType.Long)
+                if (position.PositionType == PositionType.Long)
                 {
                     Performance.ResultsLong.TradesNSF++;
                 }
@@ -302,29 +299,29 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
-        foreach (Alert item5 in _masterAlerts)
+        foreach (Alert alert in _masterAlerts)
         {
             SystemPerformance systemPerformance = Performance;
-            if (item5.AlertType != 0 && item5.AlertType != TradeType.Short)
+            if (alert.AlertType != 0 && alert.AlertType != TradeType.Short)
             {
-                if (item5.Position != null && item5.Position.Shares > 0.0)
+                if (alert.Position != null && alert.Position.Shares > 0.0)
                 {
-                    systemPerformance.Results.AddAlert(item5);
+                    systemPerformance.Results.AddAlert(alert);
                 }
             }
             else
             {
-                systemPerformance.Results.AddAlert(item5);
+                systemPerformance.Results.AddAlert(alert);
             }
         }
 
-        Performance.ResultsLong.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
-        Performance.ResultsShort.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer_0);
+        Performance.ResultsLong.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer);
+        Performance.ResultsShort.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer);
         */
 
-        if (posSizer_0 != null)
+        if (posSizer != null)
         {
-            Performance.Results.SetPosSizerPositions(posSizer_0); //выставить списки позиций резалта в позсайзер
+            Performance.Results.SetPosSizerPositions(posSizer); //выставить списки позиций резалта в позсайзер
         }
 
         /*
@@ -519,11 +516,11 @@ public class TradingSystemExecutorOwn : IComparer<Position>
                     break;
                 }
             case PosSizeMode.SimuScript:
-                if (posSizer_0 != null)
+                if (posSizer != null)
                 {
                     try
                     {
-                        num = posSizer_0.SizePosition(position_0, bars_1, int_3 - 1, double_10, positionType_0, double_11, double_12, double_14);
+                        num = posSizer.SizePosition(position_0, bars_1, int_3 - 1, double_10, positionType_0, double_11, double_12, double_14);
                     }
                     catch
                     {
