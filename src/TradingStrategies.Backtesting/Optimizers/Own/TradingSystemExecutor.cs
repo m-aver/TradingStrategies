@@ -34,7 +34,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
     public Strategy Strategy { get; set; }
     public string DividendItemName { get; set; }
-    public ChartRenderer Renderer { get; set; }
     public FundamentalsLoader FundamentalsLoader { get; set; }
     public PositionSize PosSize { get; set; } = new PositionSize();
     public Commission Commission { get; set; }
@@ -123,7 +122,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.Results.CurrentEquity = PosSize.StartingCapital;
     }
 
-    public void Execute(Strategy strategy_1, WealthScript wealthScript_1, Bars barsCharted, List<Bars> barsCollection, bool avoidClearingTradeList = false)
+    public void Execute(Strategy strategy_1, WealthScript wealthScript_1, List<Bars> barsCollection, bool avoidClearingTradeList = false)
     {
         if (wealthScript_1 != null)
         {
@@ -163,8 +162,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         {
             foreach (Bars item9 in barsCollection)
             {
-                ChartRenderer chartRenderer_ = barsCharted == item9 ? Renderer : null;
-                method_2(item9, wealthScript_1, chartRenderer_);
+                method_2(item9, wealthScript_1);
             }
         }
         finally
@@ -180,7 +178,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     }
 
     //execute на одном инструменте (bars)
-    private void method_2(Bars bars_1, WealthScript wealthScript_1, ChartRenderer chartRenderer_1)
+    private void method_2(Bars bars_1, WealthScript wealthScript_1)
     {
         CurrentPositions.Clear();
         CurrentAlerts.Clear();
@@ -196,7 +194,7 @@ public class TradingSystemExecutorOwn : IComparer<Position>
                 Strategy.LoadPreferredValues(bars_1.Symbol, wealthScript_1);
             }
 
-            wealthScript_1.Execute(bars_1, chartRenderer_1, _nativeExecutor, DataSet);
+            wealthScript_1.Execute(bars_1, null, _nativeExecutor, DataSet);
             wealthScript_1.RestoreScale();
         }
         finally
