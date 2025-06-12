@@ -268,6 +268,22 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
+        foreach (Alert alert in _masterAlerts)
+        {
+            SystemPerformance systemPerformance = Performance;
+            if (alert.AlertType != 0 && alert.AlertType != TradeType.Short)
+            {
+                if (alert.Position != null && alert.Position.Shares > 0.0)
+                {
+                    systemPerformance.Results.AddAlert(alert);
+                }
+            }
+            else
+            {
+                systemPerformance.Results.AddAlert(alert);
+            }
+        }
+
         //заполняем long и short резалты
         if (CalcResultsLong || CalcResultsShort)
         {
@@ -298,22 +314,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
-        foreach (Alert alert in _masterAlerts)
-        {
-            SystemPerformance systemPerformance = Performance;
-            if (alert.AlertType != 0 && alert.AlertType != TradeType.Short)
-            {
-                if (alert.Position != null && alert.Position.Shares > 0.0)
-                {
-                    systemPerformance.Results.AddAlert(alert);
-                }
-            }
-            else
-            {
-                systemPerformance.Results.AddAlert(alert);
-            }
-        }
-
         if (CalcResultsLong)
         {
             Performance.ResultsLong.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, posSizer);
@@ -328,12 +328,11 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             Performance.Results.SetPosSizerPositions(posSizer); //выставить списки позиций резалта в позсайзер
         }
 
-        /*
         if (Strategy.StrategyType != StrategyType.CombinedStrategy)
         {
             foreach (Alert alert in Performance.Results.Alerts)
             {
-                if (alert.AlertType != 0 && alert.AlertType != TradeType.Short)
+                if (alert.AlertType != TradeType.Buy && alert.AlertType != TradeType.Short)
                 {
                     if (alert.Position != null)
                     {
@@ -346,7 +345,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
                 }
             }
         }
-        */
 
         //считает MAE/MFE каждой позиции в каждом резалте
         //https://smart-lab.ru/blog/676929.php?ysclid=mbpkgf92rm589150064
@@ -354,26 +352,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         //вообще эти штуки расчитываются автоматом при закрытии позиции, зачем их пересчитать еще раз хз, мб актуально только для открытых позиций
 
         Performance.CalculateMfeMae();
-    }
-
-    private int method_3(Bars bars_1, double double_10, int barNum = 0)
-    {
-        int num = 0;
-        if (BarsLoader.FuturesMode)
-        {
-            SymbolInfo symbolInfo = bars_1.SymbolInfo;
-            if (symbolInfo.SecurityType == SecurityType.Future && symbolInfo.Margin > 0.0)
-            {
-                num = (int)(double_10 / symbolInfo.Margin);
-            }
-        }
-
-        if (num == 0)
-        {
-            num = (int)(double_10 / bars_1.Close[barNum]);
-        }
-
-        return num;
     }
 
     public void Clear(bool avoidClearingTradeList = false)
@@ -441,7 +419,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         CalcResultsShort = executor.CalcResultsShort;
     }
 
-    /*
     public double CalcPositionSize(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, double currentEquity, double overrideShareSize, double currentCash)
     {
         return method_4(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, overrideShareSize, currentCash, comingFromWealthScript: false);
@@ -630,5 +607,4 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
         return num;
     }
-    */
 }
