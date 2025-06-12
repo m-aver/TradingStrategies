@@ -2,6 +2,10 @@
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
+//WARN:
+//оказывается я коментил участки кода с обработкой Long и Short резалтов в WealthLab.dll
+//надо бы удостоверится что ничего важного не упускаю тут
+
 public class TradingSystemExecutorOwn // : IComparer<Position>
 {
     private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
