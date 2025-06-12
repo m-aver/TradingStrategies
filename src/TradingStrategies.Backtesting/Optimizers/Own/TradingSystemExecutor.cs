@@ -25,7 +25,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     private List<Alert> _masterAlerts = new();
     private IList<Bars> _barsSet;
 
-    private static bool bool_0 = false;
     private static PositionSize positionSize = new PositionSize(PosSizeMode.RawProfitShare, 1.0);
     public static List<PosSizer> PosSizers = null;
 
@@ -185,11 +184,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         {
             _barsBeingProcessed = bars;
             bars.Block();
-
-            if (bool_0 && Strategy.UsePreferredValues)
-            {
-                Strategy.LoadPreferredValues(bars.Symbol, wealthScript);
-            }
 
             wealthScript.Execute(bars, null, _nativeExecutor, DataSet);
             wealthScript.RestoreScale();
