@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using TradingStrategies.Utilities;
 using WealthLab;
+using TradingStrategies.Utilities.InternalsProxy;
 using SynchronizedBarIterator = TradingStrategies.Utilities.SynchronizedBarIterator;
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
@@ -85,7 +86,7 @@ public class SystemResultsOwn : IComparer<Position>
     {
         foreach (Position position in Positions)
         {
-            position.method_2();
+            position.CalculateMfeMae();
         }
     }
 
@@ -172,7 +173,7 @@ public class SystemResultsOwn : IComparer<Position>
 
         if (posSizer != null)
         {
-            posSizer.method_0(tradingSystemExecutor, _currentPositionsPs, _positionsPs, _closedPositionsPs, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
+            posSizer.PreInitialize(tradingSystemExecutor, _currentPositionsPs, _positionsPs, _closedPositionsPs, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
             posSizer.Initialize();
         }
 
@@ -210,7 +211,7 @@ public class SystemResultsOwn : IComparer<Position>
                     }
                 }
 
-                posSizer.Candidates = list5;
+                posSizer.CandidatesProxy = list5;
             }
 
             //цикл по конкурирующим позициям с одинаковой датой входа (текущей датой итератора)
@@ -229,7 +230,7 @@ public class SystemResultsOwn : IComparer<Position>
                     //если PosSizeMode == ScriptOverride, то просто использует OverrideShareSize, установленный через WealthScript.SetShareSize перед открытием позиции
                     //но может дополнительно скорректироваться по ReduceQtyBasedOnVolume, RoundLots и пр.
                     var sharesSize = tradingSystemExecutor.CalcPositionSize(position, position.Bars, position.EntryBar, position.BasisPrice, position.PositionType, position.RiskStopLevel, useOverRide: true, position.OverrideShareSize, cash);
-                    position.Shares = sharesSize * position.SplitFactor;
+                    position.SharesProxy = sharesSize * position.SplitFactor;
 
                     double positionPrice = position.Shares * position.EntryPrice + position.EntryCommission;
                     cash -= positionPrice;
@@ -279,7 +280,7 @@ public class SystemResultsOwn : IComparer<Position>
                     {
                         //это похоже обнуление позиции если она не удовлетворяет потрфелю
                         //потом на основе этого проставляется TradesNSF из TradingSystemExecutor
-                        position.Shares = 0.0;
+                        position.SharesProxy = 0.0;
                     }
                 }
             }
@@ -456,10 +457,10 @@ public class SystemResultsOwn : IComparer<Position>
         Alerts.Clear();
         if (EquityCurve != null)
         {
-            EquityCurve.method_2();
-            CashCurve.method_2();
-            _drawdownCurve.method_2();
-            _drawdownPercentCurve.method_2();
+            EquityCurve.ClearValues();
+            CashCurve.ClearValues();
+            _drawdownCurve.ClearValues();
+            _drawdownPercentCurve.ClearValues();
         }
     }
 
@@ -469,10 +470,10 @@ public class SystemResultsOwn : IComparer<Position>
         _positions.Clear();
         if (!bool_0)
         {
-            EquityCurve.method_2();
-            CashCurve.method_2();
-            _drawdownCurve.method_2();
-            _drawdownPercentCurve.method_2();
+            EquityCurve.ClearValues();
+            CashCurve.ClearValues();
+            _drawdownCurve.ClearValues();
+            _drawdownPercentCurve.ClearValues();
         }
     }
 
@@ -483,8 +484,8 @@ public class SystemResultsOwn : IComparer<Position>
 
     internal void method_9(PosSizer posSizer_0)
     {
-        posSizer_0.ActivePositions = _currentPositionsPs;
-        posSizer_0.Positions = _positionsPs;
-        posSizer_0.ClosedPositions = _closedPositionsPs;
+        posSizer_0.ActivePositionsProxy = _currentPositionsPs;
+        posSizer_0.PositionsProxy = _positionsPs;
+        posSizer_0.ClosedPositionsProxy = _closedPositionsPs;
     }
 }

@@ -5,6 +5,7 @@
 
 		<OutputPath>$(WealthLabDirectoryPath)</OutputPath>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<LangVersion>preview</LangVersion>
 	</PropertyGroup>
 
 	<ItemGroup>

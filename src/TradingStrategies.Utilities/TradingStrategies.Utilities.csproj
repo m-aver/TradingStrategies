@@ -1,10 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+	<!--WARN: не переименовывать сборку, используется для инъекций в WealthLab.dll-->
+	
 	<PropertyGroup>
 		<TargetFramework>net4.8</TargetFramework>
 
 		<OutputPath>D:\Quik\WealthLab\Wealth-Lab Pro 6\</OutputPath>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<LangVersion>preview</LangVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
