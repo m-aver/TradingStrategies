@@ -7,8 +7,9 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 //оказывается я коментил участки кода с обработкой Long и Short резалтов в WealthLab.dll
 //надо бы удостоверится что ничего важного не упускаю тут
 
-public class TradingSystemExecutorOwn : IComparer<Position>
+public partial class TradingSystemExecutorOwn : IComparer<Position>
 {
+    /*
     public int StrategyWindowID;
     private Bars _barsBeingProcessed;
     private double _overrideShareSize;
@@ -82,17 +83,18 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     internal List<Position> CurrentPositions { get; } = new();
     internal List<Alert> CurrentAlerts { get; } = new();
     internal List<Position> ActivePositions { get; } = new();
+    //*/
 
     public bool CalcResultsLong { get; set; } = true;
     public bool CalcResultsShort { get; set; } = true;
     public bool CalcMfeMae { get; set; } = true;
 
-    private TradingSystemExecutor _nativeExecutor;
+    private readonly TradingSystemExecutor _nativeExecutor;
 
     public TradingSystemExecutorOwn(TradingSystemExecutor nativeExecutor)
     {
-        Performance = new SystemPerformance(null);
         _nativeExecutor = nativeExecutor;
+        Performance = new SystemPerformance(null);
     }
 
     public void Initialize()
@@ -100,6 +102,12 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         Performance.PositionSizeProxy = PosSize;
         Performance.Results.CurrentCash = PosSize.StartingCapital;
         Performance.Results.CurrentEquity = PosSize.StartingCapital;
+    }
+
+    //contract wrapper
+    public void Execute(Strategy strategy, WealthScript wealthScript, Bars barsCharted, List<Bars> barsCollection, bool avoidClearingTradeList = false)
+    {
+        Execute(strategy, wealthScript, barsCollection, avoidClearingTradeList);
     }
 
     public void Execute(Strategy strategy, WealthScript wealthScript, List<Bars> barsCollection, bool avoidClearingTradeList = false)
