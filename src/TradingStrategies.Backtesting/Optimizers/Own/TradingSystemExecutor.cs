@@ -9,10 +9,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class TradingSystemExecutorOwn : IComparer<Position>
 {
-    private EventHandler<BarsEventArgs> _executionCompletedForSymbolEvent;
-    private EventHandler<WSExceptionEventArgs> _wealthScriptExceptionEvent;
-    private EventHandler<StrategyParameterEventArgs> _setParameterValuesEvent;
-
     public int StrategyWindowID;
     private Bars _barsBeingProcessed;
     private double _overrideShareSize;
@@ -73,7 +69,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
     public bool ApplyDividends { get; set; }
     public bool ApplyWFODateRange { get; set; }
-    public bool ExceptionEvents { get; set; }
     public bool BuildEquityCurves { get; set; } = true;
     public DataSource DataSet { get; set; }
     public bool ReduceQtyBasedOnVolume { get; set; }
@@ -206,42 +201,18 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         {
             _barsBeingProcessed = bars_1;
             bars_1.Block();
-            if (!bool_0)
-            {
-                if (_setParameterValuesEvent != null)
-                {
-                    _setParameterValuesEvent(this, new StrategyParameterEventArgs(wealthScript_1, bars_1.Symbol));
-                }
-            }
-            else if (Strategy.UsePreferredValues)
+
+            if (bool_0 && Strategy.UsePreferredValues)
             {
                 Strategy.LoadPreferredValues(bars_1.Symbol, wealthScript_1);
             }
 
             wealthScript_1.Execute(bars_1, chartRenderer_1, _nativeExecutor, DataSet);
             wealthScript_1.RestoreScale();
-            bars_1.Unblock();
         }
-        catch (Exception ex)
+        finally
         {
             bars_1.Unblock();
-            if (!ExceptionEvents)
-            {
-                throw ex;
-            }
-
-            if (_wealthScriptExceptionEvent != null)
-            {
-                WSExceptionEventArgs wSExceptionEventArgs = new WSExceptionEventArgs(ex);
-                wSExceptionEventArgs.Strategy = Strategy;
-                wSExceptionEventArgs.Symbol = bars_1.Symbol;
-                _wealthScriptExceptionEvent(this, wSExceptionEventArgs);
-            }
-        }
-
-        if (_executionCompletedForSymbolEvent != null)
-        {
-            _executionCompletedForSymbolEvent(this, new BarsEventArgs(bars_1));
         }
     }
 
