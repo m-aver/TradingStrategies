@@ -68,7 +68,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     }
 
     public bool ApplyDividends { get; set; }
-    public bool ApplyWFODateRange { get; set; }
     public bool BuildEquityCurves { get; set; } = true;
     public DataSource DataSet { get; set; }
     public bool ReduceQtyBasedOnVolume { get; set; }
@@ -186,16 +185,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         CurrentPositions.Clear();
         CurrentAlerts.Clear();
         ActivePositions.Clear();
-        if (ApplyWFODateRange)
-        {
-            foreach (Position masterPosition in MasterPositions)
-            {
-                if (masterPosition.Active && masterPosition.Symbol == bars_1.Symbol)
-                {
-                    CurrentPositions.Add(masterPosition);
-                }
-            }
-        }
 
         try
         {
