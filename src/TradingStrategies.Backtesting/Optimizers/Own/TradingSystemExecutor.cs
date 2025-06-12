@@ -103,6 +103,9 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     internal List<Alert> CurrentAlerts { get; } = new();
     internal List<Position> ActivePositions { get; } = new();
 
+    public bool CalcResultsLong { get; set; } = true;
+    public bool CalcResultsShort { get; set; } = true;
+
     private TradingSystemExecutor _nativeExecutor;
 
     public TradingSystemExecutorOwn(TradingSystemExecutor nativeExecutor)
@@ -266,29 +269,31 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         //заполняем long и short резалты
-        /*
-        foreach (Position position in MasterPositions)
+        if (CalcResultsLong || CalcResultsShort)
         {
-            if (position.Shares > 0.0)
+            foreach (Position position in MasterPositions)
             {
-                if (position.PositionType == PositionType.Long)
+                if (position.Shares > 0.0)
                 {
-                    Performance.ResultsLong.AddPosition(position);
+                    if (CalcResultsLong && position.PositionType == PositionType.Long)
+                    {
+                        Performance.ResultsLong.AddPosition(position);
+                    }
+                    if (CalcResultsShort && position.PositionType == PositionType.Short)
+                    {
+                        Performance.ResultsShort.AddPosition(position);
+                    }
                 }
-                else
+                else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
                 {
-                    Performance.ResultsShort.AddPosition(position);
-                }
-            }
-            else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
-            {
-                if (position.PositionType == PositionType.Long)
-                {
-                    Performance.ResultsLong.TradesNSF++;
-                }
-                else
-                {
-                    Performance.ResultsShort.TradesNSF++;
+                    if (CalcResultsLong && position.PositionType == PositionType.Long)
+                    {
+                        Performance.ResultsLong.TradesNSF++;
+                    }
+                    if (CalcResultsShort && position.PositionType == PositionType.Short)
+                    {
+                        Performance.ResultsShort.TradesNSF++;
+                    }
                 }
             }
         }
@@ -309,9 +314,14 @@ public class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
-        Performance.ResultsLong.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer);
-        Performance.ResultsShort.BuildEquityCurve(_barsSet, this, callbackToSizePositions: false, posSizer);
-        */
+        if (CalcResultsLong)
+        {
+            Performance.ResultsLong.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, posSizer);
+        }
+        if (CalcResultsShort)
+        {
+            Performance.ResultsShort.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, posSizer);
+        }
 
         if (posSizer != null)
         {
@@ -426,6 +436,9 @@ public class TradingSystemExecutorOwn : IComparer<Position>
         NoDecimalRoundingForLimitStopPrice = executor.NoDecimalRoundingForLimitStopPrice;
         PricingDecimalPlaces = executor.PricingDecimalPlaces;
         DividendItemName = executor.DividendItemName;
+
+        CalcResultsLong = executor.CalcResultsLong;
+        CalcResultsShort = executor.CalcResultsShort;
     }
 
     /*
