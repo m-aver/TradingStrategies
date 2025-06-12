@@ -89,7 +89,7 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    public void BuildEquityCurve(IList<Bars> barsList, TradingSystemExecutor tradingSystemExecutor_0, bool callbackToSizePositions, PosSizer posSizer)
+    public void BuildEquityCurve(IList<Bars> barsList, TradingSystemExecutor tradingSystemExecutor, bool callbackToSizePositions, PosSizer posSizer)
     {
         TotalCommission = 0.0;
         EquityCurve = new DataSeries("Equity");
@@ -100,53 +100,55 @@ public class SystemResultsOwn : IComparer<Position>
         PositionSize positionSize = _systemPerfomance.PositionSize;
         double double_ = 0.0;
         OpenPositionCount = new DataSeries("OpenPositions");
-        List<Bars> list = barsList.ToList();
+        List<Bars> barsSet = barsList.ToList();
 
-        foreach (Position masterPosition in tradingSystemExecutor_0.MasterPositions)
+        foreach (Position masterPosition in tradingSystemExecutor.MasterPositions)
         {
-            if (!list.Contains(masterPosition.Bars))
+            if (!barsSet.Contains(masterPosition.Bars))
             {
-                list.Add(masterPosition.Bars);
+                barsSet.Add(masterPosition.Bars);
             }
         }
 
         foreach (Position position4 in Positions)
         {
-            if (!list.Contains(position4.Bars))
+            if (!barsSet.Contains(position4.Bars))
             {
-                list.Add(position4.Bars);
+                barsSet.Add(position4.Bars);
             }
         }
 
-        foreach (Bars item in list)
+        foreach (Bars bars in barsSet)
         {
-            if (!tradingSystemExecutor_0.PosSize.RawProfitMode && tradingSystemExecutor_0.ApplyDividends)
+            if (!tradingSystemExecutor.PosSize.RawProfitMode && tradingSystemExecutor.ApplyDividends)
             {
-                IList<FundamentalItem> list2 = tradingSystemExecutor_0.FundamentalsLoader.RequestSymbolItems(item, item.Symbol, tradingSystemExecutor_0.DividendItemName);
-                if (list2 == null)
+                IList<FundamentalItem> dividents = 
+                    tradingSystemExecutor.FundamentalsLoader.RequestSymbolItems(bars, bars.Symbol, tradingSystemExecutor.DividendItemName);
+
+                if (dividents == null)
                 {
-                    item.DivTag = null;
+                    bars.DivTag = null;
                 }
-                else if (list2.Count == 0)
+                else if (dividents.Count == 0)
                 {
-                    item.DivTag = null;
+                    bars.DivTag = null;
                 }
                 else
                 {
-                    item.DivTag = list2;
+                    bars.DivTag = dividents;
                 }
             }
             else
             {
-                item.DivTag = null;
+                bars.DivTag = null;
             }
         }
 
         _currentPositionsPs.Clear();
         _positionsPs.Clear();
         _closedPositionsPs.Clear();
-        SynchronizedBarIterator val = new SynchronizedBarIterator((ICollection<Bars>)list);
-        if (!(val.Date != DateTime.MaxValue))
+        SynchronizedBarIterator barIterator = new SynchronizedBarIterator(barsSet);
+        if (!(barIterator.Date != DateTime.MaxValue))
         {
             return;
         }
@@ -155,7 +157,7 @@ public class SystemResultsOwn : IComparer<Position>
         List<Position> list4 = new List<Position>();
         if (callbackToSizePositions)
         {
-            foreach (Position masterPosition2 in tradingSystemExecutor_0.MasterPositions)
+            foreach (Position masterPosition2 in tradingSystemExecutor.MasterPositions)
             {
                 list3.Add(masterPosition2);
             }
@@ -170,7 +172,7 @@ public class SystemResultsOwn : IComparer<Position>
 
         if (posSizer != null)
         {
-            posSizer.method_0(tradingSystemExecutor_0, _currentPositionsPs, _positionsPs, _closedPositionsPs, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
+            posSizer.method_0(tradingSystemExecutor, _currentPositionsPs, _positionsPs, _closedPositionsPs, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
             posSizer.Initialize();
         }
 
@@ -184,7 +186,7 @@ public class SystemResultsOwn : IComparer<Position>
             for (int num2 = _currentPositionsPs.Count - 1; num2 >= 0; num2--)
             {
                 Position position = _currentPositionsPs[num2];
-                if (!position.Active && position.ExitDate == val.Date && position.ExitOrderType == OrderType.Market)
+                if (!position.Active && position.ExitDate == barIterator.Date && position.ExitOrderType == OrderType.Market)
                 {
                     _currentPositionsPs.RemoveAt(num2);
                     list4.Add(position);
@@ -202,7 +204,7 @@ public class SystemResultsOwn : IComparer<Position>
                 List<Position> list5 = new List<Position>();
                 foreach (Position item2 in list3)
                 {
-                    if (item2.EntryDate == val.Date)
+                    if (item2.EntryDate == barIterator.Date)
                     {
                         list5.Add(item2);
                     }
@@ -211,11 +213,12 @@ public class SystemResultsOwn : IComparer<Position>
                 posSizer.Candidates = list5;
             }
 
-            double num3 = CurrentCash;
+            //цикл по конкурирующим позициям с одинаковой датой входа (текущей датой итератора)
+            double cash = CurrentCash;
             while (list3.Count > 0)
             {
-                Position position2 = list3[0];
-                if (!(position2.EntryDate == val.Date))
+                Position position = list3[0];
+                if (!(position.EntryDate == barIterator.Date))
                 {
                     break;
                 }
@@ -225,61 +228,68 @@ public class SystemResultsOwn : IComparer<Position>
                     //вызывает PosSizer, переданный и сконфигурированный выше, если PosSizeMode == SimuScript
                     //если PosSizeMode == ScriptOverride, то просто использует OverrideShareSize, установленный через WealthScript.SetShareSize перед открытием позиции
                     //но может дополнительно скорректироваться по ReduceQtyBasedOnVolume, RoundLots и пр.
-                    var sharesSize = tradingSystemExecutor_0.CalcPositionSize(position2, position2.Bars, position2.EntryBar, position2.BasisPrice, position2.PositionType, position2.RiskStopLevel, useOverRide: true, position2.OverrideShareSize, num3);
-                    position2.Shares = sharesSize * position2.SplitFactor;
-                    double num4 = position2.Shares * position2.EntryPrice + position2.EntryCommission;
-                    num3 -= num4;
-                    if (tradingSystemExecutor_0.Commission != null && tradingSystemExecutor_0.ApplyCommission)
+                    var sharesSize = tradingSystemExecutor.CalcPositionSize(position, position.Bars, position.EntryBar, position.BasisPrice, position.PositionType, position.RiskStopLevel, useOverRide: true, position.OverrideShareSize, cash);
+                    position.Shares = sharesSize * position.SplitFactor;
+
+                    double positionPrice = position.Shares * position.EntryPrice + position.EntryCommission;
+                    cash -= positionPrice;
+
+                    if (tradingSystemExecutor.Commission != null && tradingSystemExecutor.ApplyCommission)
                     {
-                        position2.EntryCommission = tradingSystemExecutor_0.Commission.Calculate(position2.PositionType != 0 ? TradeType.Short : TradeType.Buy, position2.EntryOrderType, position2.EntryPrice, position2.Shares, position2.Bars);
-                        if (!position2.Active)
+                        var tradeType = position.PositionType != PositionType.Long ? TradeType.Short : TradeType.Buy;
+                        position.EntryCommission = tradingSystemExecutor.Commission.Calculate(
+                            tradeType, position.EntryOrderType, position.EntryPrice, position.Shares, position.Bars);
+
+                        if (!position.Active)
                         {
-                            position2.ExitCommission = tradingSystemExecutor_0.Commission.Calculate(position2.PositionType == PositionType.Long ? TradeType.Sell : TradeType.Cover, position2.ExitOrderType, position2.ExitPrice, position2.Shares, position2.Bars);
+                            tradeType = position.PositionType == PositionType.Long ? TradeType.Sell : TradeType.Cover;
+                            position.ExitCommission = tradingSystemExecutor.Commission.Calculate(
+                                tradeType, position.ExitOrderType, position.ExitPrice, position.Shares, position.Bars);
                         }
                     }
                 }
 
                 list3.RemoveAt(0);
-                if (position2.Shares > 0.0)
+                if (position.Shares > 0.0)
                 {
                     double num5 = CurrentCash;
-                    if (!tradingSystemExecutor_0.PosSize.RawProfitMode)
+                    if (!tradingSystemExecutor.PosSize.RawProfitMode)
                     {
                         double num6 = CurrentEquity - CurrentCash;
-                        num5 = CurrentEquity * tradingSystemExecutor_0.PosSize.MarginFactor - num6;
+                        num5 = CurrentEquity * tradingSystemExecutor.PosSize.MarginFactor - num6;
                     }
 
                     bool isSufficient = !callbackToSizePositions;
                     if (!isSufficient)
                     {
-                        isSufficient = positionSize.RawProfitMode || num5 >= position2.Size + position2.EntryCommission;
+                        isSufficient = positionSize.RawProfitMode || num5 >= position.Size + position.EntryCommission;
                     }
 
                     if (isSufficient)
                     {
-                        CurrentCash -= position2.Size;
-                        CurrentCash -= position2.EntryCommission;
-                        num5 -= position2.Size;
-                        num5 -= position2.EntryCommission;
-                        _currentPositionsPs.Add(position2);
-                        _positionsPs.Add(position2);
-                        TotalCommission += position2.EntryCommission + position2.ExitCommission;
+                        CurrentCash -= position.Size;
+                        CurrentCash -= position.EntryCommission;
+                        num5 -= position.Size;
+                        num5 -= position.EntryCommission;
+                        _currentPositionsPs.Add(position);
+                        _positionsPs.Add(position);
+                        TotalCommission += position.EntryCommission + position.ExitCommission;
                     }
                     else
                     {
                         //это похоже обнуление позиции если она не удовлетворяет потрфелю
                         //потом на основе этого проставляется TradesNSF из TradingSystemExecutor
-                        position2.Shares = 0.0;
+                        position.Shares = 0.0;
                     }
                 }
             }
 
-            for (int num7 = _currentPositionsPs.Count - 1; num7 >= 0; num7--)
+            for (int pos = _currentPositionsPs.Count - 1; pos >= 0; pos--)
             {
-                Position position3 = _currentPositionsPs[num7];
-                if (!position3.Active && position3.ExitDate == val.Date)
+                Position position3 = _currentPositionsPs[pos];
+                if (!position3.Active && position3.ExitDate == barIterator.Date)
                 {
-                    _currentPositionsPs.RemoveAt(num7);
+                    _currentPositionsPs.RemoveAt(pos);
                     list4.Add(position3);
                     _closedPositionsPs.Add(position3);
                     double_ += position3.NetProfit;
@@ -293,36 +303,36 @@ public class SystemResultsOwn : IComparer<Position>
             CurrentEquity = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
             foreach (Position item3 in _currentPositionsPs)
             {
-                int num8 = val.Bar(item3.Bars);
+                int num8 = barIterator.Bar(item3.Bars);
                 CurrentEquity += item3.NetProfitAsOfBar(num8);
                 ApplyDividents(item3, num8, ref double_);
             }
 
             foreach (Position item4 in list4)
             {
-                int num9 = val.Bar(item4.Bars);
+                int num9 = barIterator.Bar(item4.Bars);
                 CurrentEquity += item4.NetProfitAsOfBar(num9);
                 ApplyDividents(item4, num9, ref double_);
             }
 
             list4.Clear();
             CurrentEquity += double_ - num;
-            EquityCurve.Add(CurrentEquity, val.Date);
-            CashCurve.Add(CurrentCash, val.Date);
-            OpenPositionCount.Add(_currentPositionsPs.Count, val.Date);
+            EquityCurve.Add(CurrentEquity, barIterator.Date);
+            CashCurve.Add(CurrentCash, barIterator.Date);
+            OpenPositionCount.Add(_currentPositionsPs.Count, barIterator.Date);
             int num10 = CashCurve.Count - 1;
-            if (tradingSystemExecutor_0.ApplyInterest && !tradingSystemExecutor_0.PosSize.RawProfitMode && CashCurve.Count > 1 && CashCurve.Date[num10].Date != CashCurve.Date[num10 - 1].Date)
+            if (tradingSystemExecutor.ApplyInterest && !tradingSystemExecutor.PosSize.RawProfitMode && CashCurve.Count > 1 && CashCurve.Date[num10].Date != CashCurve.Date[num10 - 1].Date)
             {
                 TimeSpan timeSpan = CashCurve.Date[num10] - CashCurve.Date[num10 - 1];
                 double num11 = 1.0;
                 double num12 = CashCurve[num10];
                 if (num12 > 0.0)
                 {
-                    num11 = tradingSystemExecutor_0.CashAdjustmentFactor;
+                    num11 = tradingSystemExecutor.CashAdjustmentFactor;
                 }
                 else if (num12 < 0.0)
                 {
-                    num11 = tradingSystemExecutor_0.MarginAdjustmentFactor;
+                    num11 = tradingSystemExecutor.MarginAdjustmentFactor;
                 }
 
                 for (int i = 1; i <= timeSpan.Days; i++)
@@ -360,7 +370,7 @@ public class SystemResultsOwn : IComparer<Position>
                 _drawdownPercentCurve.Add(value, EquityCurve.Date[num10]);
             }
         }
-        while (val.Next());
+        while (barIterator.Next());
     }
 
     private void ApplyDividents(Position position, int bar, ref double valueToApply)
