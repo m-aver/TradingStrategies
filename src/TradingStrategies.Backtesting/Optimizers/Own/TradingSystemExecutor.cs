@@ -38,29 +38,26 @@ public class TradingSystemExecutorOwn : IComparer<Position>
 
     public double CashRate
     {
-        get
-        {
-            return _cashRate;
-        }
+        get => _cashRate;
+        set => _cashAdjustmentFactor = CalcAdjustmentFactor(_cashRate = value);
+    }
+    public double MarginRate
+    {
+        get => _marginRate; 
+        set => _marginAdjustmentFactor = CalcAdjustmentFactor(_marginRate = value);
+    }
+    public double OverrideShareSize
+    {
+        get => _overrideShareSize;
         set
         {
-            _cashRate = value;
-            _cashAdjustmentFactor = Math.Exp(Math.Log(1.0 + _cashRate / 100.0) / 365.25);
+            _overrideShareSize = value; 
+            if (PosSize.Mode == PosSizeMode.ScriptOverride) 
+                PosSize.OverrideShareSize = value;
         }
     }
 
-    public double MarginRate
-    {
-        get
-        {
-            return _marginRate;
-        }
-        set
-        {
-            _marginRate = value;
-            _marginAdjustmentFactor = Math.Exp(Math.Log(1.0 + _marginRate / 100.0) / 365.25);
-        }
-    }
+    private static double CalcAdjustmentFactor(double rate) => Math.Exp(Math.Log(1.0 + rate / 100.0) / 365.25);
 
     public bool ApplyDividends { get; set; }
     public bool BuildEquityCurves { get; set; } = true;
@@ -77,23 +74,6 @@ public class TradingSystemExecutorOwn : IComparer<Position>
     public bool LimitDaySimulation { get; set; }
     public bool RoundLots { get; set; }
     public bool RoundLots50 { get; set; }
-
-    public double OverrideShareSize
-    {
-        get
-        {
-            return _overrideShareSize;
-        }
-        set
-        {
-            _overrideShareSize = value;
-            if (PosSize.Mode == PosSizeMode.ScriptOverride)
-            {
-                PosSize.OverrideShareSize = value;
-            }
-        }
-    }
-
     public int PricingDecimalPlaces { get; set; }
     public bool NoDecimalRoundingForLimitStopPrice { get; set; }
     internal double RiskStopLevel { get; set; }
