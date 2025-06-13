@@ -120,6 +120,11 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
     public void Execute(Strategy strategy, WealthScript wealthScript, List<Bars> barsCollection, bool avoidClearingTradeList = false)
     {
+        if (strategy.StrategyType is StrategyType.CombinedStrategy)
+        {
+            throw new NotImplementedException($"{nameof(StrategyType.CombinedStrategy)} is not supported");
+        }
+
         if (wealthScript != null)
         {
             wealthScript.StrategyWindowID = StrategyWindowID;
