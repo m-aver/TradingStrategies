@@ -12,21 +12,13 @@ public class SystemPerformanceOwn
     private List<PlottedIndicator> list_1 = new List<PlottedIndicator>();
 
     public Strategy Strategy { get; set; }
-
     public SystemResults Results { get; internal set; }
-
     public SystemResults ResultsLong { get; internal set; }
-
     public SystemResults ResultsShort { get; internal set; }
-
     public SystemResults ResultsBuyHold { get; internal set; }
-
     public BarScale Scale { get; internal set; }
-
     public int BarInterval { get; internal set; }
-
     public PositionSize PositionSize { get; internal set; } = new PositionSize();
-
     public bool IsIntraday
     {
         get
@@ -41,11 +33,8 @@ public class SystemPerformanceOwn
     }
 
     public List<Bars> Bars { get; } = new List<Bars>();
-
     public Bars BenchmarkSymbolbars { get; set; }
-
     public double CashReturnRate { get; set; }
-
     public List<Position> RawTrades { get; internal set; }
 
     public SystemPerformanceOwn(Strategy strategy)
