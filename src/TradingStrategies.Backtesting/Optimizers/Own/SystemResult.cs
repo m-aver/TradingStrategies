@@ -188,6 +188,9 @@ public class SystemResultsOwn : IComparer<Position>
             {
                 Position position = _currentlyActivePositions[pos];
 
+                //этот блок кажется нужен для того, чтобы накопился кеш от сделок сделанных по рыночной цене
+                //чтобы можно было этот кеш использовать для открытия других позиций на этой свече
+                //но кажется это может быть опасно, если вход в позицию делается на открытии например
                 if (position.ExitOrderType == OrderType.Market &&
                     position.ExitDate == barIterator.Date && 
                     position.Active == false)
@@ -314,7 +317,7 @@ public class SystemResultsOwn : IComparer<Position>
                         CurrentCash += position.Size;
                         CurrentCash += position.NetProfit;
                         netProfitOfCurrentlyClosedPositions += position.NetProfit;
-                        CurrentCash += position.EntryCommission;
+                        CurrentCash += position.EntryCommission; //Position.NetProfit учитывает комиссии, поэтому тут компенсация прошлого вычета
                     }
                 }
 
@@ -336,7 +339,8 @@ public class SystemResultsOwn : IComparer<Position>
 
                 currentlyClosedPositions.Clear();
 
-                CurrentEquity += currentNetProfit - netProfitOfCurrentlyClosedPositions;
+                double netProfitBeforeThisBar = currentNetProfit - netProfitOfCurrentlyClosedPositions; //доход от прошлых позиций + дивиденды от текущих
+                CurrentEquity += netProfitBeforeThisBar;
                 EquityCurve.Add(CurrentEquity, barIterator.Date);
                 CashCurve.Add(CurrentCash, barIterator.Date);
                 OpenPositionCount.Add(_currentlyActivePositions.Count, barIterator.Date);
