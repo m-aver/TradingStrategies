@@ -350,10 +350,12 @@ public class SystemResultsOwn : IComparer<Position>
             int cashPos = CashCurve.Count - 1;
 
             //тут применение AdjustmentFactor к текущим результатам
+            //cудя по всему CashRate - это процент вывода средств из портфеля за год
+            //а CashAdjustmentFactor - доля вывода в день
             if (tradingSystemExecutor.ApplyInterest && 
-                tradingSystemExecutor.PosSize.RawProfitMode == false
-                && CashCurve.Count > 1 
-                && CashCurve.Date[cashPos].Date != CashCurve.Date[cashPos - 1].Date)
+                tradingSystemExecutor.PosSize.RawProfitMode == false && 
+                CashCurve.Count > 1 && 
+                CashCurve.Date[cashPos].Date != CashCurve.Date[cashPos - 1].Date)
             {
                 TimeSpan timeSpan = CashCurve.Date[cashPos] - CashCurve.Date[cashPos - 1];
                 double adjustmentFactor = 1.0;
