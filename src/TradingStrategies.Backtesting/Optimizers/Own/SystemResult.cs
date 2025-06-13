@@ -183,10 +183,14 @@ public class SystemResultsOwn : IComparer<Position>
         do
         {
             double netProfitOfCurrentlyClosedPositions = 0.0;
+
             for (int pos = _currentlyActivePositions.Count - 1; pos >= 0; pos--)
             {
                 Position position = _currentlyActivePositions[pos];
-                if (!position.Active && position.ExitDate == barIterator.Date && position.ExitOrderType == OrderType.Market)
+
+                if (position.ExitOrderType == OrderType.Market &&
+                    position.ExitDate == barIterator.Date && 
+                    position.Active == false)
                 {
                     _currentlyActivePositions.RemoveAt(pos);
                     currentlyClosedPositions.Add(position);
@@ -300,7 +304,8 @@ public class SystemResultsOwn : IComparer<Position>
                 {
                     Position position = _currentlyActivePositions[pos];
 
-                    if (!position.Active && position.ExitDate == barIterator.Date)
+                    if (position.ExitDate == barIterator.Date && 
+                        position.Active == false)
                     {
                         _currentlyActivePositions.RemoveAt(pos);
                         currentlyClosedPositions.Add(position);
