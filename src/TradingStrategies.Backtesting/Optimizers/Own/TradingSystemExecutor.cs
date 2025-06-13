@@ -7,6 +7,14 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 //оказывается я коментил участки кода с обработкой Long и Short резалтов в WealthLab.dll
 //надо бы удостоверится что ничего важного не упускаю тут
 
+//в этой реализации
+//- убран код расчета BuyAndHold резалта
+//- убран код обработки StrategyType.CombinedStrategy
+//  (обработка CombinedStrategy использует статические переменные, поэтому ее пожалуй даже нельзя параллелить)
+//- расчет Long и Short резалтов, MAE и MFE показателей сделан опциональным
+//- убраны обработчики событий (смена параметров, ошибки WealthScript и т.п.) - в расчетах резалтов не участвуют
+//по идее все возможные кейсы, кроме StrategyType.CombinedStrategy должны поддерживаться
+
 public partial class TradingSystemExecutorOwn : IComparer<Position>
 {
     /*
@@ -535,7 +543,10 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             resultSize = num7 / 1000.0;
         }
 
-        if ((comingFromWealthScript && _rawProfitMode || !comingFromWealthScript) && RoundLots && bars.SymbolInfo.SecurityType == SecurityType.Equity && resultSize > 0.0)
+        if ((comingFromWealthScript && _rawProfitMode || !comingFromWealthScript) &&
+            RoundLots && 
+            bars.SymbolInfo.SecurityType == SecurityType.Equity && 
+            resultSize > 0.0)
         {
             double a = resultSize / 100.0;
             a = Math.Round(a) * 100.0;

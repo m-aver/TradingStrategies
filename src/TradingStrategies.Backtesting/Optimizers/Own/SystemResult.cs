@@ -12,6 +12,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 //в конкретной системе можно не заморачиваться и не считать текущую многосоставную эквити, чтобы посчитать размер позиции
 //а задавать размер уже постфактум, в отдельном модуле (своя перегрузка PosSizer или готовый), основываясь на текущей эквити (или других метриках), которую передат фреймворк
 //думаю не стоит прям отказываться от него так сразу
+//upd:
+//но с другой стороны появляются накладные расходы на вызов кастомного PosSizer для каждой позиции, что может снизить производительность
 
 public class SystemResultsOwn : IComparer<Position>
 {
@@ -229,6 +231,7 @@ public class SystemResultsOwn : IComparer<Position>
                     //вызывает PosSizer, переданный и сконфигурированный выше, если PosSizeMode == SimuScript
                     //если PosSizeMode == ScriptOverride, то просто использует OverrideShareSize, установленный через WealthScript.SetShareSize перед открытием позиции
                     //но может дополнительно скорректироваться по ReduceQtyBasedOnVolume, RoundLots и пр.
+                    //TODO: возможно стоит отказаться от вызова CalcPositionSize в случае ScriptOverride, для производительности
                     var sharesSize = tradingSystemExecutor.CalcPositionSize(position, position.Bars, position.EntryBar, position.BasisPrice, position.PositionType, position.RiskStopLevel, useOverRide: true, position.OverrideShareSize, cash);
                     position.SharesProxy = sharesSize * position.SplitFactor;
 
