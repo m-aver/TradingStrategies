@@ -9,7 +9,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class SystemPerformanceOwn
 {
-    private EventHandler<EventArgs> eventHandler_0;
     private List<PlottedIndicator> list_1 = new List<PlottedIndicator>();
 
     public Strategy Strategy { get; set; }
@@ -48,42 +47,6 @@ public class SystemPerformanceOwn
     public double CashReturnRate { get; set; }
 
     public List<Position> RawTrades { get; internal set; }
-
-    public event EventHandler<EventArgs> Signal
-    {
-        add
-        {
-            EventHandler<EventArgs> eventHandler = eventHandler_0;
-            EventHandler<EventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<EventArgs> value2 = (EventHandler<EventArgs>)Delegate.Combine(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_0, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-        remove
-        {
-            EventHandler<EventArgs> eventHandler = eventHandler_0;
-            EventHandler<EventArgs> eventHandler2;
-            do
-            {
-                eventHandler2 = eventHandler;
-                EventHandler<EventArgs> value2 = (EventHandler<EventArgs>)Delegate.Remove(eventHandler2, value);
-                eventHandler = Interlocked.CompareExchange(ref eventHandler_0, value2, eventHandler2);
-            }
-            while ((object)eventHandler != eventHandler2);
-        }
-    }
-
-    public void SignalEvent(string string_0)
-    {
-        if (eventHandler_0 != null)
-        {
-            eventHandler_0(string_0, null);
-        }
-    }
 
     public SystemPerformanceOwn(Strategy strategy)
     {
