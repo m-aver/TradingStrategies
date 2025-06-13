@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using TradingStrategies.Backtesting.Optimizers.Own;
-using WealthLab;
+﻿using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class SystemPerformanceOwn
 {
     public Strategy Strategy { get; set; }
-    public SystemResults Results { get; internal set; }
-    public SystemResults ResultsLong { get; internal set; }
-    public SystemResults ResultsShort { get; internal set; }
-    public SystemResults ResultsBuyHold { get; internal set; }
+    public SystemResultsOwn Results { get; internal set; }
+    public SystemResultsOwn ResultsLong { get; internal set; }
+    public SystemResultsOwn ResultsShort { get; internal set; }
+    public SystemResultsOwn ResultsBuyHold { get; internal set; }
     public BarScale Scale { get; internal set; }
     public int BarInterval { get; internal set; }
     public PositionSize PositionSize { get; internal set; } = new PositionSize();
@@ -26,10 +21,10 @@ public class SystemPerformanceOwn
     public SystemPerformanceOwn(Strategy strategy)
     {
         Strategy = strategy;
-        Results = new SystemResults(this);
-        ResultsLong = new SystemResults(this);
-        ResultsShort = new SystemResults(this);
-        ResultsBuyHold = new SystemResults(this);
+        Results = new SystemResultsOwn(this);
+        ResultsLong = new SystemResultsOwn(this);
+        ResultsShort = new SystemResultsOwn(this);
+        ResultsBuyHold = new SystemResultsOwn(this);
     }
 
     internal void method_0()

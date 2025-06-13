@@ -19,7 +19,7 @@ public class SystemResultsOwn : IComparer<Position>
 {
     private List<Position> _positions = new();
     private IList<Position> _positionsRo;
-    private SystemPerformance _systemPerfomance;
+    private SystemPerformanceOwn _systemPerfomance;
 
     //эти штуки используются только для передачи в PosSizer,
     //если он null (а вроде при PosSizeMode == ScriptOverride он дб null), то можно оптимизнуть и не создавать серии
@@ -69,7 +69,7 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    public SystemResultsOwn(SystemPerformance sysPerf)
+    public SystemResultsOwn(SystemPerformanceOwn sysPerf)
     {
         _systemPerfomance = sysPerf;
     }
