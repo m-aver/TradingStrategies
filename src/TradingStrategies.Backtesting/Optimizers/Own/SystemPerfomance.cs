@@ -8,7 +8,6 @@ public class SystemPerformanceOwn
     public SystemResultsOwn Results { get; internal set; }
     public SystemResultsOwn ResultsLong { get; internal set; }
     public SystemResultsOwn ResultsShort { get; internal set; }
-    public SystemResultsOwn ResultsBuyHold { get; internal set; }
     public BarScale Scale { get; internal set; }
     public int BarInterval { get; internal set; }
     public PositionSize PositionSize { get; internal set; } = new PositionSize();
@@ -24,7 +23,6 @@ public class SystemPerformanceOwn
         Results = new SystemResultsOwn(this);
         ResultsLong = new SystemResultsOwn(this);
         ResultsShort = new SystemResultsOwn(this);
-        ResultsBuyHold = new SystemResultsOwn(this);
     }
 
     internal void method_0()
@@ -32,7 +30,6 @@ public class SystemPerformanceOwn
         Results.method_0();
         ResultsLong.method_0();
         ResultsShort.method_0();
-        ResultsBuyHold.method_0();
     }
 
     internal void method_1(Bars bars_1)
@@ -45,7 +42,6 @@ public class SystemPerformanceOwn
         Results.method_6();
         ResultsLong.method_6();
         ResultsShort.method_6();
-        ResultsBuyHold.method_6();
         Bars.Clear();
     }
 }
