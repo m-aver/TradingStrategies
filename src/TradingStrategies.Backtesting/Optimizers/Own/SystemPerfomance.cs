@@ -19,19 +19,7 @@ public class SystemPerformanceOwn
     public BarScale Scale { get; internal set; }
     public int BarInterval { get; internal set; }
     public PositionSize PositionSize { get; internal set; } = new PositionSize();
-    public bool IsIntraday
-    {
-        get
-        {
-            if (Scale != BarScale.Minute && Scale != BarScale.Second)
-            {
-                return Scale == BarScale.Tick;
-            }
-
-            return true;
-        }
-    }
-
+    public bool IsIntraday => Scale is BarScale.Minute or BarScale.Second or BarScale.Tick;
     public List<Bars> Bars { get; } = new List<Bars>();
     public Bars BenchmarkSymbolbars { get; set; }
     public double CashReturnRate { get; set; }
