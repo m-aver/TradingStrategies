@@ -259,7 +259,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             {
                 Performance.Results.AddPosition(position);
             }
-            else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
+            else
             {
                 Performance.Results.TradesNSF++;
             }
@@ -297,7 +297,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
                         Performance.ResultsShort.AddPosition(position);
                     }
                 }
-                else if (Strategy.StrategyType != StrategyType.CombinedStrategy)
+                else
                 {
                     if (CalcResultsLong && position.PositionType == PositionType.Long)
                     {
@@ -325,21 +325,18 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             Performance.Results.SetPosSizerPositions(posSizer); //выставить списки позиций резалта в позсайзер
         }
 
-        if (Strategy.StrategyType != StrategyType.CombinedStrategy)
+        foreach (Alert alert in Performance.Results.Alerts)
         {
-            foreach (Alert alert in Performance.Results.Alerts)
+            if (alert.AlertType != TradeType.Buy && alert.AlertType != TradeType.Short)
             {
-                if (alert.AlertType != TradeType.Buy && alert.AlertType != TradeType.Short)
+                if (alert.Position != null)
                 {
-                    if (alert.Position != null)
-                    {
-                        alert.Shares = alert.Position.Shares;
-                    }
+                    alert.Shares = alert.Position.Shares;
                 }
-                else if (PosSize.Mode != PosSizeMode.ScriptOverride)
-                {
-                    alert.Shares = CalcPositionSize(alert.Bars, alert.Bars.Count, alert.BasisPrice, alert.PositionType, alert.RiskStopLevel);
-                }
+            }
+            else if (PosSize.Mode != PosSizeMode.ScriptOverride)
+            {
+                alert.Shares = CalcPositionSize(alert.Bars, alert.Bars.Count, alert.BasisPrice, alert.PositionType, alert.RiskStopLevel);
             }
         }
 
@@ -417,6 +414,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
         CalcResultsLong = executor.CalcResultsLong;
         CalcResultsShort = executor.CalcResultsShort;
+        CalcMfeMae = executor.CalcMfeMae;
     }
 
     public double CalcPositionSize(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, double currentEquity, double overrideShareSize, double currentCash)
@@ -544,8 +542,8 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         if ((comingFromWealthScript && _rawProfitMode || !comingFromWealthScript) &&
-            RoundLots && 
-            bars.SymbolInfo.SecurityType == SecurityType.Equity && 
+            RoundLots &&
+            bars.SymbolInfo.SecurityType == SecurityType.Equity &&
             resultSize > 0.0)
         {
             double a = resultSize / 100.0;
