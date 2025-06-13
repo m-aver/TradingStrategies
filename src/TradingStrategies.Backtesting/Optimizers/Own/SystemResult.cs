@@ -127,7 +127,8 @@ public class SystemResultsOwn : IComparer<Position>
         //заполняется инфа по дивидендам
         foreach (Bars bars in barsSet)
         {
-            if (tradingSystemExecutor.ApplyDividends && !tradingSystemExecutor.PosSize.RawProfitMode)
+            if (tradingSystemExecutor.ApplyDividends &&
+                tradingSystemExecutor.PosSize.RawProfitMode == false)
             {
                 IList<FundamentalItem> dividents =
                     tradingSystemExecutor.FundamentalsLoader.RequestSymbolItems(bars, bars.Symbol, tradingSystemExecutor.DividendItemName);
@@ -350,7 +351,7 @@ public class SystemResultsOwn : IComparer<Position>
 
             //тут применение AdjustmentFactor к текущим результатам
             if (tradingSystemExecutor.ApplyInterest && 
-                !tradingSystemExecutor.PosSize.RawProfitMode 
+                tradingSystemExecutor.PosSize.RawProfitMode == false
                 && CashCurve.Count > 1 
                 && CashCurve.Date[cashPos].Date != CashCurve.Date[cashPos - 1].Date)
             {
