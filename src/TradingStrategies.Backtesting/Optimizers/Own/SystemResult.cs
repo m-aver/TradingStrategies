@@ -17,7 +17,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class SystemResultsOwn : IComparer<Position>
 {
-    private List<Position> _positions = new List<Position>();
+    private List<Position> _positions = new();
     private IList<Position> _positionsRo;
     private SystemPerformance _systemPerfomance;
 
@@ -28,9 +28,10 @@ public class SystemResultsOwn : IComparer<Position>
     private DataSeries _drawdownPercentCurve = new DataSeries("DrawDownPct");
     private double _currentMaxEquity; //for drawdown
 
-    private List<Position> _currentPositionsPs = new List<Position>();
-    private List<Position> _closedPositionsPs = new List<Position>();
-    private List<Position> _positionsPs = new List<Position>();
+    //списки позиций, обрабатывавемые во время итереирования по SynchronizedBarIterator
+    private List<Position> _currentlyActivePositions = new(); //открытые на момент итерации (постоянно добавляются и удаляются)
+    private List<Position> _closedPositions = new(); //все обработанные и закрытые на момент итерации
+    private List<Position> _accountedPositions = new(); //начинающие обрабатываться с текущей итерации и имеющие больше 0 лотов (Shares)
 
     public int TradesNSF { get; set; }
     public List<Alert> Alerts { get; } = new List<Alert>();
@@ -101,8 +102,10 @@ public class SystemResultsOwn : IComparer<Position>
         _drawdownPercentCurve = new DataSeries("DrawDownPct");
         _currentMaxEquity = double.MinValue;
         PositionSize positionSize = _systemPerfomance.PositionSize;
-        double double_ = 0.0;
+        double currentNetProfit = 0.0;
         OpenPositionCount = new DataSeries("OpenPositions");
+
+        //заполняется датасет для итерирования
         List<Bars> barsSet = barsList.ToList();
 
         foreach (Position masterPosition in tradingSystemExecutor.MasterPositions)
@@ -113,11 +116,11 @@ public class SystemResultsOwn : IComparer<Position>
             }
         }
 
-        foreach (Position position4 in Positions)
+        foreach (Position position in Positions)
         {
-            if (!barsSet.Contains(position4.Bars))
+            if (!barsSet.Contains(position.Bars))
             {
-                barsSet.Add(position4.Bars);
+                barsSet.Add(position.Bars);
             }
         }
 
@@ -137,9 +140,9 @@ public class SystemResultsOwn : IComparer<Position>
             }
         }
 
-        _currentPositionsPs.Clear();
-        _positionsPs.Clear();
-        _closedPositionsPs.Clear();
+        _currentlyActivePositions.Clear();
+        _accountedPositions.Clear();
+        _closedPositions.Clear();
 
         SynchronizedBarIterator barIterator = new SynchronizedBarIterator(barsSet);
 
@@ -148,27 +151,27 @@ public class SystemResultsOwn : IComparer<Position>
             return;
         }
 
-        List<Position> list3 = new List<Position>(); //список всех позиций для обсчета, должны быть отсортированы по дате, при итерировании обсчитанные позиции удаляются, тут как будто бы лучше подошел стек
-        List<Position> list4 = new List<Position>(); //список закрытых позиций на текущей итерации, очищается по кончанию итерации
+        List<Position> remainingPositions = new(); //список всех позиций для обсчета, должны быть отсортированы по дате, при итерировании обсчитанные позиции удаляются, тут как будто бы лучше подошел стек
+        List<Position> currentlyClosedPositions = new(); //список закрытых позиций на текущей итерации, очищается по кончанию итерации
 
         if (callbackToSizePositions)
         {
-            foreach (Position masterPosition2 in tradingSystemExecutor.MasterPositions)
+            foreach (Position masterPosition in tradingSystemExecutor.MasterPositions)
             {
-                list3.Add(masterPosition2);
+                remainingPositions.Add(masterPosition);
             }
         }
         else
         {
-            foreach (Position position5 in Positions)
+            foreach (Position position in Positions)
             {
-                list3.Add(position5);
+                remainingPositions.Add(position);
             }
         }
 
         if (posSizer != null)
         {
-            posSizer.PreInitialize(tradingSystemExecutor, _currentPositionsPs, _positionsPs, _closedPositionsPs, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
+            posSizer.PreInitialize(tradingSystemExecutor, _currentlyActivePositions, _accountedPositions, _closedPositions, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
             posSizer.Initialize();
         }
 
@@ -179,24 +182,19 @@ public class SystemResultsOwn : IComparer<Position>
         //каждая свеча со всех инструментов, упорядочено по времени
         do
         {
-            //_currentPositionsPs -
-            //список позиций открытых на момент итерации
-            //(позиции сюда постоянно добавляются и удаляются)
-            //на основе него расчитывается текущая прибыль
-
-            double num = 0.0;
-            for (int pos = _currentPositionsPs.Count - 1; pos >= 0; pos--)
+            double netProfitOfCurrentlyClosedPositions = 0.0;
+            for (int pos = _currentlyActivePositions.Count - 1; pos >= 0; pos--)
             {
-                Position position = _currentPositionsPs[pos];
+                Position position = _currentlyActivePositions[pos];
                 if (!position.Active && position.ExitDate == barIterator.Date && position.ExitOrderType == OrderType.Market)
                 {
-                    _currentPositionsPs.RemoveAt(pos);
-                    list4.Add(position);
-                    _closedPositionsPs.Add(position);
-                    double_ += position.NetProfit;
+                    _currentlyActivePositions.RemoveAt(pos);
+                    currentlyClosedPositions.Add(position);
+                    _closedPositions.Add(position);
+                    currentNetProfit += position.NetProfit;
                     CurrentCash += position.Size;
                     CurrentCash += position.NetProfit;
-                    num += position.NetProfit;
+                    netProfitOfCurrentlyClosedPositions += position.NetProfit;
                     CurrentCash += position.EntryCommission;
                 }
             }
@@ -205,26 +203,27 @@ public class SystemResultsOwn : IComparer<Position>
             //видимо чтобы можно было учесть их при дальнешем вызове CalcPositionSize и правильно распределить кол-во лотов
             if (posSizer != null)
             {
-                List<Position> list5 = new List<Position>();
-                foreach (Position item2 in list3)
+                List<Position> candidates = new();
+                foreach (Position position in remainingPositions)
                 {
-                    if (item2.EntryDate == barIterator.Date)
+                    if (position.EntryDate == barIterator.Date)
                     {
-                        list5.Add(item2);
+                        candidates.Add(position);
                     }
                 }
 
-                posSizer.CandidatesProxy = list5;
+                posSizer.CandidatesProxy = candidates;
             }
 
             double currCash = CurrentCash; //это нужно только для callbackToSizePositions блока
 
             //цикл по конкурирующим позициям с одинаковой датой входа (текущей датой итератора)
             //корректируются CurrentCash и TotalCommission
-            //добавляются позиции в  _currentPositionsPs и _positionsPs
-            while (list3.Count > 0)
+            //добавляются позиции в  _currentlyActivePositions и _accountedPositions
+            //удаляются позиции из remainingPositions
+            while (remainingPositions.Count > 0)
             {
-                Position position = list3[0];
+                Position position = remainingPositions[0];
                 if (position.EntryDate != barIterator.Date)
                 {
                     break;
@@ -259,7 +258,7 @@ public class SystemResultsOwn : IComparer<Position>
                     }
                 }
 
-                list3.RemoveAt(0);
+                remainingPositions.RemoveAt(0);
 
                 if (position.Shares > 0.0)
                 {
@@ -282,8 +281,8 @@ public class SystemResultsOwn : IComparer<Position>
                         CurrentCash -= position.EntryCommission;
                         num5 -= position.Size; //тут вроде уже бессмысленно корректировать локальную переменную
                         num5 -= position.EntryCommission;
-                        _currentPositionsPs.Add(position);
-                        _positionsPs.Add(position);
+                        _currentlyActivePositions.Add(position);
+                        _accountedPositions.Add(position);
                         TotalCommission += position.EntryCommission + position.ExitCommission;
                     }
                     else
@@ -295,45 +294,47 @@ public class SystemResultsOwn : IComparer<Position>
                 }
             }
 
-            //тут блок с подсчетом текущей прибыли от открытых на данный момент позиций _currentPositionsPs
+            //тут блок с подсчетом текущей прибыли от открытых на данный момент позиций _currentlyActivePositions
             {
-                for (int pos = _currentPositionsPs.Count - 1; pos >= 0; pos--)
+                for (int pos = _currentlyActivePositions.Count - 1; pos >= 0; pos--)
                 {
-                    Position position3 = _currentPositionsPs[pos];
-                    if (!position3.Active && position3.ExitDate == barIterator.Date)
+                    Position position = _currentlyActivePositions[pos];
+
+                    if (!position.Active && position.ExitDate == barIterator.Date)
                     {
-                        _currentPositionsPs.RemoveAt(pos);
-                        list4.Add(position3);
-                        _closedPositionsPs.Add(position3);
-                        double_ += position3.NetProfit;
-                        CurrentCash += position3.Size;
-                        CurrentCash += position3.NetProfit;
-                        num += position3.NetProfit;
-                        CurrentCash += position3.EntryCommission;
+                        _currentlyActivePositions.RemoveAt(pos);
+                        currentlyClosedPositions.Add(position);
+                        _closedPositions.Add(position);
+                        currentNetProfit += position.NetProfit;
+                        CurrentCash += position.Size;
+                        CurrentCash += position.NetProfit;
+                        netProfitOfCurrentlyClosedPositions += position.NetProfit;
+                        CurrentCash += position.EntryCommission;
                     }
                 }
 
+                //_currentlyActivePositions расщепляется на _currentlyActivePositions и currentlyClosedPositions
+
                 CurrentEquity = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
-                foreach (Position item3 in _currentPositionsPs)
+                foreach (Position position in _currentlyActivePositions)
                 {
-                    int num8 = barIterator.Bar(item3.Bars);
-                    CurrentEquity += item3.NetProfitAsOfBar(num8);
-                    ApplyDividents(item3, num8, ref double_);
+                    int bar = barIterator.Bar(position.Bars);
+                    CurrentEquity += position.NetProfitAsOfBar(bar);
+                    ApplyDividents(position, bar, ref currentNetProfit);
+                }
+                foreach (Position position in currentlyClosedPositions)
+                {
+                    int bar = barIterator.Bar(position.Bars);
+                    CurrentEquity += position.NetProfitAsOfBar(bar);
+                    ApplyDividents(position, bar, ref currentNetProfit);
                 }
 
-                foreach (Position item4 in list4)
-                {
-                    int num9 = barIterator.Bar(item4.Bars);
-                    CurrentEquity += item4.NetProfitAsOfBar(num9);
-                    ApplyDividents(item4, num9, ref double_);
-                }
+                currentlyClosedPositions.Clear();
 
-                list4.Clear();
-
-                CurrentEquity += double_ - num;
+                CurrentEquity += currentNetProfit - netProfitOfCurrentlyClosedPositions;
                 EquityCurve.Add(CurrentEquity, barIterator.Date);
                 CashCurve.Add(CurrentCash, barIterator.Date);
-                OpenPositionCount.Add(_currentPositionsPs.Count, barIterator.Date);
+                OpenPositionCount.Add(_currentlyActivePositions.Count, barIterator.Date);
             }
 
             int cashPos = CashCurve.Count - 1;
@@ -375,7 +376,7 @@ public class SystemResultsOwn : IComparer<Position>
                 EquityCurve[cashPos] += adjustmentFactor;
                 CurrentCash = CashCurve[cashPos];
                 CurrentEquity = EquityCurve[cashPos];
-                double_ += adjustmentFactor;
+                currentNetProfit += adjustmentFactor;
             }
 
             //расчет текущей просадки, чтобы PosSizer мог использовать ее для расчета следующих позиций
@@ -386,10 +387,10 @@ public class SystemResultsOwn : IComparer<Position>
                     _currentMaxEquity = CurrentEquity;
                 }
 
-                double num13 = CurrentEquity - _currentMaxEquity;
-                double value = num13 * 100.0 / _currentMaxEquity;
-                _drawdownCurve.Add(num13, EquityCurve.Date[cashPos]);
-                _drawdownPercentCurve.Add(value, EquityCurve.Date[cashPos]);
+                double drawdown = CurrentEquity - _currentMaxEquity;
+                double drawdownPercent = drawdown * 100.0 / _currentMaxEquity;
+                _drawdownCurve.Add(drawdown, EquityCurve.Date[cashPos]);
+                _drawdownPercentCurve.Add(drawdownPercent, EquityCurve.Date[cashPos]);
             }
         }
         while (barIterator.Next());
@@ -505,8 +506,8 @@ public class SystemResultsOwn : IComparer<Position>
 
     internal void method_9(PosSizer posSizer_0)
     {
-        posSizer_0.ActivePositionsProxy = _currentPositionsPs;
-        posSizer_0.PositionsProxy = _positionsPs;
-        posSizer_0.ClosedPositionsProxy = _closedPositionsPs;
+        posSizer_0.ActivePositionsProxy = _currentlyActivePositions;
+        posSizer_0.PositionsProxy = _accountedPositions;
+        posSizer_0.ClosedPositionsProxy = _closedPositions;
     }
 }
