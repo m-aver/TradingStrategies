@@ -45,7 +45,7 @@ public partial class TradingSystemExecutorOwn
     public DataSource DataSet { get => tse.DataSet; set => tse.DataSet = value; }
     public bool ReduceQtyBasedOnVolume { get => tse.ReduceQtyBasedOnVolume; set => tse.ReduceQtyBasedOnVolume = value; }
     public double RedcuceQtyPct { get => tse.RedcuceQtyPct; set => tse.RedcuceQtyPct = value; }
-    public SystemPerformance Performance { get => tse.Performance; set => tse.Performance = value; }
+    //public SystemPerformance Performance { get => tse.Performance; set => tse.Performance = value; }
     public bool WorstTradeSimulation { get => tse.WorstTradeSimulation; set => tse.WorstTradeSimulation = value; }
     public string BenchmarkSymbol { get => tse.BenchmarkSymbol; set => tse.BenchmarkSymbol = value; }
     public bool EnableSlippage { get => tse.EnableSlippage; set => tse.EnableSlippage = value; }

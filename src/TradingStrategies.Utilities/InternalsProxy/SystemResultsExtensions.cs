@@ -13,5 +13,11 @@ public static class SystemResultsExtensions
 
         public double CurrentCash { get => results.CurrentCash; set => results.CurrentCash = value; }
         public double CurrentEquity { get => results.CurrentEquity; set => results.CurrentEquity = value; }
+
+        public double CashReturnProxy { get => results.CashReturn; set => results.CashReturn = value; }
+        public double MarginInterestProxy { get => results.MarginInterest; set => results.MarginInterest = value; }
+        public double DividendsPaidProxy { get => results.DividendsPaid; set => results.DividendsPaid = value; }
+        public DataSeries EquityCurveProxy { get => results.EquityCurve; set => results.EquityCurve = value; }
+        public DataSeries CashCurveProxy { get => results.CashCurve; set => results.CashCurve = value; }
     }
 }

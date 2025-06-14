@@ -97,12 +97,16 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
     public bool CalcResultsShort { get; set; } = true;
     public bool CalcMfeMae { get; set; } = true;
 
+    private SystemPerformanceOwn Performance { get; }
+    public SystemPerformance PerfomanceNative { get; private set; }
+
     private readonly TradingSystemExecutor _nativeExecutor;
 
     public TradingSystemExecutorOwn(TradingSystemExecutor nativeExecutor)
     {
         _nativeExecutor = nativeExecutor;
-        Performance = new SystemPerformance(null);
+        //Performance = new SystemPerformance(null);
+        Performance = new SystemPerformanceOwn(null);
     }
 
     public void Initialize()
@@ -177,6 +181,8 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         {
             ApplyPositionSize();
         }
+
+        FillNativePerfomance();
     }
 
     private void ExecuteOneBars(Bars bars, WealthScript wealthScript)
@@ -272,7 +278,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
         foreach (Alert alert in _masterAlerts)
         {
-            SystemPerformance systemPerformance = Performance;
+            SystemPerformanceOwn systemPerformance = Performance;
             if (alert.AlertType != 0 && alert.AlertType != TradeType.Short)
             {
                 if (alert.Position != null && alert.Position.Shares > 0.0)
@@ -353,6 +359,56 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         if (CalcMfeMae)
         {
             Performance.CalculateMfeMae();
+        }
+    }
+
+    private void FillNativePerfomance()
+    {
+        var native = new SystemPerformance(null);
+
+        native.PositionSizeProxy = Performance.PositionSizeProxy;
+        native.Strategy = Performance.Strategy;
+        native.ScaleProxy = Performance.ScaleProxy;
+        native.BarIntervalProxy = Performance.BarIntervalProxy;
+        native.PositionSizeProxy = Performance.PositionSizeProxy;
+        native.BenchmarkSymbolbars = Performance.BenchmarkSymbolbars;
+        native.RawTradesProxy = Performance.RawTradesProxy;
+        native.PositionSizeProxy = Performance.PositionSizeProxy;
+        native.CashReturnRate = Performance.CashReturnRate;
+
+        foreach (var bar in Performance.Bars)
+        {
+            native.AddBars(bar);
+        }
+
+        FillNativeResults(native.Results, Performance.Results);
+        if (CalcResultsLong)
+            FillNativeResults(native.ResultsLong, Performance.ResultsLong);
+        if (CalcResultsShort)
+            FillNativeResults(native.ResultsShort, Performance.ResultsShort);
+
+        PerfomanceNative = native;
+    }
+
+    private static void FillNativeResults(SystemResults native, SystemResultsOwn own)
+    {
+        native.EquityCurveProxy = own.EquityCurve;
+        native.CashCurveProxy = own.CashCurve;
+        native.CashReturnProxy = own.CashReturn;
+        native.MarginInterestProxy = own.MarginInterest;
+        native.DividendsPaidProxy = own.DividendsPaid;
+        native.TradesNSF = own.TradesNSF;
+        native.OpenPositionCount = own.OpenPositionCount;
+
+        native.TotalCommissionProxy = own.TotalCommission;
+
+        foreach (var position in own.Positions)
+        {
+            native.AddPosition(position);
+        }
+        foreach (var alert in own.Alerts)
+        {
+            native.AddAlert(alert);
         }
     }
 
