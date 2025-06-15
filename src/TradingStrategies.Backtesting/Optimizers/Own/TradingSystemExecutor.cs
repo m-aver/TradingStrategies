@@ -98,7 +98,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
     public bool CalcMfeMae { get; set; } = true;
 
     private SystemPerformanceOwn Performance { get; }
-    public SystemPerformance PerfomanceNative { get; private set; }
+    public SystemPerformance PerformanceNative { get; private set; }
 
     private readonly TradingSystemExecutor _nativeExecutor;
 
@@ -182,7 +182,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             ApplyPositionSize();
         }
 
-        FillNativePerfomance();
+        FillNativePerformance();
     }
 
     private void ExecuteOneBars(Bars bars, WealthScript wealthScript)
@@ -362,7 +362,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         }
     }
 
-    private void FillNativePerfomance()
+    private void FillNativePerformance()
     {
         var native = new SystemPerformance(null);
 
@@ -387,7 +387,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         if (CalcResultsShort)
             FillNativeResults(native.ResultsShort, Performance.ResultsShort);
 
-        PerfomanceNative = native;
+        PerformanceNative = native;
     }
 
     private static void FillNativeResults(SystemResults native, SystemResultsOwn own)

@@ -249,7 +249,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
         ts.Initialize();
         ts.Execute(executors.Strategy, executors.Script, null, executors.BarsSet);
 
-        executors.Result = ts.PerfomanceNative;
+        executors.Result = ts.PerformanceNative;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
