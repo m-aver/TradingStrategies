@@ -14,7 +14,7 @@ namespace TradingStrategies.Backtesting.Optimizers;
 /// <remarks>
 /// Based on own implementation of optimization, see <see cref="TradingSystemExecutorOwn"/>.
 /// </remarks>
-public class ParallelExhaustiveOptimizerOwn : OptimizerBase
+public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
 {
     /// <summary>
     /// Represents scope of data for one separate optimization run
@@ -32,7 +32,7 @@ public class ParallelExhaustiveOptimizerOwn : OptimizerBase
         public List<StrategyParameter> ParameterValues { get; }
 
         public ExecutionScope(
-            TradingSystemExecutor executor,
+            TradingSystemExecutorOwn executor,
             WealthScript script,
             StrategyScorecard scorecard,
             Strategy strategy,
@@ -40,7 +40,7 @@ public class ParallelExhaustiveOptimizerOwn : OptimizerBase
             List<ListViewItem> resultRows,
             IStrategyParametersIterator parametersIterator)
         {
-            Executor = new TradingSystemExecutorOwn(executor);
+            Executor = executor;
             Script = script;
             Scorecard = scorecard;
             Strategy = strategy;
@@ -134,7 +134,7 @@ public class ParallelExhaustiveOptimizerOwn : OptimizerBase
         // check if this strategy can be run by this optimizer
         var strategyManager = new StrategyManager();
         var testScript = strategyManager.GetWealthScriptObject(Strategy);
-        var testExecutor = new TradingSystemExecutorOwn(CopyExecutor(parentExecutor));
+        var testExecutor = CopyExecutor(parentExecutor);
         var testStrategy = CopyStrategy(Strategy);
         var testBars = dataSetBars.Values.Select((x, i) => x.Prepare(i + 1)).ToList();
 
@@ -320,10 +320,21 @@ public class ParallelExhaustiveOptimizerOwn : OptimizerBase
         return scorecard;
     }
 
+    private TradingSystemExecutorOwn CopyExecutor(TradingSystemExecutor source)
+    {
+        var native = ParallelExhaustiveOptimizer.CopyExecutor(source);
+        var own = new TradingSystemExecutorOwn(native)
+        {
+            CalcResultsLong = CalcLongResults,
+            CalcResultsShort = CalcShortResults,
+            CalcMfeMae = CalcMfeMae,
+        };
+        return own;
+    }
+
     private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource) =>
         ParallelExhaustiveOptimizer.SynchronizeWealthScriptParameters(wsTarget, wsSource);
     private static StrategyParameter CopyParameter(StrategyParameter old) => ParallelExhaustiveOptimizer.CopyParameter(old);
-    private static TradingSystemExecutor CopyExecutor(TradingSystemExecutor source) => ParallelExhaustiveOptimizer.CopyExecutor(source);
     private static PositionSize CopyPositionSize(PositionSize source) => ParallelExhaustiveOptimizer.CopyPositionSize(source);
     private static Strategy CopyStrategy(Strategy source) => ParallelExhaustiveOptimizer.CopyStrategy(source);
     private static void FullCollect() => ParallelExhaustiveOptimizer.FullCollect();

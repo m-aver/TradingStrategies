@@ -6,7 +6,7 @@ namespace TradingStrategies.Utilities.InternalsProxy;
 
 //for consistent naming with natives
 
-public static class SystemperformanceExtensions
+public static class SystemPerformanceExtensions
 {
     extension(SystemPerformanceOwn performance)
     {
