@@ -13,5 +13,7 @@ public static class TradingSystemExecutorExtensions
         public double AutoProfitLevel { get => executor.AutoProfitLevel; set => executor.AutoProfitLevel = value; }
         public List<Alert> MasterAlerts { get => executor.MasterAlerts;  }
         public PosSizer PosSizer { get => executor.PosSizer; }
+
+        public void AddPosition(Position position) => executor.method_5(position);
     }
 }
