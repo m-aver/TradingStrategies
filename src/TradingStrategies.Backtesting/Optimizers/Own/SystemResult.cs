@@ -106,23 +106,8 @@ public class SystemResultsOwn : IComparer<Position>
         OpenPositionCount = new DataSeries("OpenPositions");
 
         //заполняется датасет для итерирования
-        List<Bars> barsSet = barsList.ToList();
-
-        foreach (Position masterPosition in tradingSystemExecutor.MasterPositions)
-        {
-            if (!barsSet.Contains(masterPosition.Bars))
-            {
-                barsSet.Add(masterPosition.Bars);
-            }
-        }
-
-        foreach (Position position in Positions)
-        {
-            if (!barsSet.Contains(position.Bars))
-            {
-                barsSet.Add(position.Bars);
-            }
-        }
+        IList<Bars> barsSet = barsList;
+        //barsSet = FillBarsSet(barsList, tradingSystemExecutor);
 
         //заполняется инфа по дивидендам
         //это будет очень сильно тормозить, если дивиденды появятся
@@ -456,6 +441,30 @@ public class SystemResultsOwn : IComparer<Position>
                 position.Bars.DivTag = null;
             }
         }
+    }
+
+    private IList<Bars> FillBarsSet(IList<Bars> sourceBars, TradingSystemExecutor executor)
+    {
+        //почему-то в исходной реализации к переданным свечам добавляются свечи из позиций
+        //не очень понятно в каких случаях могут подмешаться позиции не из исходного датасета
+        //но на всякий случай оставлю этот кусок как напоминание
+
+        IList<Bars> barsSet = sourceBars.ToList();
+        foreach (Position masterPosition in executor.MasterPositions)
+        {
+            if (!barsSet.Contains(masterPosition.Bars))
+            {
+                barsSet.Add(masterPosition.Bars);
+            }
+        }
+        foreach (Position position in Positions)
+        {
+            if (!barsSet.Contains(position.Bars))
+            {
+                barsSet.Add(position.Bars);
+            }
+        }
+        return barsSet;
     }
 
     internal void method_4(Position position_0)
