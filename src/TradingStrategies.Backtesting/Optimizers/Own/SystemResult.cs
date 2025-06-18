@@ -275,25 +275,21 @@ public class SystemResultsOwn : IComparer<Position>
 
                 if (position.Shares > 0.0)
                 {
-                    double num5 = CurrentCash;
+                    double rest = CurrentCash;
                     if (!tradingSystemExecutor.PosSize.RawProfitMode)
                     {
-                        double num6 = CurrentEquity - CurrentCash;
-                        num5 = CurrentEquity * tradingSystemExecutor.PosSize.MarginFactor - num6;
+                        rest += CurrentEquity * (tradingSystemExecutor.PosSize.MarginFactor - 1);
                     }
 
-                    bool isSufficient = !callbackToSizePositions;
-                    if (!isSufficient)
+                    bool isSufficient = true;
+                    if (callbackToSizePositions)
                     {
-                        isSufficient = positionSize.RawProfitMode || num5 >= position.Size + position.EntryCommission;
+                        isSufficient = positionSize.RawProfitMode || rest >= position.Size + position.EntryCommission;
                     }
-
                     if (isSufficient)
                     {
                         CurrentCash -= position.Size;
                         CurrentCash -= position.EntryCommission;
-                        num5 -= position.Size; //тут вроде уже бессмысленно корректировать локальную переменную
-                        num5 -= position.EntryCommission;
                         _currentlyActivePositions.Add(position);
                         _accountedPositions.Add(position);
                         TotalCommission += position.EntryCommission + position.ExitCommission;
