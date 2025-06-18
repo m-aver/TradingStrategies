@@ -154,23 +154,10 @@ public class SystemResultsOwn : IComparer<Position>
             return;
         }
 
-        List<Position> remainingPositions = new(); //список всех позиций для обсчета, должны быть отсортированы по дате, при итерировании обсчитанные позиции удаляются, тут как будто бы лучше подошел стек
         List<Position> currentlyClosedPositions = new(); //список закрытых позиций на текущей итерации, очищается по кончанию итерации
-
-        if (callbackToSizePositions)
-        {
-            foreach (Position masterPosition in tradingSystemExecutor.MasterPositions)
-            {
-                remainingPositions.Add(masterPosition);
-            }
-        }
-        else
-        {
-            foreach (Position position in Positions)
-            {
-                remainingPositions.Add(position);
-            }
-        }
+        int currRemainingPos = 0;
+        List<Position> remainingPositions = callbackToSizePositions ? tradingSystemExecutor.MasterPositions : Positions;
+        //список всех позиций для обсчета, должны быть отсортированы по дате, при итерировании двигается указатель currRemainingPos, оставляя обсчитанные позиции позади
 
         if (posSizer != null)
         {
@@ -216,14 +203,14 @@ public class SystemResultsOwn : IComparer<Position>
             if (posSizer != null)
             {
                 List<Position> candidates = new();
-                foreach (Position position in remainingPositions)
+                for (int i = currRemainingPos; i < remainingPositions.Count; i++)
                 {
+                    Position position = remainingPositions[i];
                     if (position.EntryDate == barDate)
                     {
                         candidates.Add(position);
                     }
                 }
-
                 posSizer.CandidatesProxy = candidates;
             }
 
@@ -232,10 +219,10 @@ public class SystemResultsOwn : IComparer<Position>
             //цикл по конкурирующим позициям с одинаковой датой входа (текущей датой итератора)
             //корректируются CurrentCash и TotalCommission
             //добавляются позиции в  _currentlyActivePositions и _accountedPositions
-            //удаляются позиции из remainingPositions
-            while (remainingPositions.Count > 0)
+            //двигается указатель currRemainingPos
+            while (remainingPositions.Count > currRemainingPos)
             {
-                Position position = remainingPositions[0];
+                Position position = remainingPositions[currRemainingPos];
 
                 if (position.EntryDate != barDate)
                 {
@@ -271,7 +258,7 @@ public class SystemResultsOwn : IComparer<Position>
                     }
                 }
 
-                remainingPositions.RemoveAt(0);
+                currRemainingPos++;
 
                 if (position.Shares > 0.0)
                 {
