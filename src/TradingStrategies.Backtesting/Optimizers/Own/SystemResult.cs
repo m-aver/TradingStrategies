@@ -183,6 +183,8 @@ public class SystemResultsOwn : IComparer<Position>
         //каждая свеча со всех инструментов, упорядочено по времени
         do
         {
+            DateTime barDate = barIterator.Date;
+
             double netProfitOfCurrentlyClosedPositions = 0.0;
 
             for (int pos = _currentlyActivePositions.Count - 1; pos >= 0; pos--)
@@ -193,7 +195,7 @@ public class SystemResultsOwn : IComparer<Position>
                 //чтобы можно было этот кеш использовать для открытия других позиций на этой свече
                 //но кажется это может быть опасно, если вход в позицию делается на открытии например
                 if (position.ExitOrderType == OrderType.Market &&
-                    position.ExitDate == barIterator.Date && 
+                    position.ExitDate == barDate &&
                     position.Active == false)
                 {
                     _currentlyActivePositions.RemoveAt(pos);
@@ -214,7 +216,7 @@ public class SystemResultsOwn : IComparer<Position>
                 List<Position> candidates = new();
                 foreach (Position position in remainingPositions)
                 {
-                    if (position.EntryDate == barIterator.Date)
+                    if (position.EntryDate == barDate)
                     {
                         candidates.Add(position);
                     }
@@ -232,7 +234,8 @@ public class SystemResultsOwn : IComparer<Position>
             while (remainingPositions.Count > 0)
             {
                 Position position = remainingPositions[0];
-                if (position.EntryDate != barIterator.Date)
+
+                if (position.EntryDate != barDate)
                 {
                     break;
                 }
@@ -308,7 +311,7 @@ public class SystemResultsOwn : IComparer<Position>
                 {
                     Position position = _currentlyActivePositions[pos];
 
-                    if (position.ExitDate == barIterator.Date && 
+                    if (position.ExitDate == barDate &&
                         position.Active == false)
                     {
                         _currentlyActivePositions.RemoveAt(pos);
@@ -342,9 +345,9 @@ public class SystemResultsOwn : IComparer<Position>
 
                 double netProfitBeforeThisBar = currentNetProfit - netProfitOfCurrentlyClosedPositions; //доход от прошлых позиций + дивиденды от текущих
                 CurrentEquity += netProfitBeforeThisBar;
-                EquityCurve.Add(CurrentEquity, barIterator.Date);
-                CashCurve.Add(CurrentCash, barIterator.Date);
-                OpenPositionCount.Add(_currentlyActivePositions.Count, barIterator.Date);
+                EquityCurve.Add(CurrentEquity, barDate);
+                CashCurve.Add(CurrentCash, barDate);
+                OpenPositionCount.Add(_currentlyActivePositions.Count, barDate);
             }
 
             int cashPos = CashCurve.Count - 1;
