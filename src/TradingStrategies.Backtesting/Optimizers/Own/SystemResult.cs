@@ -74,14 +74,14 @@ public class SystemResultsOwn : IComparer<Position>
         _systemPerfomance = sysPerf;
     }
 
-    public int Compare(Position position_0, Position position_1)
+    public int Compare(Position first, Position second)
     {
-        if (position_0.EntryDate == position_1.EntryDate)
+        if (first.EntryDate == second.EntryDate)
         {
-            return position_0.CombinedPriority.CompareTo(position_1.CombinedPriority);
+            return first.CombinedPriority.CompareTo(second.CombinedPriority);
         }
 
-        return position_0.EntryDate.CompareTo(position_1.EntryDate);
+        return first.EntryDate.CompareTo(second.EntryDate);
     }
 
     //MFE/MAE
@@ -325,6 +325,7 @@ public class SystemResultsOwn : IComparer<Position>
             //тут применение AdjustmentFactor к текущим результатам
             //cудя по всему CashRate - это процент вывода средств из портфеля за год
             //а CashAdjustmentFactor - доля вывода в день
+            //кажется оно не работает для intraday свечей
             if (tradingSystemExecutor.ApplyInterest &&
                 tradingSystemExecutor.PosSize.RawProfitMode == false &&
                 CashCurve.Count > 1 &&
