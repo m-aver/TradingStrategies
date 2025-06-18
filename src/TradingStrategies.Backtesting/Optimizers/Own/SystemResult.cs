@@ -125,6 +125,8 @@ public class SystemResultsOwn : IComparer<Position>
         }
 
         //заполняется инфа по дивидендам
+        //это будет очень сильно тормозить, если дивиденды появятся
+        //так же как и ApplyDividents
         foreach (Bars bars in barsSet)
         {
             if (tradingSystemExecutor.ApplyDividends &&
@@ -355,9 +357,9 @@ public class SystemResultsOwn : IComparer<Position>
             //тут применение AdjustmentFactor к текущим результатам
             //cудя по всему CashRate - это процент вывода средств из портфеля за год
             //а CashAdjustmentFactor - доля вывода в день
-            if (tradingSystemExecutor.ApplyInterest && 
-                tradingSystemExecutor.PosSize.RawProfitMode == false && 
-                CashCurve.Count > 1 && 
+            if (tradingSystemExecutor.ApplyInterest &&
+                tradingSystemExecutor.PosSize.RawProfitMode == false &&
+                CashCurve.Count > 1 &&
                 CashCurve.Date[cashPos].Date != CashCurve.Date[cashPos - 1].Date)
             {
                 TimeSpan timeSpan = CashCurve.Date[cashPos] - CashCurve.Date[cashPos - 1];
