@@ -40,24 +40,26 @@ public partial class SystemResultsTests
 
     public static IEnumerable<object[]> GetData() => GetTestData().Select(x => new object[] { x });
 
-    public static IEnumerable<TestData> GetTestData()
+    public static IEnumerable<TestData> GetTestData() => GetTestData(false).Concat(GetTestData(true));
+
+    public static IEnumerable<TestData> GetTestData(bool intraday)
     {
         //single bars, no positions
         yield return new TestData().Add(
-            GetBars("01.01.2020 - 01.02.2020"),
+            GetBars("01.01.2020 - 01.02.2020", intraday),
             []
         );
 
         //single bars, single position
         yield return new TestData()
             .Add(
-            GetBars("01.01.2020 - 01.01.2021"))
+            GetBars("01.01.2020 - 01.01.2021", intraday))
                 .AddLong("01.01.2020 - 02.01.2020", 1);
 
         //single bars, non overlapped positions
         yield return new TestData()
             .Add(
-            GetBars("01.01.2020 - 01.01.2021"))
+            GetBars("01.01.2020 - 01.01.2021", intraday))
                 .AddLong("01.01.2020 - 02.01.2020", 1)
                 .AddLong("01.02.2020 - 02.02.2020", 2)
                 .AddShort("01.03.2020 - 02.03.2020", 1)
@@ -68,7 +70,7 @@ public partial class SystemResultsTests
         //single bars, non overlapped positions, with zero positions
         yield return new TestData()
             .Add(
-            GetBars("01.01.2020 - 01.01.2021"))
+            GetBars("01.01.2020 - 01.01.2021", intraday))
                 .AddLong("01.01.2020 - 02.01.2020", 1)
                 .AddLong("01.02.2020 - 02.02.2020", 2)
                 .AddShort("01.03.2020 - 02.03.2020", 1)
@@ -80,7 +82,7 @@ public partial class SystemResultsTests
         //multi non overlapperd bars, non overlapped positions, with zero positions
         yield return new TestData()
             .Add(
-            GetBars("01.01.2020 - 01.01.2021"))
+            GetBars("01.01.2020 - 01.01.2021", intraday))
                 .AddLong("01.01.2020 - 02.01.2020", 1)
                 .AddLong("01.02.2020 - 02.02.2020", 2)
                 .AddShort("01.03.2020 - 02.03.2020", 1)
@@ -89,7 +91,7 @@ public partial class SystemResultsTests
                 .AddLong("01.06.2020 - 02.06.2020", 0)
                 .AddLong("01.07.2020 - 02.07.2020", 1)
             .Add(
-            GetBars("01.01.2021 - 01.01.2022"))
+            GetBars("01.01.2021 - 01.01.2022", intraday))
                 .AddLong("01.01.2021 - 02.01.2021", 2)
                 .AddLong("01.02.2021 - 02.02.2021", 21)
                 .AddShort("01.03.2021 - 02.03.2021", 0)
@@ -102,7 +104,7 @@ public partial class SystemResultsTests
         yield return new TestData()
             .Add(
             //non overlapped
-            GetBars("01.01.2020 - 01.01.2021"))
+            GetBars("01.01.2020 - 01.01.2021", intraday))
                 .AddLong("01.01.2020 - 02.01.2020", 1)
                 .AddLong("01.02.2020 - 02.02.2020", 2)
                 .AddShort("01.03.2020 - 02.03.2020", 1)
@@ -111,7 +113,7 @@ public partial class SystemResultsTests
                 .AddLong("01.06.2020 - 02.06.2020", 0)
                 .AddLong("01.07.2020 - 02.07.2020", 1)
             .Add(
-            GetBars("01.01.2021 - 01.01.2022"))
+            GetBars("01.01.2021 - 01.01.2022", intraday))
                 .AddLong("01.01.2021 - 02.01.2021", 2)
                 .AddLong("01.02.2021 - 02.02.2021", 21)
                 .AddShort("01.03.2021 - 02.03.2021", 0)
@@ -121,7 +123,7 @@ public partial class SystemResultsTests
                 .AddLong("01.07.2021 - 02.07.2021", 1)
             .Add(
             //full duplicate of previous
-            GetBars("01.01.2021 - 01.01.2022"))
+            GetBars("01.01.2021 - 01.01.2022", intraday))
                 .AddLong("01.01.2021 - 02.01.2021", 2)
                 .AddLong("01.02.2021 - 02.02.2021", 21)
                 .AddShort("01.03.2021 - 02.03.2021", 0)
@@ -131,7 +133,7 @@ public partial class SystemResultsTests
                 .AddLong("01.07.2021 - 02.07.2021", 1)
             .Add(
             //partially overlapped
-            GetBars("01.06.2021 - 01.06.2022"))
+            GetBars("01.06.2021 - 01.06.2022", intraday))
                 .AddLong("01.06.2021 - 01.07.2021", 2)
                 .AddLong("01.07.2021 - 02.07.2021", 21)
                 .AddShort("01.06.2021 - 02.06.2021", 3)
@@ -147,7 +149,7 @@ public partial class SystemResultsTests
         const int largeShares = 999999999;
         yield return new TestData()
             .Add(
-            GetBars("01.01.2020 - 01.01.2021"))
+            GetBars("01.01.2020 - 01.01.2021", intraday))
                 .AddLong("01.01.2020 - 02.01.2020", 1)
                 .AddLong("01.02.2020 - 02.02.2020", 2)
                 .AddShort("01.03.2020 - 02.03.2020", 1)
@@ -156,7 +158,7 @@ public partial class SystemResultsTests
                 .AddLong("01.06.2020 - 02.06.2020", 0)
                 .AddLong("01.07.2020 - 02.07.2020", 1)
             .Add(
-            GetBars("01.01.2020 - 01.01.2021"))
+            GetBars("01.01.2020 - 01.01.2021", intraday))
                 .AddLong("11.01.2020 - 02.02.2020", largeShares)
                 .AddLong("11.02.2020 - 02.03.2020", largeShares)
                 .AddShort("11.03.2020 - 02.04.2020", 1)
@@ -166,7 +168,9 @@ public partial class SystemResultsTests
                 .AddLong("11.07.2020 - 02.08.2020", largeShares);
     }
 
-    private static Bars GetBars(string range) => BarsHelper.FromRangeWithRandomPricesAndOneHourPeriod(DateTimeRange.Parse(range));
+    private static Bars GetBars(string range, bool intraday) => intraday 
+        ? BarsHelper.FromRangeWithRandomPricesAndOneHourPeriod(DateTimeRange.Parse(range))
+        : BarsHelper.FromRangeWithRandomPricesAndOneDayPeriod(DateTimeRange.Parse(range));
 
     private static Position GetPosition(Bars bars, PositionType type, string activeRange) =>
         GetPosition(bars, type, DateTimeRange.Parse(activeRange));

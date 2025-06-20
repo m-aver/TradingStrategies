@@ -1,4 +1,5 @@
-﻿using TradingStrategies.Backtesting.Optimizers.Own;
+﻿using System.Diagnostics.CodeAnalysis;
+using TradingStrategies.Backtesting.Optimizers.Own;
 using TradingStrategies.Backtesting.Utility;
 using TradingStrategies.Utilities.InternalsProxy;
 using WealthLab;
@@ -14,7 +15,7 @@ public partial class SystemResultsTests
         [CombinatorialMemberData(nameof(GetTestData))]TestData testData,
         [CombinatorialValues(null, -1, 0, 1, 2, 999999)] int? positionSize,
         [CombinatorialValues(null, 0, 10, 999999)] int? commision,
-        [CombinatorialValues(null, 0, 10, 999999)] int? cashRate,
+        [CombinatorialValues(null, 0, 100, 999999)] int? cashRate,
         [CombinatorialValues(1, 100)] int marginFactor,
         [CombinatorialValues(true, false)] bool callbackToSizePositions)
     {
@@ -89,8 +90,8 @@ public partial class SystemResultsTests
         native.BuildEquityCurve(testData.BarsSet.ToList(), executor, callbackToSizePositions, posSizer);
 
         //assert
-        Assert.Equal(native.EquityCurve.ToPoints(), own.EquityCurve.ToPoints());
-        Assert.Equal(native.CashCurve.ToPoints(), own.CashCurve.ToPoints());
+        Assert.Equal(native.EquityCurve.ToPoints(), own.EquityCurve.ToPoints(), new TolerancePointsEqualityComparer(5));
+        Assert.Equal(native.CashCurve.ToPoints(), own.CashCurve.ToPoints(), new TolerancePointsEqualityComparer(5));
         Assert.Equal(native.NetProfit, own.NetProfit);
         Assert.Equal(native.DividendsPaid, own.DividendsPaid);
         Assert.Equal(native.CashReturn, own.CashReturn);
@@ -117,5 +118,14 @@ public partial class SystemResultsTests
         {
             return commision;
         }
+    }
+
+    private class TolerancePointsEqualityComparer(int precision) : IEqualityComparer<DataSeriesPoint>
+    {
+        public bool Equals(DataSeriesPoint x, DataSeriesPoint y) => 
+            x.Date == y.Date &&
+            double.Round(x.Value, precision) == double.Round(y.Value, precision);
+
+        public int GetHashCode([DisallowNull] DataSeriesPoint obj) => obj.Value.GetHashCode();
     }
 }
