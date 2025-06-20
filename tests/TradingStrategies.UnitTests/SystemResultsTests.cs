@@ -8,35 +8,58 @@ namespace TradingStrategies.UnitTests;
 public partial class SystemResultsTests
 {
     [Theory]
-    [MemberData(nameof(GetData))]
-    public void BuildEquityCurve_MatchNative(TestData testData)
+    [CombinatorialData]
+    //[MemberData(nameof(GetData))]
+    public void BuildEquityCurve_MatchNative(
+        [CombinatorialMemberData(nameof(GetTestData))]TestData testData,
+        [CombinatorialValues(null, -1, 0, 1, 2, 999999)] int? positionSize,
+        [CombinatorialValues(null, 0, 10, 999999)] int? commision,
+        [CombinatorialValues(null, 0, 10, 999999)] int? cashRate,
+        [CombinatorialValues(1, 100)] int marginFactor,
+        [CombinatorialValues(true, false)] bool callbackToSizePositions)
     {
         //arrange
         var strategy = new Strategy();
-        var posSize = new PositionSize(PosSizeMode.ScriptOverride, 0)
+
+        var posSizeMode = positionSize is null
+            ? PosSizeMode.ScriptOverride //override share size
+            : positionSize < 0
+                ? PosSizeMode.RawProfitShare //raw profit mode
+                : PosSizeMode.SimuScript; //pos sizer value
+        var posSizer = positionSize > 0 ? new ConstantPosSizer(positionSize.Value) : null;
+        var posSize = new PositionSize(posSizeMode, positionSize ?? 0)
         {
             StartingCapital = 100_000,
-            MarginFactor = 1,
+            MarginFactor = marginFactor,
         };
+
         var sysPerfOwn = new SystemPerformanceOwn(strategy)
         {
             PositionSize = posSize,
         };
         var sysPerf = new SystemPerformance(strategy)
         {
-            PositionSizeProxy = posSize
+            PositionSizeProxy = posSize,
         };
 
         var executor = new TradingSystemExecutor()
         {
             PosSize = posSize,
             ApplyDividends = false,
-            ApplyInterest = true,
-            CashRate = 10,
-            MarginRate = 10,
-            ApplyCommission = true,
-            Commission = new ConstantCommision(10),
+            ApplyInterest = false,
+            ApplyCommission = false,
         };
+        if (commision.HasValue)
+        {
+            executor.ApplyCommission = true;
+            executor.Commission = new ConstantCommision(commision.Value);
+        }
+        if (cashRate.HasValue)
+        {
+            executor.ApplyInterest = true;
+            executor.CashRate = cashRate.Value;
+            executor.MarginRate = cashRate.Value;
+        }
 
         var own = new SystemResultsOwn(sysPerfOwn)
         {
@@ -51,22 +74,21 @@ public partial class SystemResultsTests
 
         foreach (var position in testData.Positions.Order(executor))
         {
+            if (callbackToSizePositions == false)
+            {
+                position.SharesProxy = 1;
+            }
+
             executor.AddPosition(position);
             own.AddPosition(position);
             native.AddPosition(position);
         }
 
         //act
-        own.BuildEquityCurve(testData.BarsSet.ToList(), executor, callbackToSizePositions: true, posSizer: null);
-        native.BuildEquityCurve(testData.BarsSet.ToList(), executor, callbackToSizePositions: true, posSizer: null);
+        own.BuildEquityCurve(testData.BarsSet.ToList(), executor, callbackToSizePositions, posSizer);
+        native.BuildEquityCurve(testData.BarsSet.ToList(), executor, callbackToSizePositions, posSizer);
 
         //assert
-        if (testData.Positions.Any()) //prevent wrong initializtion
-        {
-            Assert.NotEqual(0, own.NetProfit);
-            Assert.NotEqual(0, native.NetProfit);
-        }
-
         Assert.Equal(native.EquityCurve.ToPoints(), own.EquityCurve.ToPoints());
         Assert.Equal(native.CashCurve.ToPoints(), own.CashCurve.ToPoints());
         Assert.Equal(native.NetProfit, own.NetProfit);
@@ -74,6 +96,16 @@ public partial class SystemResultsTests
         Assert.Equal(native.CashReturn, own.CashReturn);
         Assert.Equal(native.MarginInterest, own.MarginInterest);
         Assert.Equal(native.TotalCommission, own.TotalCommission);
+    }
+
+    private class ConstantPosSizer(int size) : PosSizer
+    {
+        public override string FriendlyName => nameof(CalcPositionSize);
+
+        public override double SizePosition(Position currentPos, Bars bars, int int_0, double basisPrice, PositionType positionType_0, double riskStopLevel, double equity, double cash)
+        {
+            return size;
+        }
     }
 
     private class ConstantCommision(int commision) : Commission
