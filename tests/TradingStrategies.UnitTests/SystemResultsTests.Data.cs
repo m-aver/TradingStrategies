@@ -144,6 +144,29 @@ public partial class SystemResultsTests
                 .AddShort("01.01.2022 - 01.03.2022", 1)
                 .AddLong("02.03.2022 - 01.04.2022", 3)
         ];
+
+        //overlapperd bars, overlapped positions, large positions (overflow cash)
+        const int largeShares = 999999999;
+        yield return [new TestData()
+            .Add(
+            GetBars("01.01.2020 - 01.01.2021"))
+                .AddLong("01.01.2020 - 02.01.2020", 1)
+                .AddLong("01.02.2020 - 02.02.2020", 2)
+                .AddShort("01.03.2020 - 02.03.2020", 1)
+                .AddShort("01.04.2020 - 02.04.2020", 0)
+                .AddShort("01.05.2020 - 02.05.2020", largeShares)
+                .AddLong("01.06.2020 - 02.06.2020", 0)
+                .AddLong("01.07.2020 - 02.07.2020", 1)
+            .Add(
+            GetBars("01.01.2020 - 01.01.2021"))
+                .AddLong("11.01.2020 - 02.02.2020", largeShares)
+                .AddLong("11.02.2020 - 02.03.2020", largeShares)
+                .AddShort("11.03.2020 - 02.04.2020", 1)
+                .AddShort("11.04.2020 - 02.05.2020", largeShares)
+                .AddShort("11.05.2020 - 02.06.2020", 1)
+                .AddLong("11.06.2020 - 02.07.2020", 0)
+                .AddLong("11.07.2020 - 02.08.2020", largeShares)
+        ];
     }
 
     private static Bars GetBars(string range) => BarsHelper.FromRangeWithRandomPricesAndOneHourPeriod(DateTimeRange.Parse(range));
