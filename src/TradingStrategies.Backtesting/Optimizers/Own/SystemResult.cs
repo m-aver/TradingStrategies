@@ -280,6 +280,7 @@ public class SystemResultsOwn : IComparer<Position>
             }
 
             //тут блок с подсчетом текущей прибыли от открытых на данный момент позиций _currentlyActivePositions
+            if (_currentlyActivePositions.Count > 0 || currentlyClosedPositions.Count > 0)
             {
                 for (int pos = _currentlyActivePositions.Count - 1; pos >= 0; pos--)
                 {
@@ -319,10 +320,21 @@ public class SystemResultsOwn : IComparer<Position>
 
                 double netProfitBeforeThisBar = currentNetProfit - netProfitOfCurrentlyClosedPositions; //доход от прошлых позиций + дивиденды от текущих
                 CurrentEquity += netProfitBeforeThisBar;
-                EquityCurve.Add(CurrentEquity, barDate);
-                CashCurve.Add(CurrentCash, barDate);
-                OpenPositionCount.Add(_currentlyActivePositions.Count, barDate);
+
+                //эквити можно считать здесь, получится сэмплированный неточный результат, 
+                //но может быть опцией для улучшения производительности, в частности в скорекардах
+                //хотя кажется и точность не должна особо терятся, т.к. тут не игнорируется пассивная эквити, а только периоды полного простоя
+                //TODO:
+                //аффектит sharpe при малом количестве сделок, надо разобраться почему
+                //вероятно если месяц не было сделок, то оно неправильно считается
+
+                //EquityCurve.Add(CurrentEquity, barDate);
+                //CashCurve.Add(CurrentCash, barDate);
+                //OpenPositionCount.Add(_currentlyActivePositions.Count, barDate);
             }
+            EquityCurve.Add(CurrentEquity, barDate);
+            CashCurve.Add(CurrentCash, barDate);
+            OpenPositionCount.Add(_currentlyActivePositions.Count, barDate);
 
             int cashPos = CashCurve.Count - 1;
 
