@@ -100,6 +100,7 @@ public partial class SystemResultsTests
         //assert
         Assert.Equal(native.EquityCurve.ToPoints(), own.EquityCurve.ToPoints(), new TolerancePointsEqualityComparer(4));
         Assert.Equal(native.CashCurve.ToPoints(), own.CashCurve.ToPoints(), new TolerancePointsEqualityComparer(4));
+        Assert.Equal(native.OpenPositionCount.ToPoints(), own.OpenPositionCount.ToPoints());
         Assert.Equal(native.NetProfit, own.NetProfit);
         Assert.Equal(native.DividendsPaid, own.DividendsPaid);
         Assert.Equal(native.CashReturn, own.CashReturn);
@@ -171,31 +172,5 @@ public partial class SystemResultsTests
             double.Round(x.Value, precision) == double.Round(y.Value, precision);
 
         public int GetHashCode([DisallowNull] DataSeriesPoint obj) => obj.Value.GetHashCode();
-    }
-
-    private class DataHostMock : IDataHost
-    {
-        public string BaseDataFolder => throw new NotImplementedException();
-        public bool OnDemandUpdateEnabled => throw new NotImplementedException();
-        public IList<DataSource> DataSources => throw new NotImplementedException();
-        public AuthenticationProvider AuthProvider => throw new NotImplementedException();
-        public Fidelity.Components.ISettingsHost SettingsHost => throw new NotImplementedException();
-        public MarketInfo DefaultMarketInfo => throw new NotImplementedException();
-
-        public void AdjustForStockSplit(StaticDataProvider staticDataProvider_0, string symbol, double splitFactor, DateTime exDate) => throw new NotImplementedException();
-        public void DeleteSymbolFromDataSets(string symbol, StaticDataProvider staticDataProvider_0) => throw new NotImplementedException();
-    }
-
-    private class FundamentalDataProviderMock : FundamentalDataProvider
-    {
-        public override IList<string> SymbolSpecificItemsProvided => throw new NotImplementedException();
-        public override IList<string> NonSymbolSpecificItemsProvided => throw new NotImplementedException();
-        public override string FriendlyName => throw new NotImplementedException();
-        public override string Description => throw new NotImplementedException();
-        public override System.Drawing.Bitmap Glyph => throw new NotImplementedException();
-
-        public override FundamentalItem CreateItem(string itemName) => throw new NotImplementedException();
-        public override IList<FundamentalItem> RequestItems(string symbol, string itemName) => throw new NotImplementedException();
-        public override IList<FundamentalItem> RequestItems(string itemName) => throw new NotImplementedException();
     }
 }

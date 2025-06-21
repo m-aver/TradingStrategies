@@ -23,7 +23,7 @@ internal static class BarsHelper
     public static Bars FromRangeWithRandomPricesAndOneHourPeriod(DateTimeRange range)
     {
         var bars = new Bars(
-            symbol: Guid.NewGuid().ToString(),
+            symbol: $"bars: {range}",
             scale: BarScale.Minute,
             barInterval: 60);
 
@@ -35,7 +35,7 @@ internal static class BarsHelper
     public static Bars FromRangeWithRandomPricesAndOneDayPeriod(DateTimeRange range)
     {
         var bars = new Bars(
-            symbol: Guid.NewGuid().ToString(),
+            symbol: $"bars: {range}",
             scale: BarScale.Daily,
             barInterval: 1);
 
