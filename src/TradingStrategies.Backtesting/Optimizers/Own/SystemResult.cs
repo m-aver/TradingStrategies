@@ -146,6 +146,7 @@ public class SystemResultsOwn : IComparer<Position>
 
         if (posSizer != null)
         {
+            posSizer.CandidatesProxy ??= [];
             posSizer.PreInitialize(tradingSystemExecutor, _currentlyActivePositions, _accountedPositions, _closedPositions, EquityCurve, CashCurve, _drawdownCurve, _drawdownPercentCurve);
             posSizer.Initialize();
         }
@@ -187,16 +188,19 @@ public class SystemResultsOwn : IComparer<Position>
             //видимо чтобы можно было учесть их при дальнешем вызове CalcPositionSize и правильно распределить кол-во лотов
             if (posSizer != null)
             {
-                List<Position> candidates = new();
+                posSizer.Candidates.Clear();
                 for (int i = currRemainingPos; i < remainingPositions.Count; i++)
                 {
                     Position position = remainingPositions[i];
                     if (position.EntryDate == barDate)
                     {
-                        candidates.Add(position);
+                        posSizer.Candidates.Add(position);
+                    }
+                    else
+                    {
+                        break;
                     }
                 }
-                posSizer.CandidatesProxy = candidates;
             }
 
             double currCash = CurrentCash; //это нужно только для callbackToSizePositions блока
