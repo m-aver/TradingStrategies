@@ -24,8 +24,8 @@ public class SystemResultsOwn : IComparer<Position>
     //эти штуки используются только для передачи в PosSizer,
     //если он null (а вроде при PosSizeMode == ScriptOverride он дб null), то можно оптимизнуть и не создавать серии
     //расчет просадок например и не выполняется, если PosSizer null
-    private DataSeries _drawdownCurve = new DataSeries("DrawDown");
-    private DataSeries _drawdownPercentCurve = new DataSeries("DrawDownPct");
+    private DataSeries _drawdownCurve;
+    private DataSeries _drawdownPercentCurve;
     private double _currentMaxEquity; //for drawdown
 
     //списки позиций, обрабатывавемые во время итереирования по SynchronizedBarIterator
@@ -98,8 +98,11 @@ public class SystemResultsOwn : IComparer<Position>
         TotalCommission = 0.0;
         EquityCurve = new DataSeries("Equity");
         CashCurve = new DataSeries("Cash");
-        _drawdownCurve = new DataSeries("DrawDown");
-        _drawdownPercentCurve = new DataSeries("DrawDownPct");
+        if (posSizer != null)
+        {
+            _drawdownCurve = new DataSeries("DrawDown");
+            _drawdownPercentCurve = new DataSeries("DrawDownPct");
+        }
         _currentMaxEquity = double.MinValue;
         PositionSize positionSize = _systemPerfomance.PositionSize;
         double currentNetProfit = 0.0;
@@ -507,8 +510,8 @@ public class SystemResultsOwn : IComparer<Position>
         {
             EquityCurve.ClearValues();
             CashCurve.ClearValues();
-            _drawdownCurve.ClearValues();
-            _drawdownPercentCurve.ClearValues();
+            _drawdownCurve?.ClearValues();
+            _drawdownPercentCurve?.ClearValues();
         }
     }
 
@@ -520,8 +523,8 @@ public class SystemResultsOwn : IComparer<Position>
         {
             EquityCurve.ClearValues();
             CashCurve.ClearValues();
-            _drawdownCurve.ClearValues();
-            _drawdownPercentCurve.ClearValues();
+            _drawdownCurve?.ClearValues();
+            _drawdownPercentCurve?.ClearValues();
         }
     }
 
