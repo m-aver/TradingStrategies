@@ -36,13 +36,22 @@ public partial class SystemResultsTests
             Positions = Positions.Append(pos);
             return this;
         }
+
+        public TestData Materialize()
+        {
+            BarsSet = BarsSet.ToArray();
+            Positions = Positions.ToArray();
+            return this;
+        }
     }
 
     public static IEnumerable<object[]> GetData() => GetTestData().Select(x => new object[] { x });
 
     public static IEnumerable<TestData> GetTestData() => GetTestData(false).Concat(GetTestData(true));
 
-    public static IEnumerable<TestData> GetTestData(bool intraday)
+    public static IEnumerable<TestData> GetTestData(bool intraday) => GetTestDataInternal(intraday).Select(x => x.Materialize());
+
+    private static IEnumerable<TestData> GetTestDataInternal(bool intraday)
     {
         //single bars, no positions
         yield return new TestData().Add(
