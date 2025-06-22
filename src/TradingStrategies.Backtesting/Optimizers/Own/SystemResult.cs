@@ -19,9 +19,7 @@ public class SystemResultsOwn : IComparer<Position>
 {
     private SystemPerformanceOwn _systemPerfomance;
 
-    //эти штуки используются только для передачи в PosSizer,
-    //если он null (а вроде при PosSizeMode == ScriptOverride он дб null), то можно оптимизнуть и не создавать серии
-    //расчет просадок например и не выполняется, если PosSizer null
+    //используются только для передачи в PosSizer
     private DataSeries _drawdownCurve;
     private DataSeries _drawdownPercentCurve;
     private double _currentMaxEquity; //for drawdown
@@ -32,7 +30,8 @@ public class SystemResultsOwn : IComparer<Position>
     private List<Position> _accountedPositions; //начинающие обрабатываться с текущей итерации и имеющие больше 0 лотов (Shares)
 
     public int TradesNSF { get; set; }
-    public List<Alert> Alerts { get; } = new List<Alert>();
+    public List<Alert> Alerts { get; } = new();
+    public List<Position> Positions { get; } = new();
 
     public DataSeries EquityCurve { get; internal set; } = new DataSeries("Equity");
     public DataSeries CashCurve { get; internal set; } = new DataSeries("Cash");
@@ -44,8 +43,6 @@ public class SystemResultsOwn : IComparer<Position>
     public double MarginInterest { get; internal set; }
     public double DividendsPaid { get; internal set; }
     public DataSeries OpenPositionCount { get; set; }
-
-    public List<Position> Positions { get; } = new();
 
     public double NetProfit => Positions.Sum(x => x.NetProfit) + CashReturn + MarginInterest + DividendsPaid;
     public double ProfitPerBar => Positions.Count == 0 ? 0.0 : NetProfit / Positions.Sum(x => x.BarsHeld);
@@ -91,17 +88,15 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
+    //можно еще оптимизировать RawProfitMode, сейчас это вызов свойства, которое каждый раз пересчитывает два условия
+    //убрать в локальную переменную на старте метода
+    //но смущает что в разных местах вызывается TradingSystemExecutor.PosSizer.RawProfitMode и PosSizer.RawProfitMode, вроде бы PosSizer должен быть одинаков и там и там
+
     public void BuildEquityCurve(IList<Bars> barsList, TradingSystemExecutor tradingSystemExecutor, bool callbackToSizePositions, PosSizer posSizer)
     {
         TotalCommission = 0.0;
         EquityCurve = new DataSeries("Equity");
         CashCurve = new DataSeries("Cash");
-        if (posSizer != null)
-        {
-            _drawdownCurve = new DataSeries("DrawDown");
-            _drawdownPercentCurve = new DataSeries("DrawDownPct");
-        }
-        _currentMaxEquity = double.MinValue;
         PositionSize positionSize = _systemPerfomance.PositionSize;
         double currentNetProfit = 0.0;
         OpenPositionCount = new DataSeries("OpenPositions");
@@ -130,10 +125,14 @@ public class SystemResultsOwn : IComparer<Position>
         }
 
         _currentlyActivePositions = new();
+
         if (posSizer != null)
         {
             _accountedPositions = new();
             _closedPositions = new();
+            _drawdownCurve = new DataSeries("DrawDown");
+            _drawdownPercentCurve = new DataSeries("DrawDownPct");
+            _currentMaxEquity = double.MinValue;
         }
 
         SynchronizedBarIterator barIterator = new SynchronizedBarIterator(barsSet);
@@ -173,6 +172,8 @@ public class SystemResultsOwn : IComparer<Position>
                 //этот блок кажется нужен для того, чтобы накопился кеш от сделок сделанных по рыночной цене
                 //чтобы можно было этот кеш использовать для открытия других позиций на этой свече
                 //но кажется это может быть опасно, если вход в позицию делается на открытии например
+
+                //TODO: нужны тесты еще на эту штуку
                 if (position.ExitOrderType == OrderType.Market &&
                     position.ExitDate == barDate &&
                     position.Active == false)
@@ -222,7 +223,7 @@ public class SystemResultsOwn : IComparer<Position>
                     break;
                 }
 
-                //проставляются Shares и Commision на позиции
+                //проставляются Shares и Commission на позиции
                 if (callbackToSizePositions)
                 {
                     //вызывает PosSizer, переданный и сконфигурированный выше, если PosSizeMode == SimuScript
