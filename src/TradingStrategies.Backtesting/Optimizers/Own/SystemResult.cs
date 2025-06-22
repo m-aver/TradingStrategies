@@ -17,8 +17,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public class SystemResultsOwn : IComparer<Position>
 {
-    private List<Position> _positions = new();
-    private IList<Position> _positionsRo;
     private SystemPerformanceOwn _systemPerfomance;
 
     //эти штуки используются только для передачи в PosSizer,
@@ -28,10 +26,10 @@ public class SystemResultsOwn : IComparer<Position>
     private DataSeries _drawdownPercentCurve;
     private double _currentMaxEquity; //for drawdown
 
-    //списки позиций, обрабатывавемые во время итереирования по SynchronizedBarIterator
-    private List<Position> _currentlyActivePositions = new(); //открытые на момент итерации (постоянно добавляются и удаляются)
-    private List<Position> _closedPositions = new(); //все обработанные и закрытые на момент итерации
-    private List<Position> _accountedPositions = new(); //начинающие обрабатываться с текущей итерации и имеющие больше 0 лотов (Shares)
+    //списки позиций, обрабатывавемые во время итерирования по SynchronizedBarIterator
+    private List<Position> _currentlyActivePositions; //открытые на момент итерации (постоянно добавляются и удаляются)
+    private List<Position> _closedPositions; //все обработанные и закрытые на момент итерации
+    private List<Position> _accountedPositions; //начинающие обрабатываться с текущей итерации и имеющие больше 0 лотов (Shares)
 
     public int TradesNSF { get; set; }
     public List<Alert> Alerts { get; } = new List<Alert>();
@@ -47,7 +45,7 @@ public class SystemResultsOwn : IComparer<Position>
     public double DividendsPaid { get; internal set; }
     public DataSeries OpenPositionCount { get; set; }
 
-    public IList<Position> Positions => _positionsRo ??= _positions.AsReadOnly();
+    public List<Position> Positions { get; } = new();
 
     public double NetProfit => Positions.Sum(x => x.NetProfit) + CashReturn + MarginInterest + DividendsPaid;
     public double ProfitPerBar => Positions.Count == 0 ? 0.0 : NetProfit / Positions.Sum(x => x.BarsHeld);
@@ -131,9 +129,12 @@ public class SystemResultsOwn : IComparer<Position>
             }
         }
 
-        _currentlyActivePositions.Clear();
-        _accountedPositions.Clear();
-        _closedPositions.Clear();
+        _currentlyActivePositions = new();
+        if (posSizer != null)
+        {
+            _accountedPositions = new();
+            _closedPositions = new();
+        }
 
         SynchronizedBarIterator barIterator = new SynchronizedBarIterator(barsSet);
 
@@ -178,7 +179,7 @@ public class SystemResultsOwn : IComparer<Position>
                 {
                     _currentlyActivePositions.RemoveAt(pos);
                     currentlyClosedPositions.Add(position);
-                    _closedPositions.Add(position);
+                    _closedPositions?.Add(position);
                     currentNetProfit += position.NetProfit;
                     CurrentCash += position.Size;
                     CurrentCash += position.NetProfit;
@@ -270,7 +271,7 @@ public class SystemResultsOwn : IComparer<Position>
                         CurrentCash -= position.Size;
                         CurrentCash -= position.EntryCommission;
                         _currentlyActivePositions.Add(position);
-                        _accountedPositions.Add(position);
+                        _accountedPositions?.Add(position);
                         TotalCommission += position.EntryCommission + position.ExitCommission;
                     }
                     else
@@ -294,7 +295,7 @@ public class SystemResultsOwn : IComparer<Position>
                     {
                         _currentlyActivePositions.RemoveAt(pos);
                         currentlyClosedPositions.Add(position);
-                        _closedPositions.Add(position);
+                        _closedPositions?.Add(position);
                         currentNetProfit += position.NetProfit;
                         CurrentCash += position.Size;
                         CurrentCash += position.NetProfit;
@@ -489,7 +490,7 @@ public class SystemResultsOwn : IComparer<Position>
 
     internal void method_4(Position position_0)
     {
-        _positions.Add(position_0);
+        Positions.Add(position_0);
     }
 
     internal void method_5(Alert alert_0)
@@ -504,8 +505,9 @@ public class SystemResultsOwn : IComparer<Position>
         CashReturn = 0.0;
         MarginInterest = 0.0;
         DividendsPaid = 0.0;
-        _positions.Clear();
+        Positions.Clear();
         Alerts.Clear();
+
         if (EquityCurve != null)
         {
             EquityCurve.ClearValues();
@@ -518,7 +520,8 @@ public class SystemResultsOwn : IComparer<Position>
     //очистка
     internal void method_7(bool bool_0)
     {
-        _positions.Clear();
+        Positions.Clear();
+
         if (!bool_0)
         {
             EquityCurve.ClearValues();
@@ -530,13 +533,18 @@ public class SystemResultsOwn : IComparer<Position>
 
     internal void method_8()
     {
-        _positions.Sort(this);
+        Positions.Sort(this);
     }
 
-    internal void method_9(PosSizer posSizer_0)
+    internal void method_9(PosSizer posSizer)
     {
-        posSizer_0.ActivePositionsProxy = _currentlyActivePositions;
-        posSizer_0.PositionsProxy = _accountedPositions;
-        posSizer_0.ClosedPositionsProxy = _closedPositions;
+        if (_accountedPositions == null || _closedPositions == null)
+        {
+            throw new InvalidOperationException("positions has not been initialized yet");
+        }
+
+        posSizer.ActivePositionsProxy = _currentlyActivePositions;
+        posSizer.PositionsProxy = _accountedPositions;
+        posSizer.ClosedPositionsProxy = _closedPositions;
     }
 }
