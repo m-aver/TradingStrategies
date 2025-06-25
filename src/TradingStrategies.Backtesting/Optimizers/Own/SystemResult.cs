@@ -172,8 +172,6 @@ public class SystemResultsOwn : IComparer<Position>
                 //этот блок кажется нужен для того, чтобы накопился кеш от сделок сделанных по рыночной цене
                 //чтобы можно было этот кеш использовать для открытия других позиций на этой свече
                 //но кажется это может быть опасно, если вход в позицию делается на открытии например
-
-                //TODO: нужны тесты еще на эту штуку
                 if (position.ExitOrderType == OrderType.Market &&
                     position.ExitDate == barDate &&
                     position.Active == false)

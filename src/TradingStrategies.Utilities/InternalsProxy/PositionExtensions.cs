@@ -11,5 +11,6 @@ public static class PositionExtensions
         public int CombinedPriority { get => position.CombinedPriority; set => position.CombinedPriority = value; }
 
         public void CalculateMfeMae() => position.method_2();
+        public void Close(int bar, double price, OrderType type) => position.method_1(bar, price, type);
     }
 }

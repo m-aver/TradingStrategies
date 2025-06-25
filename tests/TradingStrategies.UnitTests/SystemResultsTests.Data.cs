@@ -43,13 +43,26 @@ public partial class SystemResultsTests
             Positions = Positions.ToArray();
             return this;
         }
+
+        public TestData AssignRandomPositionsExitType()
+        {
+            var random = Random.Shared;
+            Positions = Positions.Select(x =>
+            {
+                x.Close(x.ExitBar, x.ExitPrice, GetRandomOrderType());
+                return x;
+            });
+            OrderType GetRandomOrderType() => (OrderType)random.Next((int)OrderType.Market, (int)OrderType.AtClose);
+            return this;
+        }
     }
 
     public static IEnumerable<object[]> GetData() => GetTestData().Select(x => new object[] { x });
 
     public static IEnumerable<TestData> GetTestData() => GetTestData(false).Concat(GetTestData(true));
 
-    public static IEnumerable<TestData> GetTestData(bool intraday) => GetTestDataInternal(intraday).Select(x => x.Materialize());
+    public static IEnumerable<TestData> GetTestData(bool intraday) => GetTestDataInternal(intraday)
+        .Select(x => x.AssignRandomPositionsExitType().Materialize());
 
     private static IEnumerable<TestData> GetTestDataInternal(bool intraday)
     {
