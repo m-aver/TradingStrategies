@@ -33,8 +33,8 @@ public class SystemResultsOwn : IComparer<Position>
     public List<Alert> Alerts { get; } = new();
     public List<Position> Positions { get; } = new();
 
-    public DataSeries EquityCurve { get; internal set; } = new DataSeries("Equity");
-    public DataSeries CashCurve { get; internal set; } = new DataSeries("Cash");
+    public DataSeries EquityCurve { get; internal set; }
+    public DataSeries CashCurve { get; internal set; }
     internal double CurrentEquity { get; set; }
     internal double CurrentCash { get; set; }
 
@@ -46,13 +46,13 @@ public class SystemResultsOwn : IComparer<Position>
 
     public double NetProfit => Positions.Sum(x => x.NetProfit) + CashReturn + MarginInterest + DividendsPaid;
     public double ProfitPerBar => Positions.Count == 0 ? 0.0 : NetProfit / Positions.Sum(x => x.BarsHeld);
-    public double AverageProfitAcrossTotalTimeSpan => EquityCurve.Count == 0 ? 0.0 : NetProfit / EquityCurve.Count;
+    public double AverageProfitAcrossTotalTimeSpan => EquityCurve is { Count: > 0 } ? NetProfit / EquityCurve.Count : 0.0;
 
     public double APR
     {
         get
         {
-            if (EquityCurve.Count < 2 || EquityCurve[0] == 0.0)
+            if (EquityCurve == null || EquityCurve.Count < 2 || EquityCurve[0] == 0.0)
             {
                 return 0.0;
             }
@@ -509,8 +509,8 @@ public class SystemResultsOwn : IComparer<Position>
 
         if (EquityCurve != null)
         {
-            EquityCurve.ClearValues();
-            CashCurve.ClearValues();
+            EquityCurve?.ClearValues();
+            CashCurve?.ClearValues();
             _drawdownCurve?.ClearValues();
             _drawdownPercentCurve?.ClearValues();
         }
@@ -523,8 +523,8 @@ public class SystemResultsOwn : IComparer<Position>
 
         if (!bool_0)
         {
-            EquityCurve.ClearValues();
-            CashCurve.ClearValues();
+            EquityCurve?.ClearValues();
+            CashCurve?.ClearValues();
             _drawdownCurve?.ClearValues();
             _drawdownPercentCurve?.ClearValues();
         }
