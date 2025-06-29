@@ -32,6 +32,23 @@ public static class IndicatorsCalculator
         return regression;
     }
 
+    public static IEnumerable<DataSeriesPoint> LinearRegressionThroughStartPoint(IEnumerable<DataSeriesPoint> points)
+    {
+        var first = points.First();
+
+        var dataset = points.Select(point => ((double)(point.Date.Ticks - first.Date.Ticks), point.Value - first.Value));
+
+        var slope = MathHelper.LinearRegressionThroughOrigin(dataset);
+
+        var regression = points.Select(point =>
+        {
+            var regValue = (point.Date.Ticks - first.Date.Ticks) * slope;
+            return point.WithValue(regValue + first.Value);
+        });
+
+        return regression;
+    }
+
     public static double SharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
     {
         var months = monthReturnSeries.Count;
@@ -47,16 +64,14 @@ public static class IndicatorsCalculator
     }
 
     //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
-    public static DataSeries LogError(DataSeries equitySeries)
+    //выглядит так, что через точку стартового капитала метрика скорректированной квадратичной ошибки получилась хороша
+    public static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries)
     {
-        var logEquity = equitySeries
-            .ToPoints()
-            .Select(static x => x.WithValue(MathHelper.NaturalLog(x)))
-            .ToArray();
-        var linearReg = IndicatorsCalculator.LinearRegression(logEquity);
-        var error = logEquity.Zip(linearReg, static (eq, lr) => (eq - lr));
+        var logEquity = equitySeries.Select(x => x.WithValue(MathHelper.NaturalLog(x)));
+        var linearReg = IndicatorsCalculator.LinearRegressionThroughStartPoint(logEquity);
+        var error = logEquity.Zip(linearReg, (eq, lr) => (eq - lr));
 
-        return error.ToSeries("log-error");
+        return error;
     }
 
     public static IEnumerable<DataSeriesPoint> DrawdownPercentage(IEnumerable<DataSeriesPoint> equitySeries)

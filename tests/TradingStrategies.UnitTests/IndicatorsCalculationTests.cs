@@ -71,12 +71,13 @@ public class IndicatorsCalculationTests
         var sharpeOfMultipliedSeries = IndicatorsCalculator.SharpeRatio(multipliedMonthReturnSeries, 0);
 
         //assert
-        Assert.Equal(equitySeries.ToPoints().Last(), multipliedEquitySeries.ToPoints().Last(), precision: 5);
+        Assert.Equal(equitySeries.Last(), multipliedEquitySeries.Last(), precision: 5);
         Assert.Equal(sharpe, sharpeOfMultipliedSeries);
     }
 
     //ошибка от экспоненты выглядит более предпочтительным индикатором, т.к. учитывает равномерность распределения доходностей
     //хотя судя по опыту на реальных данных, все же на нее тоже нельзя однозначно ориентироваться при анализе близких значений, но подсветить хорошие стратегии она помогает
+    //upd: с переработкой расчета на прохождение линии регрессии через стартовую точку, качество метрики выросло
     [Theory]
     [MemberData(nameof(GetUniformMonthReturnValues))]
     public void SquaredError_OrderOfReturns_AffectsError(double[] uniformMonthReturnValues)
@@ -97,7 +98,7 @@ public class IndicatorsCalculationTests
         Assert.True(errorOfUniformReturns < errorOfOrderedReturns);
         Assert.True(errorOfUniformReturns < errorOfOrderedDescReturns);
 
-        static double CalculateError(DataSeries errorSeries) => Math.Sqrt(errorSeries.GetValues().Sum(MathHelper.Sqr) / errorSeries.Count);
+        static double CalculateError(IEnumerable<DataSeriesPoint> errorSeries) => Math.Sqrt(errorSeries.Select(x => x.Value).Sum(MathHelper.Sqr) / errorSeries.Count());
     }
 
     //test data
@@ -138,7 +139,7 @@ public class IndicatorsCalculationTests
                 "test-month-return-series");
     }
 
-    private static DataSeries ToEquity(double startingCapital, DataSeries monthReturnSeries)
+    private static IEnumerable<DataSeriesPoint> ToEquity(double startingCapital, DataSeries monthReturnSeries)
     {
         var currentEquity = startingCapital;
         return monthReturnSeries
@@ -154,7 +155,6 @@ public class IndicatorsCalculationTests
             .Append(new DataSeriesPoint(
                 value: currentEquity,
                 date: monthReturnSeries.Date[^1].AddMonths(1)))
-            .ToSeries(
-                "test-equity-from-month-returns");
+            .ToArray();
     }
 }

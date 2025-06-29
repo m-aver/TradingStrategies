@@ -126,7 +126,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private static DataSeries CalculateError(DataSeries equitySeries)
         {
-            return IndicatorsCalculator.LogError(equitySeries);
+            return IndicatorsCalculator.LogError(equitySeries.ToPoints()).ToSeries("error-series");
         }
 
         private DataSeries CalculateMonthReturns(DataSeries equitySeries)

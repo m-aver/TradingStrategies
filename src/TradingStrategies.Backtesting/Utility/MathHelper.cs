@@ -72,6 +72,29 @@ namespace TradingStrategies.Backtesting.Utility
                 slope = sCo / ssX,
             }; 
         }
+
+        /// <summary>
+        /// Fits a line passed through coordinates origin to a collection of (x,y) points.
+        /// </summary>
+        /// <returns>
+        /// The slope of the line (i.e. y = ax + b, slope is a). in this case, b is zero.
+        /// </returns>
+        /// <remarks>
+        /// https://sux13.github.io/DataScienceSpCourseNotes/7_REGMODS/Regression_Models_Course_Notes.html#regression-through-the-origin
+        /// </remarks>
+        public static double LinearRegressionThroughOrigin(IEnumerable<(double x, double y)> dataset)
+        {
+            double sumOfXSq = 0;
+            double sumCodeviates = 0;
+
+            foreach (var (x, y) in dataset)
+            {
+                sumCodeviates += x * y;
+                sumOfXSq += x * x;
+            }
+
+            return sumCodeviates / sumOfXSq;
+        }
     }
 }
 
@@ -88,7 +111,7 @@ public class LinearRegressionComponents
     public double yIntercept { get; set; }
 
     /// <summary>
-    /// The slop of the line (i.e. y = ax + b, slope is a).
+    /// The slope of the line (i.e. y = ax + b, slope is a).
     /// </summary>
     public double slope { get; set; }
 
