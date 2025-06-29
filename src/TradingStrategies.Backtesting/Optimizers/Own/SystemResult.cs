@@ -28,6 +28,7 @@ public class SystemResultsOwn : IComparer<Position>
     private List<Position> _currentlyActivePositions; //открытые на момент итерации (постоянно добавляются и удаляются)
     private List<Position> _closedPositions; //все обработанные и закрытые на момент итерации
     private List<Position> _accountedPositions; //начинающие обрабатываться с текущей итерации и имеющие больше 0 лотов (Shares)
+    private List<Position> _currentlyClosedPositions; //список закрытых позиций на текущей итерации, очищается по кончанию итерации
 
     public int TradesNSF { get; set; }
     public List<Alert> Alerts { get; } = new();
@@ -94,12 +95,12 @@ public class SystemResultsOwn : IComparer<Position>
 
     public void BuildEquityCurve(IList<Bars> barsList, TradingSystemExecutor tradingSystemExecutor, bool callbackToSizePositions, PosSizer posSizer)
     {
+        EquityCurve ??= new DataSeries("Equity");
+        CashCurve ??= new DataSeries("Cash");
+        OpenPositionCount ??= new DataSeries("OpenPositions");
         TotalCommission = 0.0;
-        EquityCurve = new DataSeries("Equity");
-        CashCurve = new DataSeries("Cash");
         PositionSize positionSize = _systemPerfomance.PositionSize;
         double currentNetProfit = 0.0;
-        OpenPositionCount = new DataSeries("OpenPositions");
 
         //заполняется датасет для итерирования
         IList<Bars> barsSet = barsList;
@@ -124,14 +125,12 @@ public class SystemResultsOwn : IComparer<Position>
             }
         }
 
-        _currentlyActivePositions = new();
-
         if (posSizer != null)
         {
-            _accountedPositions = new();
-            _closedPositions = new();
-            _drawdownCurve = new DataSeries("DrawDown");
-            _drawdownPercentCurve = new DataSeries("DrawDownPct");
+            _accountedPositions ??= new();
+            _closedPositions ??= new();
+            _drawdownCurve ??= new DataSeries("DrawDown");
+            _drawdownPercentCurve ??= new DataSeries("DrawDownPct");
             _currentMaxEquity = double.MinValue;
         }
 
@@ -142,7 +141,9 @@ public class SystemResultsOwn : IComparer<Position>
             return;
         }
 
-        List<Position> currentlyClosedPositions = new(); //список закрытых позиций на текущей итерации, очищается по кончанию итерации
+        _currentlyActivePositions ??= new();
+        _currentlyClosedPositions ??= new();
+
         int currRemainingPos = 0;
         List<Position> remainingPositions = callbackToSizePositions ? tradingSystemExecutor.MasterPositions : Positions;
         //список всех позиций для обсчета, должны быть отсортированы по дате, при итерировании двигается указатель currRemainingPos, оставляя обсчитанные позиции позади
@@ -177,7 +178,7 @@ public class SystemResultsOwn : IComparer<Position>
                     position.Active == false)
                 {
                     _currentlyActivePositions.RemoveAt(pos);
-                    currentlyClosedPositions.Add(position);
+                    _currentlyClosedPositions.Add(position);
                     _closedPositions?.Add(position);
                     currentNetProfit += position.NetProfit;
                     CurrentCash += position.Size;
@@ -283,7 +284,7 @@ public class SystemResultsOwn : IComparer<Position>
             }
 
             //тут блок с подсчетом текущей прибыли от открытых на данный момент позиций _currentlyActivePositions
-            if (_currentlyActivePositions.Count > 0 || currentlyClosedPositions.Count > 0)
+            if (_currentlyActivePositions.Count > 0 || _currentlyClosedPositions.Count > 0)
             {
                 for (int pos = _currentlyActivePositions.Count - 1; pos >= 0; pos--)
                 {
@@ -293,7 +294,7 @@ public class SystemResultsOwn : IComparer<Position>
                         position.Active == false)
                     {
                         _currentlyActivePositions.RemoveAt(pos);
-                        currentlyClosedPositions.Add(position);
+                        _currentlyClosedPositions.Add(position);
                         _closedPositions?.Add(position);
                         currentNetProfit += position.NetProfit;
                         CurrentCash += position.Size;
@@ -312,14 +313,14 @@ public class SystemResultsOwn : IComparer<Position>
                     CurrentEquity += position.NetProfitAsOfBar(bar);
                     ApplyDividents(position, bar, ref currentNetProfit);
                 }
-                foreach (Position position in currentlyClosedPositions)
+                foreach (Position position in _currentlyClosedPositions)
                 {
                     int bar = barIterator.Bar(position.Bars);
                     CurrentEquity += position.NetProfitAsOfBar(bar);
                     ApplyDividents(position, bar, ref currentNetProfit);
                 }
 
-                currentlyClosedPositions.Clear();
+                _currentlyClosedPositions.Clear();
 
                 double netProfitBeforeThisBar = currentNetProfit - netProfitOfCurrentlyClosedPositions; //доход от прошлых позиций + дивиденды от текущих
                 CurrentEquity += netProfitBeforeThisBar;
@@ -507,13 +508,16 @@ public class SystemResultsOwn : IComparer<Position>
         Positions.Clear();
         Alerts.Clear();
 
-        if (EquityCurve != null)
-        {
-            EquityCurve?.ClearValues();
-            CashCurve?.ClearValues();
-            _drawdownCurve?.ClearValues();
-            _drawdownPercentCurve?.ClearValues();
-        }
+        EquityCurve?.ClearFull();
+        CashCurve?.ClearFull();
+        OpenPositionCount?.ClearFull();
+        _drawdownCurve?.ClearFull();
+        _drawdownPercentCurve?.ClearFull();
+
+        _currentlyActivePositions?.Clear();
+        _closedPositions?.Clear();
+        _accountedPositions?.Clear();
+        _currentlyClosedPositions?.Clear();
     }
 
     //очистка
@@ -523,10 +527,16 @@ public class SystemResultsOwn : IComparer<Position>
 
         if (!bool_0)
         {
-            EquityCurve?.ClearValues();
-            CashCurve?.ClearValues();
-            _drawdownCurve?.ClearValues();
-            _drawdownPercentCurve?.ClearValues();
+            EquityCurve?.ClearFull();
+            CashCurve?.ClearFull();
+            OpenPositionCount?.ClearFull();
+            _drawdownCurve?.ClearFull();
+            _drawdownPercentCurve?.ClearFull();
+
+            _currentlyActivePositions?.Clear();
+            _closedPositions?.Clear();
+            _accountedPositions?.Clear();
+            _currentlyClosedPositions?.Clear();
         }
     }
 
