@@ -66,7 +66,7 @@ public class SystemResultsOwn : IComparer<Position>
     }
 
     public bool CalcOpenPositionsCount { get; set; } = false;
-    public bool CalcSampledEquity { get; set; } = false;
+    public EquityCalcMode EquityCalcMode { get; set; } = EquityCalcMode.Full;
 
     public SystemResultsOwn(SystemPerformanceOwn sysPerf)
     {
@@ -163,11 +163,10 @@ public class SystemResultsOwn : IComparer<Position>
         CurrentEquity = CurrentCash;
 
         //начальная граница
-        if (CalcSampledEquity)
+        if (EquityCalcMode != EquityCalcMode.Full)
         {
             EquityCurve.Add(CurrentEquity, barDate);
             CashCurve.Add(CurrentCash, barDate);
-            OpenPositionCount?.Add(_currentlyActivePositions.Count, barDate);
         }
 
         //цикл по SynchronizedBarIterator
@@ -335,28 +334,22 @@ public class SystemResultsOwn : IComparer<Position>
                 double netProfitBeforeThisBar = currentNetProfit - netProfitOfCurrentlyClosedPositions; //доход от прошлых позиций + дивиденды от текущих
                 CurrentEquity += netProfitBeforeThisBar;
 
-                //эквити можно считать здесь, получится сэмплированный неточный результат, 
-                //но может быть опцией для улучшения производительности, в частности в скорекардах
-                //хотя кажется и точность не должна особо терятся, т.к. тут не игнорируется пассивная эквити, а только периоды полного простоя
-                //TODO: solved
-                //аффектит sharpe при малом количестве сделок, надо разобраться почему
-                //вероятно если месяц не было сделок, то оно неправильно считается
-
-                if (CalcSampledEquity)
+                if (EquityCalcMode == EquityCalcMode.Sampled ||
+                    (EquityCalcMode == EquityCalcMode.Closed && _currentlyClosedPositions.Count > 0))
                 {
                     EquityCurve.Add(CurrentEquity, barDate);
                     CashCurve.Add(CurrentCash, barDate);
-                    OpenPositionCount?.Add(_currentlyActivePositions.Count, barDate);
                 }
 
                 _currentlyClosedPositions.Clear();
             }
 
-            if (CalcSampledEquity == false)
+            OpenPositionCount?.Add(_currentlyActivePositions.Count, barDate);
+
+            if (EquityCalcMode == EquityCalcMode.Full)
             {
                 EquityCurve.Add(CurrentEquity, barDate);
                 CashCurve.Add(CurrentCash, barDate);
-                OpenPositionCount?.Add(_currentlyActivePositions.Count, barDate);
             }
 
             int cashPos = CashCurve.Count - 1;
@@ -421,11 +414,19 @@ public class SystemResultsOwn : IComparer<Position>
         while (barIterator.Next());
 
         //конечная граница
-        if (CalcSampledEquity && EquityCurve.Date[EquityCurve.Date.Count - 1] != barDate)
+        if (EquityCalcMode != EquityCalcMode.Full && 
+            EquityCurve.Count > 0 && EquityCurve.Date[EquityCurve.Date.Count - 1] != barDate)
         {
             EquityCurve.Add(CurrentEquity, barDate);
             CashCurve.Add(CurrentCash, barDate);
-            OpenPositionCount?.Add(_currentlyActivePositions.Count, barDate);
+        }
+
+        //устранение возможного дубликата в начальной границе, редкая ситуация
+        if (EquityCalcMode != EquityCalcMode.Full && 
+            EquityCurve.Count > 1 && EquityCurve.Date[0] == EquityCurve.Date[1])
+        {
+            EquityCurve.RemoveAt(0);
+            CashCurve.RemoveAt(0);
         }
     }
 

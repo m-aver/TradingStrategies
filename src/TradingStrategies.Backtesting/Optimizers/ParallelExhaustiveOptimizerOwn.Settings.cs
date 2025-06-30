@@ -1,6 +1,7 @@
 ﻿using Fidelity.Components;
 using System.ComponentModel;
 using System.Windows.Forms;
+using TradingStrategies.Backtesting.Optimizers.Own;
 
 namespace TradingStrategies.Backtesting.Optimizers;
 
@@ -12,7 +13,7 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
     private bool CalcShortResults { get; set; }
     private bool CalcMfeMae { get; set; }
     public bool CalcOpenPositionsCount { get; set; }
-    private bool CalcSampledEquity { get; set; }
+    private EquityCalcMode EquityCalcMode { get; set; }
 
     public UserControl GetSettingsUI()
     {
@@ -22,7 +23,7 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         settingsControl.CalcShortResults = CalcShortResults;
         settingsControl.CalcMfeMae = CalcMfeMae;
         settingsControl.CalcOpenPositionsCount = CalcOpenPositionsCount;
-        settingsControl.CalcSampledEquity = CalcSampledEquity;
+        settingsControl.EquityCalcMode = EquityCalcMode;
         return settingsControl;
     }
 
@@ -40,7 +41,7 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         CalcShortResults = settingsControl.CalcShortResults;
         CalcMfeMae = settingsControl.CalcMfeMae;
         CalcOpenPositionsCount = settingsControl.CalcOpenPositionsCount;
-        CalcSampledEquity = settingsControl.CalcSampledEquity;
+        EquityCalcMode = settingsControl.EquityCalcMode;
     }
 
     public void ReadSettings(ISettingsHost host)
@@ -50,7 +51,7 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         CalcShortResults = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcShortResults), defaultValue: false);
         CalcMfeMae = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcMfeMae), defaultValue: false);
         CalcOpenPositionsCount = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcOpenPositionsCount), defaultValue: false);
-        CalcSampledEquity = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcSampledEquity), defaultValue: false);
+        EquityCalcMode = (EquityCalcMode)host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.EquityCalcMode), defaultValue: (int)EquityCalcMode.Full);
     }
 
     public void WriteSettings(ISettingsHost host)
@@ -60,7 +61,7 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcShortResults), CalcShortResults);
         host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcMfeMae), CalcMfeMae);
         host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcOpenPositionsCount), CalcOpenPositionsCount);
-        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcSampledEquity), CalcSampledEquity);
+        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.EquityCalcMode), (int)EquityCalcMode);
     }
 }
 
@@ -74,7 +75,8 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
     private CheckBox cbCalcShort;
     private CheckBox cbCalcMfeMae;
     private CheckBox cbCalcOpenPositionsCount;
-    private CheckBox cbCalcSampledEquity;
+    private Label lblEquityCalcMode;
+    private ComboBox cbEquityCalcMode;
 
     public int ThreadsNumber
     {
@@ -101,10 +103,10 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         get => cbCalcOpenPositionsCount.Checked;
         set => cbCalcOpenPositionsCount.Checked = false;
     }
-    public bool CalcSampledEquity
+    public EquityCalcMode EquityCalcMode
     {
-        get => cbCalcSampledEquity.Checked;
-        set => cbCalcSampledEquity.Checked = false;
+        get => (EquityCalcMode)cbEquityCalcMode.SelectedValue;
+        set => cbEquityCalcMode.SelectedValue = EquityCalcMode.Full;
     }
 
     public ParallelExhaustiveOptimizerOwnSettings()
@@ -130,7 +132,8 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         this.cbCalcShort = new System.Windows.Forms.CheckBox();
         this.cbCalcMfeMae = new System.Windows.Forms.CheckBox();
         this.cbCalcOpenPositionsCount = new System.Windows.Forms.CheckBox();
-        this.cbCalcSampledEquity = new System.Windows.Forms.CheckBox();
+        this.lblEquityCalcMode = new System.Windows.Forms.Label();
+        this.cbEquityCalcMode = new System.Windows.Forms.ComboBox();
 
         ((System.ComponentModel.ISupportInitialize)this.numTreadsNum).BeginInit();
         base.SuspendLayout();
@@ -183,22 +186,27 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         this.cbCalcOpenPositionsCount.Location = new System.Drawing.Point(10, 128);
         this.cbCalcOpenPositionsCount.Name = "cbCalcOpenPositionsCount";
         this.cbCalcOpenPositionsCount.Size = new System.Drawing.Size(58, 20);
-        this.cbCalcOpenPositionsCount.TabIndex = 4;
+        this.cbCalcOpenPositionsCount.TabIndex = 5;
         this.cbCalcOpenPositionsCount.AutoSize = true;
         this.cbCalcOpenPositionsCount.Checked = false;
         this.cbCalcOpenPositionsCount.TabStop = true;
         this.cbCalcOpenPositionsCount.UseVisualStyleBackColor = true;
         this.cbCalcOpenPositionsCount.Text = "Calculate series of open positions count";
 
-        this.cbCalcSampledEquity.Location = new System.Drawing.Point(10, 154);
-        this.cbCalcSampledEquity.Name = "cbCalcSampledEquity";
-        this.cbCalcSampledEquity.Size = new System.Drawing.Size(58, 20);
-        this.cbCalcSampledEquity.TabIndex = 4;
-        this.cbCalcSampledEquity.AutoSize = true;
-        this.cbCalcSampledEquity.Checked = false;
-        this.cbCalcSampledEquity.TabStop = true;
-        this.cbCalcSampledEquity.UseVisualStyleBackColor = true;
-        this.cbCalcSampledEquity.Text = "Calculate sampled equity";
+        this.lblEquityCalcMode.AutoSize = true;
+        this.lblEquityCalcMode.Location = new System.Drawing.Point(10, 164);
+        this.lblEquityCalcMode.Name = "lblEquityCalcMode";
+        this.lblEquityCalcMode.Size = new System.Drawing.Size(94, 13);
+        this.lblEquityCalcMode.TabIndex = 6;
+        this.lblEquityCalcMode.Text = "Mode of equity and cash curves calculation:";
+
+        this.cbEquityCalcMode.Location = new System.Drawing.Point(10, 187);
+        this.cbEquityCalcMode.Name = "cbEquityCalcMode";
+        this.cbEquityCalcMode.Size = new System.Drawing.Size(98, 30);
+        this.cbEquityCalcMode.TabIndex = 7;
+        this.cbEquityCalcMode.AutoSize = true;
+        this.cbEquityCalcMode.TabStop = true;
+        this.cbEquityCalcMode.DataSource = Enum.GetValues(typeof(EquityCalcMode));
 
         base.AutoScaleDimensions = new System.Drawing.SizeF(6f, 13f);
         base.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -206,7 +214,8 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         base.Controls.Add(this.cbCalcShort);
         base.Controls.Add(this.cbCalcLong);
         base.Controls.Add(this.cbCalcOpenPositionsCount);
-        base.Controls.Add(this.cbCalcSampledEquity);
+        base.Controls.Add(this.lblEquityCalcMode);
+        base.Controls.Add(this.cbEquityCalcMode);
         base.Controls.Add(this.numTreadsNum);
         base.Controls.Add(this.lblTreadsNum);
         base.Name = nameof(ParallelExhaustiveOptimizerOwnSettings);

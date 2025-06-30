@@ -355,7 +355,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
             CalcResultsShort = CalcShortResults,
             CalcMfeMae = CalcMfeMae,
             CalcOpenPositionsCount = CalcOpenPositionsCount,
-            CalcSampledEquity = CalcSampledEquity,
+            EquityCalcMode = EquityCalcMode,
         };
         return own;
     }
