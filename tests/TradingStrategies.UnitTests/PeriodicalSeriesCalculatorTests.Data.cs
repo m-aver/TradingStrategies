@@ -73,6 +73,26 @@ namespace TradingStrategies.UnitTests
             );
 
             yield return [shiftedMonthSeparation];
+
+            var sparsedShiftedMonthSeparation = new PeriodicalSeparatorTestData(
+                seriesToSeparate:
+                [
+                    (1, "02.05.2010"), (2, "05.05.2010"), (3, "10.05.2010"), (4, "15.05.2010"),
+                    //06.2010, 07.2010 is skipped
+                    (9, "03.08.2010"), (10, "05.08.2010"), (11, "10.08.2010"), (12, "15.08.2010"),
+                    //09.2010 is skipped
+                    (13, "03.10.2010"),
+                ],
+                periodInfo: PeriodInfo.Monthly,
+                separatedSeries: 
+                [
+                    (4, "15.05.2010"), (4, "02.07.2010"), (4, "02.08.2010"), 
+                    (12, "15.08.2010"), (12, "02.10.2010"), 
+                    (13, "03.10.2010")
+                ]
+            );
+
+            yield return [sparsedShiftedMonthSeparation];
         }
 
         public record InvalidPeriodicalSeparatorTestData(

@@ -74,6 +74,8 @@ public partial class SystemResultsTests
         {
             CurrentCash = posSize.StartingCapital,
             CurrentEquity = posSize.StartingCapital,
+            CalcOpenPositionsCount = true,
+            CalcSampledEquity = false,
         };
         var native = new SystemResults(sysPerf)
         {

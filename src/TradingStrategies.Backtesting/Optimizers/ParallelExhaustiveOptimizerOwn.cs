@@ -150,6 +150,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
 
         try
         {
+            testExecutor.Initialize();
             testExecutor.Execute(testStrategy, testScript, null, testBars);
         }
         catch (Exception e)
@@ -353,6 +354,8 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
             CalcResultsLong = CalcLongResults,
             CalcResultsShort = CalcShortResults,
             CalcMfeMae = CalcMfeMae,
+            CalcOpenPositionsCount = CalcOpenPositionsCount,
+            CalcSampledEquity = CalcSampledEquity,
         };
         return own;
     }

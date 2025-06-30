@@ -11,6 +11,8 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
     private bool CalcLongResults { get; set; }
     private bool CalcShortResults { get; set; }
     private bool CalcMfeMae { get; set; }
+    public bool CalcOpenPositionsCount { get; set; }
+    private bool CalcSampledEquity { get; set; }
 
     public UserControl GetSettingsUI()
     {
@@ -19,6 +21,8 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         settingsControl.CalcLongResults = CalcLongResults;
         settingsControl.CalcShortResults = CalcShortResults;
         settingsControl.CalcMfeMae = CalcMfeMae;
+        settingsControl.CalcOpenPositionsCount = CalcOpenPositionsCount;
+        settingsControl.CalcSampledEquity = CalcSampledEquity;
         return settingsControl;
     }
 
@@ -35,6 +39,8 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         CalcLongResults = settingsControl.CalcLongResults;
         CalcShortResults = settingsControl.CalcShortResults;
         CalcMfeMae = settingsControl.CalcMfeMae;
+        CalcOpenPositionsCount = settingsControl.CalcOpenPositionsCount;
+        CalcSampledEquity = settingsControl.CalcSampledEquity;
     }
 
     public void ReadSettings(ISettingsHost host)
@@ -43,6 +49,8 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         CalcLongResults = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcLongResults), defaultValue: false);
         CalcShortResults = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcShortResults), defaultValue: false);
         CalcMfeMae = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcMfeMae), defaultValue: false);
+        CalcOpenPositionsCount = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcOpenPositionsCount), defaultValue: false);
+        CalcSampledEquity = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcSampledEquity), defaultValue: false);
     }
 
     public void WriteSettings(ISettingsHost host)
@@ -51,6 +59,8 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
         host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcLongResults), CalcLongResults);
         host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcShortResults), CalcShortResults);
         host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcMfeMae), CalcMfeMae);
+        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcOpenPositionsCount), CalcOpenPositionsCount);
+        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcSampledEquity), CalcSampledEquity);
     }
 }
 
@@ -63,6 +73,8 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
     private CheckBox cbCalcLong;
     private CheckBox cbCalcShort;
     private CheckBox cbCalcMfeMae;
+    private CheckBox cbCalcOpenPositionsCount;
+    private CheckBox cbCalcSampledEquity;
 
     public int ThreadsNumber
     {
@@ -83,6 +95,16 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
     {
         get => cbCalcMfeMae.Checked; 
         set => cbCalcMfeMae.Checked = false;
+    }
+    public bool CalcOpenPositionsCount
+    {
+        get => cbCalcOpenPositionsCount.Checked;
+        set => cbCalcOpenPositionsCount.Checked = false;
+    }
+    public bool CalcSampledEquity
+    {
+        get => cbCalcSampledEquity.Checked;
+        set => cbCalcSampledEquity.Checked = false;
     }
 
     public ParallelExhaustiveOptimizerOwnSettings()
@@ -107,6 +129,8 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         this.cbCalcLong = new System.Windows.Forms.CheckBox();
         this.cbCalcShort = new System.Windows.Forms.CheckBox();
         this.cbCalcMfeMae = new System.Windows.Forms.CheckBox();
+        this.cbCalcOpenPositionsCount = new System.Windows.Forms.CheckBox();
+        this.cbCalcSampledEquity = new System.Windows.Forms.CheckBox();
 
         ((System.ComponentModel.ISupportInitialize)this.numTreadsNum).BeginInit();
         base.SuspendLayout();
@@ -156,15 +180,37 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         this.cbCalcMfeMae.UseVisualStyleBackColor = true;
         this.cbCalcMfeMae.Text = "Calculate MAE and MFE of all positions";
 
+        this.cbCalcOpenPositionsCount.Location = new System.Drawing.Point(10, 128);
+        this.cbCalcOpenPositionsCount.Name = "cbCalcOpenPositionsCount";
+        this.cbCalcOpenPositionsCount.Size = new System.Drawing.Size(58, 20);
+        this.cbCalcOpenPositionsCount.TabIndex = 4;
+        this.cbCalcOpenPositionsCount.AutoSize = true;
+        this.cbCalcOpenPositionsCount.Checked = false;
+        this.cbCalcOpenPositionsCount.TabStop = true;
+        this.cbCalcOpenPositionsCount.UseVisualStyleBackColor = true;
+        this.cbCalcOpenPositionsCount.Text = "Calculate series of open positions count";
+
+        this.cbCalcSampledEquity.Location = new System.Drawing.Point(10, 154);
+        this.cbCalcSampledEquity.Name = "cbCalcSampledEquity";
+        this.cbCalcSampledEquity.Size = new System.Drawing.Size(58, 20);
+        this.cbCalcSampledEquity.TabIndex = 4;
+        this.cbCalcSampledEquity.AutoSize = true;
+        this.cbCalcSampledEquity.Checked = false;
+        this.cbCalcSampledEquity.TabStop = true;
+        this.cbCalcSampledEquity.UseVisualStyleBackColor = true;
+        this.cbCalcSampledEquity.Text = "Calculate sampled equity";
+
         base.AutoScaleDimensions = new System.Drawing.SizeF(6f, 13f);
         base.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
         base.Controls.Add(this.cbCalcMfeMae);
         base.Controls.Add(this.cbCalcShort);
         base.Controls.Add(this.cbCalcLong);
+        base.Controls.Add(this.cbCalcOpenPositionsCount);
+        base.Controls.Add(this.cbCalcSampledEquity);
         base.Controls.Add(this.numTreadsNum);
         base.Controls.Add(this.lblTreadsNum);
         base.Name = nameof(ParallelExhaustiveOptimizerOwnSettings);
-        base.Size = new System.Drawing.Size(250, 133);
+        base.Size = new System.Drawing.Size(250, 250);
 
         ((System.ComponentModel.ISupportInitialize)this.numTreadsNum).EndInit();
         base.ResumeLayout(false);

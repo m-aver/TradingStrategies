@@ -96,6 +96,8 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
     public bool CalcResultsLong { get; set; } = true;
     public bool CalcResultsShort { get; set; } = true;
     public bool CalcMfeMae { get; set; } = true;
+    public bool CalcOpenPositionsCount { get; set; } = true;
+    public bool CalcSampledEquity { get; set; } = false;
 
     private SystemPerformanceOwn Performance { get; }
     public SystemPerformance PerformanceNative { get; private set; }
@@ -114,6 +116,14 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         Performance.PositionSizeProxy = PosSize;
         Performance.Results.CurrentCash = PosSize.StartingCapital;
         Performance.Results.CurrentEquity = PosSize.StartingCapital;
+
+        Performance.Results.CalcOpenPositionsCount = CalcOpenPositionsCount;
+        Performance.ResultsLong?.CalcOpenPositionsCount = CalcOpenPositionsCount;
+        Performance.ResultsShort?.CalcOpenPositionsCount  = CalcOpenPositionsCount;
+
+        Performance.Results.CalcSampledEquity = CalcSampledEquity;
+        Performance.ResultsLong?.CalcSampledEquity = CalcSampledEquity;
+        Performance.ResultsShort?.CalcSampledEquity = CalcSampledEquity;
     }
 
     //contract wrapper
