@@ -101,6 +101,22 @@ public class IndicatorsCalculationTests
         static double CalculateError(IEnumerable<DataSeriesPoint> errorSeries) => Math.Sqrt(errorSeries.Select(x => x.Value).Sum(MathHelper.Sqr) / errorSeries.Count());
     }
 
+    //переработка sharpe соответствует исходной версии
+    [Theory]
+    [MemberData(nameof(GetRandomMonthReturnValues), 10)]
+    public void SharpeRatio_MatchNative(double[] monthReturnValues)
+    {
+        //arrange
+        var monthReturnSeries = ToMonthlySeries(monthReturnValues);
+
+        //act
+        var sharpeNative = IndicatorsCalculator.SharpeRatio(monthReturnSeries, 0);
+        var sharpe = IndicatorsCalculator.SharpeRatio(monthReturnSeries.ToPoints());
+
+        //assert
+        Assert.Equal(sharpeNative, sharpe, 5);
+    }
+
     //test data
     public static IEnumerable<object[]> GetUniformMonthReturnValues()
     {
@@ -124,6 +140,21 @@ public class IndicatorsCalculationTests
 
         yield return Wrap(new double[] { 15, -5, 15, -5, 15, -5, 15, -5, 15, -5 });
         yield return Wrap(new double[] { 10, 0, 10, 0, 10, 0, 10, 0, 10, 0 });
+
+        static object[] Wrap(object x) => [x];
+    }
+
+    public static IEnumerable<object[]> GetRandomMonthReturnValues(int testsCount)
+    {
+        const int maxReturnsCount = 30;
+        const int maxReturnsValue = 100;
+        const int minReturnsValue = -100;
+
+        return Enumerable.Range(0, testsCount)
+            .Select(_ => Wrap(Enumerable.Range(0, Random.Shared.Next(maxReturnsCount))
+            .Select(_ => Random.Shared.Next(minReturnsValue, maxReturnsValue))
+            .Select(x => (double)x)
+            .ToArray()));
 
         static object[] Wrap(object x) => [x];
     }
