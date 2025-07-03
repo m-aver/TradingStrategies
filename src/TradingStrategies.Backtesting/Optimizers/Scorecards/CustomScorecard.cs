@@ -69,7 +69,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private static readonly string[] columnTypes = columnNames.Select(_ => "N").ToArray();
 
-        private const string NumbersFormat = "N2";
+        private const string IntNumbersFormat = "N0";
+        private const string RealNumbersFormat = "N2";
 
         public override string FriendlyName => DisplayName;
 
@@ -158,22 +159,22 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             pool.Return(buffer);
 
             //populate ui
-            resultRow.SubItems.Add(netProfit.ToString(NumbersFormat));
-            resultRow.SubItems.Add(trades.ToString(NumbersFormat)); //TODO: format
-            resultRow.SubItems.Add(tradesNsf.ToString(NumbersFormat));
-            resultRow.SubItems.Add(winRate.ToString(NumbersFormat));
-            resultRow.SubItems.Add(squaredError.ToString(NumbersFormat));
-            resultRow.SubItems.Add(squaredErrorCorrected.ToString(NumbersFormat));
-            resultRow.SubItems.Add(moduleError.ToString(NumbersFormat));
-            resultRow.SubItems.Add(sharpe.ToString(NumbersFormat));
-            resultRow.SubItems.Add(avgReturn.ToString(NumbersFormat));
-            resultRow.SubItems.Add(maxReturn.ToString(NumbersFormat));
-            resultRow.SubItems.Add(minReturn.ToString(NumbersFormat));
-            resultRow.SubItems.Add(avgReturnDelta.ToString(NumbersFormat));
-            resultRow.SubItems.Add(maxReturnDelta.ToString(NumbersFormat));
-            resultRow.SubItems.Add(maxDrawdown.ToString(NumbersFormat));
-            resultRow.SubItems.Add(longestDrawdown.ToString(NumbersFormat));
-            resultRow.SubItems.Add(drawdownDensity.ToString(NumbersFormat));
+            resultRow.SubItems.Add(netProfit.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(trades.ToString(IntNumbersFormat));
+            resultRow.SubItems.Add(tradesNsf.ToString(IntNumbersFormat));
+            resultRow.SubItems.Add(winRate.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(squaredError.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(squaredErrorCorrected.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(moduleError.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(sharpe.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(avgReturn.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(maxReturn.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(minReturn.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(avgReturnDelta.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(maxReturnDelta.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(maxDrawdown.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(longestDrawdown.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(drawdownDensity.ToString(RealNumbersFormat));
         }
 
         private static IEnumerable<DataSeriesPoint> CalculateError(DataSeries equitySeries)
@@ -203,6 +204,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
                 resultRow.SubItems.Add(UndefinedLabel);
             }
         }
-        private static readonly string UndefinedLabel = double.NaN.ToString(NumbersFormat);
+        private static readonly string UndefinedLabel = double.NaN.ToString(RealNumbersFormat);
     }
 }
