@@ -1,4 +1,6 @@
-﻿using WealthLab;
+﻿using System.Buffers;
+using System.Collections;
+using WealthLab;
 using WealthLab.Indicators;
 
 namespace TradingStrategies.Backtesting.Utility;
@@ -49,15 +51,54 @@ public static class IndicatorsCalculator
         return regression;
     }
 
-    //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
-    //выглядит так, что через точку стартового капитала метрика скорректированной квадратичной ошибки получилась хороша
     public static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries)
     {
+        return LogError(equitySeries, buffer: null);
+    }
+
+    public static IEnumerable<DataSeriesPoint> LogError(DataSeries equitySeries)
+    {
+        using var iterator = new BufferedLogErrorIterator(equitySeries);
+
+        while (iterator.MoveNext())
+        {
+            yield return iterator.Current;
+        }
+    }
+
+    //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
+    private static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries, DataSeriesPoint[]? buffer)
+    {
         var logEquity = equitySeries.Select(x => x.WithValue(MathHelper.NaturalLog(x)));
+        logEquity = buffer is null ? logEquity : logEquity.ToBuffer(buffer);
         var linearReg = IndicatorsCalculator.LinearRegressionThroughStartPoint(logEquity);
         var error = logEquity.Zip(linearReg, (eq, lr) => (eq - lr));
 
         return error;
+    }
+
+    //to manage buffer lifetime
+    private struct BufferedLogErrorIterator : IEnumerator<DataSeriesPoint>
+    {
+        private readonly DataSeriesPoint[] _buffer;
+        private readonly IEnumerator<DataSeriesPoint> _errorEnumerator;
+
+        public BufferedLogErrorIterator(DataSeries equitySeries)
+        {
+            _buffer = ArrayPool<DataSeriesPoint>.Shared.Rent(equitySeries.Count);
+            var error = IndicatorsCalculator.LogError(equitySeries.ToPoints(), _buffer);
+            _errorEnumerator = error.GetEnumerator();
+        }
+
+        public DataSeriesPoint Current => _errorEnumerator.Current;
+        object IEnumerator.Current => Current;
+        public bool MoveNext() => _errorEnumerator.MoveNext();
+        public void Reset() => _errorEnumerator.Reset();
+        public void Dispose()
+        {
+            ArrayPool<DataSeriesPoint>.Shared.Return(_buffer);
+            _errorEnumerator.Dispose();
+        }
     }
 
     //from wealthlab

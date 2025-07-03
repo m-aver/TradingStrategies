@@ -131,7 +131,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private DataSeries CalculateMonthReturns(DataSeries equitySeries)
         {
-            return _periodicalSeriesCalculator.CalculatePercentDiff(equitySeries, PeriodInfo.Monthly);
+            return _periodicalSeriesCalculator.CalculatePercentDiff(equitySeries, PeriodInfo.Monthly).ToSeries("month-returns");
         }
 
         private static double CalculateSharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)

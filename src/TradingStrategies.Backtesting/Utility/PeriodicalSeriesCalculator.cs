@@ -7,7 +7,7 @@ namespace TradingStrategies.Backtesting.Utility
 {
     public interface IPeriodicalSeriesCalculator
     {
-        DataSeries CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo);
+        IEnumerable<DataSeriesPoint> CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo);
     }
 
     public enum PeriodCalcType
@@ -43,10 +43,8 @@ namespace TradingStrategies.Backtesting.Utility
             _periodSeparator = periodSeparator;
         }
 
-        public DataSeries CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo)
+        public IEnumerable<DataSeriesPoint> CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo)
         {
-            var byPercentSeries = new DataSeries("percent-diff-by-period");
-
             var byPeriodPoints = ByPeriod(series, periodInfo);
 
             var previousPoint = series.ToPoints().FirstOrDefault();
@@ -55,12 +53,10 @@ namespace TradingStrategies.Backtesting.Utility
             {
                 var income = (point.Value - previousPoint.Value) * 100 / previousPoint.Value;
 
-                byPercentSeries.AddPoint(previousPoint.WithValue(income));
+                yield return previousPoint.WithValue(income);
 
                 previousPoint = point;
             }
-
-            return byPercentSeries;
         }
 
         public DataSeries SeparateByPeriod(DataSeries series, PeriodInfo periodInfo)

@@ -77,7 +77,9 @@ public class IndicatorsCalculationTests
 
     //ошибка от экспоненты выглядит более предпочтительным индикатором, т.к. учитывает равномерность распределения доходностей
     //хотя судя по опыту на реальных данных, все же на нее тоже нельзя однозначно ориентироваться при анализе близких значений, но подсветить хорошие стратегии она помогает
-    //upd: с переработкой расчета на прохождение линии регрессии через стартовую точку, качество метрики выросло
+    //upd:
+    //с переработкой расчета на прохождение линии регрессии через стартовую точку, качество метрики выросло
+    //скорректированная квадратичная ошибка стала хорошо себя показывать
     [Theory]
     [MemberData(nameof(GetUniformMonthReturnValues))]
     public void SquaredError_OrderOfReturns_AffectsError(double[] uniformMonthReturnValues)
@@ -117,6 +119,36 @@ public class IndicatorsCalculationTests
         Assert.Equal(sharpeNative, sharpe, 5);
     }
 
+    //ошибка вычисленная буфферизированным итератором соответствует "простой" исходной версии
+    [Theory]
+    [MemberData(nameof(GetRandomMonthReturnValues), 10)]
+    public void LogError_Iterator_MatchSource(double[] monthReturnValues)
+    {
+        //arrange
+        var monthReturnSeries = ToMonthlySeries(monthReturnValues);
+
+        const int startingCapital = 100_000;
+        var equitySeries = ToEquity(startingCapital, monthReturnSeries);
+
+        //act
+        var sourceIterator = IndicatorsCalculator.LogError(equitySeries);
+        var bufferedIterator = IndicatorsCalculator.LogError(equitySeries.ToSeries("test-equity-series"));
+
+        var sumSqSource = sourceIterator.Sum(x => x * x);
+        var sumSq = bufferedIterator.Sum(x => x * x);
+
+        var avgSource = sourceIterator.Average(x => x);
+        var avg = bufferedIterator.Average(x => x);
+
+        var cntSource = sourceIterator.Count();
+        var cnt = bufferedIterator.Count();
+
+        //assert
+        Assert.Equal(sumSqSource, sumSq, 5);
+        Assert.Equal(avgSource, avg, 5);
+        Assert.Equal(cntSource, cnt);
+    }
+
     //test data
     public static IEnumerable<object[]> GetUniformMonthReturnValues()
     {
@@ -151,7 +183,7 @@ public class IndicatorsCalculationTests
         const int minReturnsValue = -100;
 
         return Enumerable.Range(0, testsCount)
-            .Select(_ => Wrap(Enumerable.Range(0, Random.Shared.Next(maxReturnsCount))
+            .Select(_ => Wrap(Enumerable.Range(0, Random.Shared.Next(1, maxReturnsCount))
             .Select(_ => Random.Shared.Next(minReturnsValue, maxReturnsValue))
             .Select(x => (double)x)
             .ToArray()));

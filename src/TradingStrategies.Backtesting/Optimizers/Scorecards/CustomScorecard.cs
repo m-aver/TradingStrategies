@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using System.Buffers;
+using System.Windows.Forms;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
@@ -10,13 +11,6 @@ using WealthLab;
 //чтобы стратегия на актуальном рынке была столь же эффективной как на тестировании, надо подбирать ее так, чтобы на всей истории был равномерный рост
 //такая стратегия должна стремится к экспоненциальной эквити и равномерной доходности в процентах
 //но равномерность утопична, пожалуй не должно быть выбросов доходности присущих только определенному периоду
-
-//TODO:
-//на тестах заметил, что очень сильно работает GC с этим скорекардом
-//с прошлым такой херни не было, надо разобраться
-//так же работа ЦП более разреженная
-//solved: 
-//дело в материализации drawdownSeries.ToArray()
 
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
@@ -34,12 +28,9 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         //показывает насколько сильно эквити отличается от экспоненты
         //чем меньше ошибка, тем равномернее доходности
 
-        //квадратичная ошибка
-        protected const string LeSquaredError = "LE Squared Error";
-        //квадратичная ошибка скорректированная средней доходностью
-        protected const string LeSquaredErrorCorrected = "LE Squared Error Corrected";
-        //модуль линейной ошибки
-        protected const string LeLinearModuleError = "LE Linear Module Error";
+        protected const string LeSquaredError = "LE Squared Error"; //квадратичная ошибка
+        protected const string LeSquaredErrorCorrected = "LE Squared Error Corrected"; //квадратичная ошибка скорректированная средней доходностью
+        protected const string LeLinearModuleError = "LE Linear Module Error"; //модуль линейной ошибки
 
         protected const string Sharpe = "Sharpe";
 
@@ -89,6 +80,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private readonly IPeriodicalSeriesCalculator _periodicalSeriesCalculator;
 
+        private readonly ArrayPool<DataSeriesPoint> pool = ArrayPool<DataSeriesPoint>.Shared;
+
         public CustomScorecard() //создается через активатор
         {
             _periodicalSeriesCalculator = PeriodicalSeriesCalculatorFactory.CreateAlignedSingleton();
@@ -112,15 +105,17 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             var winRate = results.Positions.Count == 0 ? 0 :
                 100.0 * results.Positions.Count(x => x.NetProfit > 0) / results.Positions.Count;
 
+            var buffer = pool.Rent(equitySeries.Count);
+
             //month-returns
-            var monthReturnSeries = CalculateMonthReturns(equitySeries);
-            var sharpe = CalculateSharpeRatio(monthReturnSeries, performance.CashReturnRate);
+            var monthReturnSeries = CalculateMonthReturns(equitySeries).ToBuffer(buffer);
+            var sharpe = CalculateSharpeRatio(monthReturnSeries);
 
             var maxReturn = double.MinValue;
             var minReturn = double.MaxValue;
             var monthReturnCount = 0;
             var monthReturnSum = 0d;
-            foreach (var monthReturn in monthReturnSeries.GetValues())
+            foreach (var monthReturn in monthReturnSeries)
             {
                 if (minReturn > monthReturn)
                 {
@@ -134,11 +129,11 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
                 monthReturnSum += monthReturn;
             }
             var avgReturn = monthReturnSum / monthReturnCount;
-            var avgReturnDelta = monthReturnSeries.GetValues().Average(x => Math.Abs(x - avgReturn));
+            var avgReturnDelta = monthReturnSeries.Average(x => Math.Abs(x - avgReturn));
             var maxReturnDelta = maxReturn - avgReturnDelta;
 
             //log-error
-            var errorSeries = CalculateError(equitySeries.ToPoints());
+            var errorSeries = CalculateError(equitySeries);
 
             var squaredError = 0d;
             var squaredErrorCorrected = 0d;
@@ -155,10 +150,12 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             squaredErrorCorrected = 100 * squaredError / avgReturn;
 
             //drawdowns
-            var drawdownSeries = CalculateDrawdown(equitySeries.ToPoints());
+            var drawdownSeries = CalculateDrawdown(equitySeries.ToPoints()).ToBuffer(buffer);
             var longestDrawdown = IndicatorsCalculator.LongestDrawdown(drawdownSeries).Days;
             var drawdownDensity = IndicatorsCalculator.SumDrawdownDensity(drawdownSeries);
             var maxDrawdown = drawdownSeries.Max(x => x.Value);
+
+            pool.Return(buffer);
 
             //populate ui
             resultRow.SubItems.Add(netProfit.ToString(NumbersFormat));
@@ -179,19 +176,19 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             resultRow.SubItems.Add(drawdownDensity.ToString(NumbersFormat));
         }
 
-        private static IEnumerable<DataSeriesPoint> CalculateError(IEnumerable<DataSeriesPoint> equitySeries)
+        private static IEnumerable<DataSeriesPoint> CalculateError(DataSeries equitySeries)
         {
             return IndicatorsCalculator.LogError(equitySeries);
         }
 
-        private DataSeries CalculateMonthReturns(DataSeries equitySeries)
+        private IEnumerable<DataSeriesPoint> CalculateMonthReturns(DataSeries equitySeries)
         {
             return _periodicalSeriesCalculator.CalculatePercentDiff(equitySeries, PeriodInfo.Monthly);
         }
 
-        private static double CalculateSharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
+        private static double CalculateSharpeRatio(IEnumerable<DataSeriesPoint> monthReturnSeries)
         {
-            return IndicatorsCalculator.SharpeRatio(monthReturnSeries, cashReturnRate);
+            return IndicatorsCalculator.SharpeRatio(monthReturnSeries);
         }
 
         private static IEnumerable<DataSeriesPoint> CalculateDrawdown(IEnumerable<DataSeriesPoint> equitySeries)
