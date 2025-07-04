@@ -28,20 +28,21 @@ public class SystemResultsOwn : IComparer<Position>
     private List<Position> _accountedPositions; //начинающие обрабатываться с текущей итерации и имеющие больше 0 лотов (Shares)
     private List<Position> _currentlyClosedPositions; //список закрытых позиций на текущей итерации, очищается по кончанию итерации
 
-    public int TradesNSF { get; set; }
     public List<Alert> Alerts { get; } = new();
     public List<Position> Positions { get; } = new();
 
     public DataSeries EquityCurve { get; internal set; }
     public DataSeries CashCurve { get; internal set; }
+    public DataSeries OpenPositionCount { get; set; }
+
     internal double CurrentEquity { get; set; }
     internal double CurrentCash { get; set; }
 
+    public int TradesNSF { get; set; }
     public double TotalCommission { get; private set; }
     public double CashReturn { get; internal set; }
     public double MarginInterest { get; internal set; }
     public double DividendsPaid { get; internal set; }
-    public DataSeries OpenPositionCount { get; set; }
 
     public double NetProfit => Positions.Sum(x => x.NetProfit) + CashReturn + MarginInterest + DividendsPaid;
     public double ProfitPerBar => Positions.Count == 0 ? 0.0 : NetProfit / Positions.Sum(x => x.BarsHeld);
@@ -69,25 +70,6 @@ public class SystemResultsOwn : IComparer<Position>
     public SystemResultsOwn(SystemPerformanceOwn sysPerf)
     {
         _systemPerfomance = sysPerf;
-    }
-
-    public int Compare(Position first, Position second)
-    {
-        if (first.EntryDate == second.EntryDate)
-        {
-            return first.CombinedPriority.CompareTo(second.CombinedPriority);
-        }
-
-        return first.EntryDate.CompareTo(second.EntryDate);
-    }
-
-    //MFE/MAE
-    internal void method_0()
-    {
-        foreach (Position position in Positions)
-        {
-            position.CalculateMfeMae();
-        }
     }
 
     public void BuildEquityCurve(IList<Bars> barsList, TradingSystemExecutor tradingSystemExecutor, bool callbackToSizePositions, PosSizer posSizer)
@@ -509,18 +491,20 @@ public class SystemResultsOwn : IComparer<Position>
         return barsSet;
     }
 
-    internal void method_4(Position position_0)
+    //method_4
+    internal void AddPosition(Position position)
     {
-        Positions.Add(position_0);
+        Positions.Add(position);
     }
 
-    internal void method_5(Alert alert_0)
+    //method_5
+    internal void AddAlert(Alert alert)
     {
-        Alerts.Add(alert_0);
+        Alerts.Add(alert);
     }
 
-    //полная очистка
-    internal void method_6()
+    //method_6
+    internal void FullClear()
     {
         TradesNSF = 0;
         CashReturn = 0.0;
@@ -541,12 +525,12 @@ public class SystemResultsOwn : IComparer<Position>
         _currentlyClosedPositions?.Clear();
     }
 
-    //очистка
-    internal void method_7(bool bool_0)
+    //method_7
+    internal void Clear(bool avoidClearingEquity)
     {
         Positions.Clear();
 
-        if (!bool_0)
+        if (!avoidClearingEquity)
         {
             EquityCurve?.ClearFull();
             CashCurve?.ClearFull();
@@ -561,12 +545,14 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    internal void method_8()
+    //method_8
+    internal void SortPositions()
     {
         Positions.Sort(this);
     }
 
-    internal void method_9(PosSizer posSizer)
+    //method_9
+    internal void SetPosSizerPositions(PosSizer posSizer)
     {
         if (_accountedPositions == null || _closedPositions == null)
         {
@@ -576,5 +562,24 @@ public class SystemResultsOwn : IComparer<Position>
         posSizer.ActivePositionsProxy = _currentlyActivePositions;
         posSizer.PositionsProxy = _accountedPositions;
         posSizer.ClosedPositionsProxy = _closedPositions;
+    }
+
+    //method_0
+    internal void CalculateMfeMae()
+    {
+        foreach (Position position in Positions)
+        {
+            position.CalculateMfeMae();
+        }
+    }
+
+    public int Compare(Position first, Position second)
+    {
+        if (first.EntryDate == second.EntryDate)
+        {
+            return first.CombinedPriority.CompareTo(second.CombinedPriority);
+        }
+
+        return first.EntryDate.CompareTo(second.EntryDate);
     }
 }

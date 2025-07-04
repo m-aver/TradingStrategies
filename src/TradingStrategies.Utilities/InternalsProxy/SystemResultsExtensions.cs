@@ -1,4 +1,5 @@
-﻿using WealthLab;
+﻿using System.Reflection;
+using WealthLab;
 
 namespace TradingStrategies.Utilities.InternalsProxy;
 
@@ -19,5 +20,13 @@ public static class SystemResultsExtensions
         public double DividendsPaidProxy { get => results.DividendsPaid; set => results.DividendsPaid = value; }
         public DataSeries EquityCurveProxy { get => results.EquityCurve; set => results.EquityCurve = value; }
         public DataSeries CashCurveProxy { get => results.CashCurve; set => results.CashCurve = value; }
+    }
+
+    private static readonly BindingFlags PrivateFlags = BindingFlags.NonPublic | BindingFlags.Instance;
+    private static readonly FieldInfo TotalCommissionField = typeof(SystemResults).GetField("double_2", PrivateFlags);
+
+    extension(SystemResults results)
+    {
+        public double TotalCommissionProxy { get => results.TotalCommission; set => TotalCommissionField.SetValue(results, value); }
     }
 }

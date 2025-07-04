@@ -24,24 +24,28 @@ public class SystemPerformanceOwn
         ResultsLong = new SystemResultsOwn(this);
         ResultsShort = new SystemResultsOwn(this);
     }
-
-    internal void method_0()
+    
+    //method_0
+    internal void CalculateMfeMae()
     {
-        Results.method_0();
-        ResultsLong.method_0();
-        ResultsShort.method_0();
+        Results.CalculateMfeMae();
+        ResultsLong.CalculateMfeMae();
+        ResultsShort.CalculateMfeMae();
     }
 
-    internal void method_1(Bars bars_1)
+    //method_1
+    internal void AddBars(Bars bars)
     {
-        Bars.Add(bars_1);
+        Bars.Add(bars);
     }
 
-    internal void method_2()
+    //method_2
+    internal void Clear()
     {
-        Results.method_6();
-        ResultsLong.method_6();
-        ResultsShort.method_6();
+        Results.FullClear();
+        ResultsLong.FullClear();
+        ResultsShort.FullClear();
+
         Bars.Clear();
     }
 }
