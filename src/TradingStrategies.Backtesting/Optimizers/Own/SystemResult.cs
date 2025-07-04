@@ -11,8 +11,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 //удобно когда торги ведутся одновременно по множеству бумаг/систем
 //в конкретной системе можно не заморачиваться и не считать текущую многосоставную эквити, чтобы посчитать размер позиции
 //а задавать размер уже постфактум, в отдельном модуле (своя перегрузка PosSizer или готовый), основываясь на текущей эквити (или других метриках), которую передат фреймворк
-//думаю не стоит прям отказываться от него так сразу
-//upd:
 //но с другой стороны появляются накладные расходы на вызов кастомного PosSizer для каждой позиции, что может снизить производительность
 
 public class SystemResultsOwn : IComparer<Position>
@@ -92,10 +90,6 @@ public class SystemResultsOwn : IComparer<Position>
         }
     }
 
-    //можно еще оптимизировать RawProfitMode, сейчас это вызов свойства, которое каждый раз пересчитывает два условия
-    //убрать в локальную переменную на старте метода
-    //но смущает что в разных местах вызывается TradingSystemExecutor.PosSizer.RawProfitMode и PosSizer.RawProfitMode, вроде бы PosSizer должен быть одинаков и там и там
-
     public void BuildEquityCurve(IList<Bars> barsList, TradingSystemExecutor tradingSystemExecutor, bool callbackToSizePositions, PosSizer posSizer)
     {
         EquityCurve ??= new DataSeries("Equity");
@@ -110,8 +104,7 @@ public class SystemResultsOwn : IComparer<Position>
         //barsSet = FillBarsSet(barsList, tradingSystemExecutor);
 
         //заполняется инфа по дивидендам
-        //это будет очень сильно тормозить, если дивиденды появятся
-        //так же как и ApplyDividents
+        //это будет очень сильно тормозить, если дивиденды появятся, так же как и ApplyDividents
         foreach (Bars bars in barsSet)
         {
             if (tradingSystemExecutor.ApplyDividends &&
@@ -181,8 +174,8 @@ public class SystemResultsOwn : IComparer<Position>
             {
                 Position position = _currentlyActivePositions[pos];
 
-                //этот блок кажется нужен для того, чтобы накопился кеш от сделок сделанных по рыночной цене
-                //чтобы можно было этот кеш использовать для открытия других позиций на этой свече
+                //этот блок кажется нужен для того, чтобы накопился кеш от сделок закрытых по рыночной цене
+                //видимо чтобы можно было этот кеш использовать для открытия других позиций на этой свече
                 //но кажется это может быть опасно, если вход в позицию делается на открытии например
                 if (position.ExitOrderType == OrderType.Market &&
                     position.ExitDate == barDate &&
@@ -222,7 +215,8 @@ public class SystemResultsOwn : IComparer<Position>
 
             //цикл по конкурирующим позициям с одинаковой датой входа (текущей датой итератора)
             //корректируются CurrentCash и TotalCommission
-            //добавляются позиции в  _currentlyActivePositions и _accountedPositions
+            //определяется хватает ли текущего капитала для открытия позиций, расчитывается количество лотов (shares) и комиссии позиций
+            //позиции добавляются в _currentlyActivePositions
             //двигается указатель currRemainingPos
             while (remainingPositions.Count > currRemainingPos)
             {
@@ -239,7 +233,6 @@ public class SystemResultsOwn : IComparer<Position>
                     //вызывает PosSizer, переданный и сконфигурированный выше, если PosSizeMode == SimuScript
                     //если PosSizeMode == ScriptOverride, то просто использует OverrideShareSize, установленный через WealthScript.SetShareSize перед открытием позиции
                     //но может дополнительно скорректироваться по ReduceQtyBasedOnVolume, RoundLots и пр.
-                    //TODO: возможно стоит отказаться от вызова CalcPositionSize в случае ScriptOverride, для производительности
 
                     var sharesSize = tradingSystemExecutor.CalcPositionSize(position, position.Bars, position.EntryBar, position.BasisPrice, position.PositionType, position.RiskStopLevel, useOverRide: true, position.OverrideShareSize, currCash);
                     position.SharesProxy = sharesSize * position.SplitFactor;
@@ -264,6 +257,7 @@ public class SystemResultsOwn : IComparer<Position>
 
                 currRemainingPos++;
 
+                //определяется, хватает ли запрошенного количества лотов при текущем капитале
                 if (position.Shares > 0.0)
                 {
                     double rest = CurrentCash;
@@ -287,7 +281,7 @@ public class SystemResultsOwn : IComparer<Position>
                     }
                     else
                     {
-                        //это похоже обнуление позиции если она не удовлетворяет потрфелю
+                        //это похоже обнуление позиции если она не удовлетворяет портфелю
                         //потом на основе этого проставляется TradesNSF из TradingSystemExecutor
                         position.SharesProxy = 0.0;
                     }
@@ -295,6 +289,8 @@ public class SystemResultsOwn : IComparer<Position>
             }
 
             //тут блок с подсчетом текущей прибыли от открытых на данный момент позиций _currentlyActivePositions
+            //_currentlyActivePositions расщепляется на _currentlyActivePositions и _currentlyClosedPositions
+            //подсчитывается CurrentCash от закрытых позиций и CurrentEquity от движений котировок по открытым позициям на текущей свече
             if (_currentlyActivePositions.Count > 0 || _currentlyClosedPositions.Count > 0)
             {
                 for (int pos = _currentlyActivePositions.Count - 1; pos >= 0; pos--)
@@ -314,8 +310,6 @@ public class SystemResultsOwn : IComparer<Position>
                         CurrentCash += position.EntryCommission; //Position.NetProfit учитывает комиссии, поэтому тут компенсация прошлого вычета
                     }
                 }
-
-                //_currentlyActivePositions расщепляется на _currentlyActivePositions и currentlyClosedPositions
 
                 CurrentEquity = positionSize.RawProfitMode ? 0.0 : positionSize.StartingCapital;
                 foreach (Position position in _currentlyActivePositions)
@@ -355,8 +349,7 @@ public class SystemResultsOwn : IComparer<Position>
             int cashPos = CashCurve.Count - 1;
 
             //тут применение AdjustmentFactor к текущим результатам
-            //cудя по всему CashRate - это процент вывода средств из портфеля за год
-            //а CashAdjustmentFactor - доля вывода в день
+            //cудя по всему CashRate - это процент вывода средств из портфеля за год, а CashAdjustmentFactor - доля вывода в день
             //кажется оно не работает для intraday свечей
             if (tradingSystemExecutor.ApplyInterest &&
                 tradingSystemExecutor.PosSize.RawProfitMode == false &&
