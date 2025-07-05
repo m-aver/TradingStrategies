@@ -26,9 +26,9 @@ public static class TradingSystemExecutorExtensions
         public Bars _barsBeingProcessed { get => tse.BarsBeingProcessed; set => _barsBeingProcessed_Field.SetValue(tse, value); }
         public WealthScript _wealthScriptExecuting {get => tse.WealthScriptExecuting; set => _wealthScriptExecuting_Field.SetValue(tse, value);}
 
-        public PosSizer posSizer {get => tse.PosSizer; set => posSizer_Field.SetValue(tse, value);}
+        public PosSizer _posSizer {get => tse.PosSizer; set => posSizer_Field.SetValue(tse, value);}
 
-        public Position position_0 {get => (Position) position_0_Field.GetValue(tse); set => position_0_Field.SetValue(tse, value);}
+        public Position _position {get => (Position) position_0_Field.GetValue(tse); set => position_0_Field.SetValue(tse, value);}
         public bool _rawProfitMode {get => (bool) _rawProfitMode_Field.GetValue(tse); set => _rawProfitMode_Field.SetValue(tse, value);}
         public IList<Bars> _barsSet {get => (IList<Bars>) _barsSet_Field.GetValue(tse); set => _barsSet_Field.SetValue(tse, value);}
     }

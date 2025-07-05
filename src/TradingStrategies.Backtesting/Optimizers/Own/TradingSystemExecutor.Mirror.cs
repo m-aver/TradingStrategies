@@ -22,8 +22,8 @@ public partial class TradingSystemExecutorOwn
     private double _cashAdjustmentFactor { get => tse.CashAdjustmentFactor; }
     private double _marginAdjustmentFactor { get => tse.MarginAdjustmentFactor; }
 
-    private PosSizer posSizer { get => tse.posSizer; set => tse.posSizer = value; }
-    private Position position_0 { get => tse.position_0; set => tse.position_0 = value; }
+    private PosSizer _posSizer { get => tse._posSizer; set => tse._posSizer = value; }
+    private Position _position { get => tse._position; set => tse._position = value; }
     private bool _rawProfitMode { get => tse._rawProfitMode; set => tse._rawProfitMode = value; }
     private WealthScript _wealthScriptExecuting { get => tse._wealthScriptExecuting; set => tse._wealthScriptExecuting = value; }
     private IList<Bars> _barsSet { get => tse._barsSet; set => tse._barsSet = value; }
@@ -76,8 +76,8 @@ public partial class TradingSystemExecutorOwn
     private double _cashAdjustmentFactor;
     private double _marginAdjustmentFactor;
     private double _autoProfitLevel;
-    private PosSizer posSizer;
-    private Position position_0;
+    private PosSizer _posSizer;
+    private Position _position;
     private bool _rawProfitMode = true;
     private WealthScript _wealthScriptExecuting;
     private List<Alert> _masterAlerts = new();

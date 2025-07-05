@@ -163,7 +163,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         }
 
         _riskStopLevelNotSet = false;
-        posSizer = null;
+        _posSizer = null;
         if (PosSize.Mode == PosSizeMode.SimuScript)
         {
             foreach (PosSizer posSizer in PosSizers)
@@ -173,12 +173,12 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
                     continue;
                 }
 
-                this.posSizer = (PosSizer)Activator.CreateInstance(posSizer.GetType());
+                _posSizer = (PosSizer)Activator.CreateInstance(posSizer.GetType());
                 if (PosSize.PosSizerConfig != "" && (PosSize.SimuScriptName == PosSize.PosSizerThatWasConfigured || PosSize.PosSizerThatWasConfigured == ""))
                 {
                     try
                     {
-                        this.posSizer.ApplyConfigString(PosSizer.ParseConfigString(PosSize.PosSizerConfig));
+                        _posSizer.ApplyConfigString(PosSizer.ParseConfigString(PosSize.PosSizerConfig));
                     }
                     catch
                     {
@@ -195,7 +195,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             Performance.AddBars(bars);
         }
 
-        Performance.Results.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: true, posSizer);
+        Performance.Results.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: true, _posSizer);
         Performance.Results.Clear(avoidClearingEquity: true);
 
         foreach (Position position in MasterPositions)
@@ -258,16 +258,17 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
         if (CalcResultsLong)
         {
-            Performance.ResultsLong.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, posSizer);
+            Performance.ResultsLong.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, _posSizer);
         }
         if (CalcResultsShort)
         {
-            Performance.ResultsShort.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, posSizer);
+            Performance.ResultsShort.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, _posSizer);
         }
 
         if (posSizer != null)
+        if (_posSizer != null)
         {
-            Performance.Results.SetPosSizerPositions(posSizer); //выставить списки позиций резалта в позсайзер
+            Performance.Results.SetPosSizerPositions(_posSizer); //выставить списки позиций резалта в позсайзер
         }
 
         foreach (Alert alert in Performance.Results.Alerts)
@@ -493,11 +494,11 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
                     break;
                 }
             case PosSizeMode.SimuScript:
-                if (posSizer != null)
+                if (_posSizer != null)
                 {
                     try
                     {
-                        resultSize = posSizer.SizePosition(position_0, bars, barNum - 1, basisPrice, positionType, riskStopLevel, currentEquity, currentCash);
+                        resultSize = _posSizer.SizePosition(_position, bars, barNum - 1, basisPrice, positionType, riskStopLevel, currentEquity, currentCash);
                     }
                     catch
                     {
@@ -596,10 +597,10 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             return position.Shares;
         }
 
-        position_0 = position;
+        _position = position;
         double currentEquity = Performance.Results.CurrentEquity;
         double num = CalcPositionSize(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, overrideShareSize, thisBarCash);
-        position_0 = null;
+        _position = null;
 
         return num;
     }
