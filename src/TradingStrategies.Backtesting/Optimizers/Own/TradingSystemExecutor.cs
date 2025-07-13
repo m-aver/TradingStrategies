@@ -17,11 +17,11 @@ namespace TradingStrategies.Backtesting.Optimizers.Own;
 
 public partial class TradingSystemExecutorOwn : IComparer<Position>
 {
-    public bool CalcResultsLong { get; set; } = true;
-    public bool CalcResultsShort { get; set; } = true;
-    public bool CalcMfeMae { get; set; } = true;
-    public bool CalcOpenPositionsCount { get; set; } = true;
-    public EquityCalcMode EquityCalcMode { get; set; } = EquityCalcMode.Full;
+    public bool CalcResultsLong { get; } = true;
+    public bool CalcResultsShort { get; } = true;
+    public bool CalcMfeMae { get; } = true;
+    public bool CalcOpenPositionsCount { get; } = true;
+    public EquityCalcMode EquityCalcMode { get; } = EquityCalcMode.Full;
 
     private SystemPerformanceOwn Performance { get; }
     public SystemPerformance PerformanceNative { get; private set; }
@@ -32,14 +32,30 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
     {
         _nativeExecutor = nativeExecutor;
         //Performance = new SystemPerformance(null);
-        Performance = new SystemPerformanceOwn(null);
     }
 
-    public void Initialize()
+    public TradingSystemExecutorOwn(
+        TradingSystemExecutor nativeExecutor,
+        bool calcResultsLong,
+        bool calcResultsShort,
+        bool calcMfeMae,
+        bool calcOpenPositionsCount,
+        EquityCalcMode equityCalcMode
+    )
     {
-        Performance.PositionSizeProxy = PosSize;
-        Performance.Results.CurrentCash = PosSize.StartingCapital;
-        Performance.Results.CurrentEquity = PosSize.StartingCapital;
+        _nativeExecutor = nativeExecutor;
+
+        CalcResultsLong = calcResultsLong;
+        CalcResultsShort = calcResultsShort;
+        CalcMfeMae = calcMfeMae;
+        CalcOpenPositionsCount = calcOpenPositionsCount;
+        EquityCalcMode = equityCalcMode;
+
+        Performance = new SystemPerformanceOwn(null);
+
+        Performance.Results = new SystemResultsOwn(Performance);
+        Performance.ResultsLong = CalcResultsLong ? new SystemResultsOwn(Performance) : null;
+        Performance.ResultsShort = CalcResultsShort ? new SystemResultsOwn(Performance) : null;
 
         Performance.Results.CalcOpenPositionsCount = CalcOpenPositionsCount;
         Performance.ResultsLong?.CalcOpenPositionsCount = CalcOpenPositionsCount;
@@ -48,6 +64,13 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         Performance.Results.EquityCalcMode = EquityCalcMode;
         Performance.ResultsLong?.EquityCalcMode = EquityCalcMode;
         Performance.ResultsShort?.EquityCalcMode = EquityCalcMode;
+    }
+
+    public void Initialize()
+    {
+        Performance.PositionSizeProxy = PosSize;
+        Performance.Results.CurrentCash = PosSize.StartingCapital;
+        Performance.Results.CurrentEquity = PosSize.StartingCapital;
     }
 
     //contract wrapper

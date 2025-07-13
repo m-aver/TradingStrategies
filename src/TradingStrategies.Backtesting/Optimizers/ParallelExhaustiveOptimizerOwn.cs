@@ -349,14 +349,15 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
     private TradingSystemExecutorOwn CopyExecutor(TradingSystemExecutor source)
     {
         var native = ParallelExhaustiveOptimizer.CopyExecutor(source);
-        var own = new TradingSystemExecutorOwn(native)
-        {
-            CalcResultsLong = CalcLongResults,
-            CalcResultsShort = CalcShortResults,
-            CalcMfeMae = CalcMfeMae,
-            CalcOpenPositionsCount = CalcOpenPositionsCount,
-            EquityCalcMode = EquityCalcMode,
-        };
+
+        var own = new TradingSystemExecutorOwn(
+            nativeExecutor: native,
+            calcResultsLong: CalcLongResults,
+            calcResultsShort: CalcShortResults,
+            calcMfeMae: CalcMfeMae,
+            calcOpenPositionsCount: CalcOpenPositionsCount,
+            equityCalcMode: EquityCalcMode
+        );
         return own;
     }
 

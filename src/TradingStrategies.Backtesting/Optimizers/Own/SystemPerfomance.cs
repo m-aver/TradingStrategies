@@ -6,8 +6,8 @@ public class SystemPerformanceOwn
 {
     public Strategy Strategy { get; set; }
     public SystemResultsOwn Results { get; internal set; }
-    public SystemResultsOwn ResultsLong { get; internal set; }
-    public SystemResultsOwn ResultsShort { get; internal set; }
+    public SystemResultsOwn? ResultsLong { get; internal set; }
+    public SystemResultsOwn? ResultsShort { get; internal set; }
     public BarScale Scale { get; internal set; }
     public int BarInterval { get; internal set; }
     public PositionSize PositionSize { get; internal set; } = new PositionSize();
@@ -20,17 +20,17 @@ public class SystemPerformanceOwn
     public SystemPerformanceOwn(Strategy strategy)
     {
         Strategy = strategy;
-        Results = new SystemResultsOwn(this);
-        ResultsLong = new SystemResultsOwn(this);
-        ResultsShort = new SystemResultsOwn(this);
+        //Results = new SystemResultsOwn(this);
+        //ResultsLong = new SystemResultsOwn(this);
+        //ResultsShort = new SystemResultsOwn(this);
     }
     
     //method_0
     internal void CalculateMfeMae()
     {
         Results.CalculateMfeMae();
-        ResultsLong.CalculateMfeMae();
-        ResultsShort.CalculateMfeMae();
+        ResultsLong?.CalculateMfeMae();
+        ResultsShort?.CalculateMfeMae();
     }
 
     //method_1
@@ -43,8 +43,8 @@ public class SystemPerformanceOwn
     internal void Clear()
     {
         Results.FullClear();
-        ResultsLong.FullClear();
-        ResultsShort.FullClear();
+        ResultsLong?.FullClear();
+        ResultsShort?.FullClear();
 
         Bars.Clear();
     }
