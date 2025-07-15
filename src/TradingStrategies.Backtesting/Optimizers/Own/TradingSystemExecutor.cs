@@ -350,8 +350,12 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
     private static void FillNativeResults(SystemResults native, SystemResultsOwn own)
     {
-        native.EquityCurveProxy = own.EquityCurve;
-        native.CashCurveProxy = own.CashCurve;
+        //equity и cash в нативной реализации изначально проинициализированы пустой серией
+        if (own.EquityCurve != null)
+            native.EquityCurveProxy = own.EquityCurve;
+        if (own.CashCurve != null)
+            native.CashCurveProxy = own.CashCurve;
+
         native.CashReturnProxy = own.CashReturn;
         native.MarginInterestProxy = own.MarginInterest;
         native.DividendsPaidProxy = own.DividendsPaid;
