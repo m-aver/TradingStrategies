@@ -6,6 +6,7 @@ using System.Drawing.Printing;
 using System.Windows.Forms;
 using Fidelity.Components;
 using WealthLab;
+using System.Globalization;
 
 namespace TradingStrategies.Backtesting.Visualizers
 {
@@ -13,7 +14,7 @@ namespace TradingStrategies.Backtesting.Visualizers
     {
         private static readonly Color GainColor = Color.FromArgb(230, 255, 230);
         private static readonly Color LossColor = Color.FromArgb(255, 230, 230);
-        private const string DateColumnsFormat = "dd.mm.yyyy HH:mm";
+        private const string DateColumnsFormat = "dd.MM.yyyy HH:mm";
 
         private IVisualizerHost visualizerHost;
 
@@ -103,10 +104,16 @@ namespace TradingStrategies.Backtesting.Visualizers
                 currentRow.SubItems.Add(position.BarsHeld.ToString("N0"));
                 currentRow.SubItems.Add(position.EntrySignal);
                 currentRow.SubItems.Add(position.ExitSignal);
+                currentRow.SubItems.Add(PrintDay(position.EntryDate.DayOfWeek));
             }
 
             ColorizeTable();
             tableTrades.EndUpdate();
+        }
+
+        private static string PrintDay(DayOfWeek day)
+        {
+            return CultureInfo.InvariantCulture.DateTimeFormat.GetDayName(day);
         }
 
         private static void ColorizeCell(ListViewItem.ListViewSubItem cell, double pivot)
@@ -232,6 +239,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Quantity",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 50,
+                    Tag = "N", //формат данных
                 },
                 new ColumnHeader()
                 {
@@ -239,6 +247,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Entry Date",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 100,
+                    Tag = "D",
                 },
                 new ColumnHeader()
                 {
@@ -246,6 +255,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Entry Price",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 75,
+                    Tag = "C",
                 },
                 new ColumnHeader()
                 {
@@ -253,6 +263,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Exit Date",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 100,
+                    Tag = "D",
                 },
                 new ColumnHeader()
                 {
@@ -260,6 +271,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Exit Price",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 75,
+                    Tag = "C",
                 },
                 new ColumnHeader()
                 {
@@ -267,6 +279,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Profit %",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 75,
+                    Tag = "N",
                 },
                 new ColumnHeader()
                 {
@@ -274,6 +287,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Profit $",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 75,
+                    Tag = "C",
                 },
                 new ColumnHeader()
                 {
@@ -281,6 +295,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     Text = "Bars Held",
                     TextAlign = HorizontalAlignment.Right,
                     Width = 75,
+                    Tag = "N",
                 },
                 new ColumnHeader()
                 {
@@ -293,6 +308,12 @@ namespace TradingStrategies.Backtesting.Visualizers
                     DisplayIndex = 12,
                     Text = "Exit Name",
                     Width = 100,
+                },
+                new ColumnHeader()
+                {
+                    DisplayIndex = 13,
+                    Text = "Day",
+                    Width = 50,
                 },
             };
 
