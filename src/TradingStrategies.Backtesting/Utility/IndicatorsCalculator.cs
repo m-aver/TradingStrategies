@@ -101,6 +101,16 @@ public static class IndicatorsCalculator
         }
     }
 
+    public static IEnumerable<DataSeriesPoint> CalculateExponentialRegression(DataSeries equitySeries)
+    {
+        var logErr = IndicatorsCalculator.LogError(equitySeries);
+
+        var expReg = equitySeries.ToPoints().Zip(logErr, (eq, err) =>
+            eq.WithValue(Math.Exp(MathHelper.NaturalLog(eq) - err)));
+
+        return expReg;
+    }
+
     //from wealthlab
     public static double SharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
     {
