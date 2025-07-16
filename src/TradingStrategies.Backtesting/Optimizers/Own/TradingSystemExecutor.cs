@@ -434,10 +434,6 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         NoDecimalRoundingForLimitStopPrice = executor.NoDecimalRoundingForLimitStopPrice;
         PricingDecimalPlaces = executor.PricingDecimalPlaces;
         DividendItemName = executor.DividendItemName;
-
-        CalcResultsLong = executor.CalcResultsLong;
-        CalcResultsShort = executor.CalcResultsShort;
-        CalcMfeMae = executor.CalcMfeMae;
     }
 
     public double CalcPositionSize(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, double currentEquity, double overrideShareSize, double currentCash)
