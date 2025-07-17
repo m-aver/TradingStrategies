@@ -47,6 +47,12 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         protected const string LongestDrawdownInDays = "Longest Drawdown (days)";
         protected const string SumDrawdownDensity = "SDD";
 
+        //CE - Closed Equity
+        //эквити на момент закрытия позиций, выполняет роль фильтра, удаляются скачки котировок
+        //скачки могут сильно завышать значения просадок
+        protected const string CeMaxDrawdownPercent = "CE Max Drawdown %";
+        protected const string CeLongestDrawdownInDays = "CE Longest Drawdown (days)";
+
         private static readonly string[] columnNames =
         [
             NetProfit,
@@ -65,6 +71,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             MaxDrawdownPercent,
             LongestDrawdownInDays,
             SumDrawdownDensity,
+            CeMaxDrawdownPercent,
+            CeLongestDrawdownInDays,
         ];
 
         private static readonly string[] columnTypes = columnNames.Select(_ => "N").ToArray();
@@ -154,7 +162,12 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             var drawdownSeries = CalculateDrawdown(equitySeries.ToPoints()).ToBuffer(buffer);
             var longestDrawdown = IndicatorsCalculator.LongestDrawdown(drawdownSeries).Days;
             var drawdownDensity = IndicatorsCalculator.SumDrawdownDensity(drawdownSeries);
-            var maxDrawdown = drawdownSeries.Max(x => x.Value);
+            var maxDrawdown = drawdownSeries.MaxOrNaN(x => x.Value);
+
+            var closedEquity = CalculateClosedEquity(results);
+            var closedDrawdownSeries = CalculateDrawdown(closedEquity).ToBuffer(buffer);
+            var closedLongestDrawdown = IndicatorsCalculator.LongestDrawdown(closedDrawdownSeries).Days;
+            var closedMaxDrawdown = closedDrawdownSeries.MaxOrNaN(x => x.Value);
 
             pool.Return(buffer);
 
@@ -175,6 +188,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             resultRow.SubItems.Add(maxDrawdown.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(longestDrawdown.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(drawdownDensity.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(closedMaxDrawdown.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(closedLongestDrawdown.ToString(RealNumbersFormat));
         }
 
         private static IEnumerable<DataSeriesPoint> CalculateError(DataSeries equitySeries)
@@ -195,6 +210,11 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         private static IEnumerable<DataSeriesPoint> CalculateDrawdown(IEnumerable<DataSeriesPoint> equitySeries)
         {
             return IndicatorsCalculator.DrawdownPercentage(equitySeries);
+        }
+
+        private static IEnumerable<DataSeriesPoint> CalculateClosedEquity(SystemResults results)
+        {
+            return IndicatorsCalculator.CalculateClosedEquity(results);
         }
 
         private void PopulateUndefined(ListViewItem resultRow)

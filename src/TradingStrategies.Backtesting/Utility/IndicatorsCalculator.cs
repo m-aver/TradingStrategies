@@ -291,4 +291,50 @@ public static class IndicatorsCalculator
             }
         }
     }
+
+    public static IEnumerable<DataSeriesPoint> CalculateClosedEquity(SystemResults results)
+    {
+        using var equityEnumerator = results.EquityCurve.ToPoints().GetEnumerator();
+        using var positionsEnumerator = results.Positions.Where(x => !x.Active).GetEnumerator();
+
+        //начальная точка
+        if (!equityEnumerator.MoveNext())
+        {
+            yield break;
+        }
+
+        yield return equityEnumerator.Current;
+
+        var equity = equityEnumerator.Current;
+
+        while (positionsEnumerator.MoveNext())
+        {
+            var position = positionsEnumerator.Current;
+
+            //пересечение позиций
+            if (equity.Date >= position.ExitDate)
+            {
+                continue;
+            }
+
+            while (equityEnumerator.MoveNext())
+            {
+                equity = equityEnumerator.Current;
+
+                if (equity.Date >= position.ExitDate)
+                {
+                    yield return equity;
+                    break;
+                }
+            }
+        }
+
+        //конечная точка
+        if (equityEnumerator.MoveNext())
+        {
+            while (equityEnumerator.MoveNext()) ;
+
+            yield return new DataSeriesPoint(equity.Value, equityEnumerator.Current.Date);
+        }
+    }
 }
