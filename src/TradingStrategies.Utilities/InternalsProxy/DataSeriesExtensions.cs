@@ -11,7 +11,7 @@ public static class DataSeriesExtensions
     public static void ClearValues(this DataSeries dataSeries) => dataSeries.method_2();
     public static void ClearFull(this DataSeries dataSeries)
     {
-        dataSeries.method_2();
+        dataSeries.ClearValues();
         dataSeries.GetDates().Clear();
     }
 

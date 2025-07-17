@@ -243,6 +243,8 @@ public class SystemResultsOwn : IComparer<Position>
                 if (position.Shares > 0.0)
                 {
                     double rest = CurrentCash;
+
+                    //пока не до конца понятна суть расчета при наличии MarginFactor > 1
                     if (!tradingSystemExecutor.PosSize.RawProfitMode)
                     {
                         rest += CurrentEquity * (tradingSystemExecutor.PosSize.MarginFactor - 1);
@@ -389,7 +391,7 @@ public class SystemResultsOwn : IComparer<Position>
         while (barIterator.Next());
 
         //конечная граница
-        if (EquityCalcMode != EquityCalcMode.Full && 
+        if (EquityCalcMode != EquityCalcMode.Full &&
             EquityCurve.Count > 0 && EquityCurve.Date[EquityCurve.Date.Count - 1] != barDate)
         {
             EquityCurve.Add(CurrentEquity, barDate);
@@ -397,7 +399,7 @@ public class SystemResultsOwn : IComparer<Position>
         }
 
         //устранение возможного дубликата в начальной границе, редкая ситуация
-        if (EquityCalcMode != EquityCalcMode.Full && 
+        if (EquityCalcMode != EquityCalcMode.Full &&
             EquityCurve.Count > 1 && EquityCurve.Date[0] == EquityCurve.Date[1])
         {
             EquityCurve.RemoveAt(0);

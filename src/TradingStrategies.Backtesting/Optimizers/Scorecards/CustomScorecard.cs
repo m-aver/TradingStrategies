@@ -3,15 +3,6 @@ using System.Windows.Forms;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
-//идея:
-//оптимизация на обычной эквити искажает статистику
-//выбираются стратегии, которые имеют бурный рост вначале периода, а затем их эффективность падает
-//так проще набрать высокий NetProfit и создать визуально красивую эквити
-//такие стратегии статистически эффективны только на начальном периоде, но не в конце или в будущем
-//чтобы стратегия на актуальном рынке была столь же эффективной как на тестировании, надо подбирать ее так, чтобы на всей истории был равномерный рост
-//такая стратегия должна стремится к экспоненциальной эквити и равномерной доходности в процентах
-//но равномерность утопична, пожалуй не должно быть выбросов доходности присущих только определенному периоду
-
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
     internal class CustomScorecard : StrategyScorecard
@@ -27,15 +18,14 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         //расхождение между логарифмической эквити и ее линейной регрессией
         //показывает насколько сильно эквити отличается от экспоненты
         //чем меньше ошибка, тем равномернее доходности
-
-        protected const string LeSquaredError = "LE Squared Error"; //квадратичная ошибка
-        protected const string LeSquaredErrorCorrected = "LE Squared Error Corrected"; //квадратичная ошибка скорректированная средней доходностью
-        protected const string LeLinearModuleError = "LE Linear Module Error"; //модуль линейной ошибки
+        protected const string LeSquaredError = "LE Squared Error";
+        protected const string LeSquaredErrorCorrected = "LE Squared Error Corrected"; //скорректированная средней доходностью
+        protected const string LeLinearModuleError = "LE Linear Module Error";
 
         protected const string Sharpe = "Sharpe";
 
         //MR - Month Return
-        //месячная доходность в процентах
+        //месячные доходности в процентах
         protected const string AvgMr = "Avg MR";
         protected const string MaxMr = "Max MR";
         protected const string MinMr = "Min MR";

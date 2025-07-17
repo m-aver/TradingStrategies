@@ -3,9 +3,7 @@ using TradingStrategies.Utilities.InternalsProxy;
 
 namespace TradingStrategies.Backtesting.Optimizers.Own;
 
-//WARN:
-//оказывается я коментил участки кода с обработкой Long и Short резалтов в WealthLab.dll
-//надо бы удостоверится что ничего важного не упускаю тут
+//урезанная и подоптимизированная копия WealthLab.TradingSystemExecutor
 
 //в этой реализации
 //- убран код расчета BuyAndHold резалта
@@ -59,7 +57,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
         Performance.Results.CalcOpenPositionsCount = CalcOpenPositionsCount;
         Performance.ResultsLong?.CalcOpenPositionsCount = CalcOpenPositionsCount;
-        Performance.ResultsShort?.CalcOpenPositionsCount  = CalcOpenPositionsCount;
+        Performance.ResultsShort?.CalcOpenPositionsCount = CalcOpenPositionsCount;
 
         Performance.Results.EquityCalcMode = EquityCalcMode;
         Performance.ResultsLong?.EquityCalcMode = EquityCalcMode;
@@ -119,7 +117,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
         PositionSize posSize = PosSize;
 
-        if (PosSize.RawProfitMode == false && 
+        if (PosSize.RawProfitMode == false &&
             PosSize.Mode != PosSizeMode.ScriptOverride)
         {
             PosSize = positionSize;
@@ -193,6 +191,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
         _riskStopLevelNotSet = false;
         _posSizer = null;
 
+        //создается и конфигурируется PosSizer, если выбран такой режим
         if (PosSize.Mode == PosSizeMode.SimuScript)
         {
             foreach (PosSizer posSizer in PosSizers)
@@ -204,7 +203,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
 
                 _posSizer = (PosSizer)Activator.CreateInstance(posSizer.GetType());
 
-                if (PosSize.PosSizerConfig != string.Empty && 
+                if (PosSize.PosSizerConfig != string.Empty &&
                     (PosSize.SimuScriptName == PosSize.PosSizerThatWasConfigured || PosSize.PosSizerThatWasConfigured == string.Empty))
                 {
                     try
@@ -255,7 +254,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             }
         }
 
-        //заполняем long и short резалты
+        //заполняются long и short резалты
         if (CalcResultsLong || CalcResultsShort)
         {
             foreach (Position position in MasterPositions)
@@ -294,7 +293,8 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             Performance.ResultsShort.BuildEquityCurve(_barsSet, _nativeExecutor, callbackToSizePositions: false, _posSizer);
         }
 
-        if (posSizer != null)
+        //не очень понятно зачем это нужно
+        //влияет видимо только на пересчет сделок для алертов (зачем?)
         if (_posSizer != null)
         {
             Performance.Results.SetPosSizerPositions(_posSizer);
@@ -555,7 +555,7 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
             double size = bars.Volume[barNum] * (RedcuceQtyPct / 100.0);
             resultSize = Math.Min(resultSize, size);
         }
-        
+
         if (bars.SymbolInfo.SecurityType != SecurityType.MutualFund)
         {
             resultSize = (int)resultSize; //в обычном режиме дробные позиции округляются
@@ -600,8 +600,8 @@ public partial class TradingSystemExecutorOwn : IComparer<Position>
     public double CalcPositionSize(Bars bars, int barNum, double basisPrice, PositionType positionType, double riskStopLevel, bool comingFromWealthScript)
     {
         double currentEquity = Performance.Results.CurrentEquity;
-        double overrideShareSize = PosSize.Mode == PosSizeMode.ScriptOverride 
-            ? PosSize.OverrideShareSize 
+        double overrideShareSize = PosSize.Mode == PosSizeMode.ScriptOverride
+            ? PosSize.OverrideShareSize
             : 0.0;
 
         return CalcPositionSizeInternal(bars, barNum, basisPrice, positionType, riskStopLevel, currentEquity, overrideShareSize, 0.0, comingFromWealthScript);

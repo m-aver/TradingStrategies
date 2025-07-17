@@ -69,7 +69,7 @@ public static class IndicatorsCalculator
     //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
     private static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries, DataSeriesPoint[]? buffer)
     {
-        var logEquity = equitySeries.Select(x => x.WithValue(MathHelper.NaturalLog(x)));
+        var logEquity = equitySeries.Select(x => x.WithValue(MathHelper.NaturalLog(x))); //Log довольно затратная операция
         logEquity = buffer is null ? logEquity : logEquity.ToBuffer(buffer);
         var linearReg = IndicatorsCalculator.LinearRegressionThroughStartPoint(logEquity);
         var error = logEquity.Zip(linearReg, (eq, lr) => (eq - lr));
