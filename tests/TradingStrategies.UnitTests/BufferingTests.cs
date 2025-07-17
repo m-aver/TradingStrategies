@@ -2,7 +2,7 @@
 
 namespace TradingStrategies.UnitTests;
 
-public partial class BufferiingTests
+public partial class BufferingTests
 {
     [Theory]
     [MemberData(nameof(GetTestData))]
@@ -76,7 +76,7 @@ public partial class BufferiingTests
 }
 
 //data
-public partial class BufferiingTests
+public partial class BufferingTests
 {
     public static IEnumerable<object[]> GetTestData() => GetTestDataInternal()
         .Select(x => (source: GenerateSource(x.sourceLength), x.bufferLength))
