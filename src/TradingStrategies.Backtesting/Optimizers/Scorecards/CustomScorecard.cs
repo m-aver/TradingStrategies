@@ -19,8 +19,12 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
         //показывает насколько сильно эквити отличается от экспоненты
         //чем меньше ошибка, тем равномернее доходности
         protected const string LeSquaredError = "LE Squared Error";
-        protected const string LeSquaredErrorCorrected = "LE Squared Error Corrected"; //скорректированная средней доходностью
         protected const string LeLinearModuleError = "LE Linear Module Error";
+
+        //квадратичная ошибка, скорректированная средней доходностью
+        //чем больше, тем равномернее рост эквити. чем больше в отрицательном диапазоне, тем равномернее убытки
+        //кажется получилось неплохо
+        protected const string LeFactor = "LE Factor";
 
         protected const string Sharpe = "Sharpe";
 
@@ -50,8 +54,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             NsfTradesCount,
             WinRate,
             LeSquaredError,
-            LeSquaredErrorCorrected,
             LeLinearModuleError,
+            LeFactor,
             Sharpe,
             AvgMr,
             MaxMr,
@@ -135,7 +139,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             var errorSeries = CalculateError(equitySeries);
 
             var squaredError = 0d;
-            var squaredErrorCorrected = 0d;
             var moduleError = 0d;
             var errorCount = 0;
             foreach (var error in errorSeries)
@@ -146,7 +149,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             }
             squaredError = Math.Sqrt(squaredError / errorCount);
             moduleError = moduleError / errorCount;
-            squaredErrorCorrected = 100 * squaredError / avgReturn;
+            var leFactor = avgReturn / squaredError;
 
             //drawdowns
             var drawdownSeries = CalculateDrawdown(equitySeries.ToPoints()).ToBuffer(buffer);
@@ -167,8 +170,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             resultRow.SubItems.Add(tradesNsf.ToString(IntNumbersFormat));
             resultRow.SubItems.Add(winRate.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(squaredError.ToString(RealNumbersFormat));
-            resultRow.SubItems.Add(squaredErrorCorrected.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(moduleError.ToString(RealNumbersFormat));
+            resultRow.SubItems.Add(leFactor.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(sharpe.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(avgReturn.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(maxReturn.ToString(RealNumbersFormat));
