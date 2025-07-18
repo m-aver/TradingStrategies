@@ -67,9 +67,6 @@ namespace TradingStrategies.Backtesting.Core
             //check for symbol bars (i.e. they may be filtered by ui)
             var hasValidBars = Bars.Count > 0;
 
-            if (!hasValidBars)
-                PrintInvalidBarsWarning();
-
             return hasValidBars;
         }
 
@@ -97,24 +94,30 @@ namespace TradingStrategies.Backtesting.Core
 
         protected override void Execute()
         {
-            if (ValidateSymbol() && ValidateBars())
+            if (ValidateSymbol())
             {
                 OnDataSetProcessingStart();
 
-                OnSymbolProcessingStart();
-
-                try
+                //WARN: dataset events may be rised with securities exluded from execution scope due to bars filtration
+                //that may lead to non-obvious behavior due to not expected state of WealthScript
+                //it is disired to not access WealthScript state in dataset events
+                if (ValidateBars())
                 {
-                    _strategy.Execute();
-                }
-                catch (Exception ex)
-                {
-                    var msg = $"an exception was generated in the user execution method: {ex.Message}";
+                    OnSymbolProcessingStart();
 
-                    PrintDebug(msg);
-                }
+                    try
+                    {
+                        _strategy.Execute();
+                    }
+                    catch (Exception ex)
+                    {
+                        var msg = $"an exception was generated in the user execution method: {ex.Message}";
 
-                OnSymbolProcessingComplete();
+                        PrintDebug(msg);
+                    }
+
+                    OnSymbolProcessingComplete();
+                }
 
                 OnDataSetProcessingComplete();
             }
@@ -182,9 +185,9 @@ namespace TradingStrategies.Backtesting.Core
 
         private void PrintInvalidBarsWarning()
         {
-            var msg = """
+            const string msg = """
                     invalid bars detected (i.e. filtered by ui), 
-                    it may be dangerous because dataset processing and optimization processing events may not be fired: 
+                    it may be dangerous because dataset processing events may not be fired: 
                     if filtered bars is first or last of entire dataset
                     """;
             PrintDebug(msg);

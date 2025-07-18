@@ -52,7 +52,6 @@ namespace TradingStrategies.Backtesting.Strategies
         //date-time
         private readonly TimeSpan morningTime = new TimeSpan(10, 0, 0);  //session start
         private readonly TimeSpan eveningTime = new TimeSpan(19, 0, 0);  //session end		
-        private readonly TimeSpan firstSymbolDateOffset = new TimeSpan(days: 3090, hours: 0, minutes: 0, seconds: 0);
         private DateTime entryDate;
         private DateTime expireDate;
         private const bool exitOnEvening = true;
@@ -320,7 +319,7 @@ namespace TradingStrategies.Backtesting.Strategies
 
         private void DataSetProcessingStartHandler()
         {
-            entryDate = _sw.Date.Last() - firstSymbolDateOffset;
+            entryDate = DateTime.MinValue;
             equitySize = startingCapital;
         }
 

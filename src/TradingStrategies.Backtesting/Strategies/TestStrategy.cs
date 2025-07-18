@@ -109,7 +109,6 @@ namespace WealthLabProject.Strategies
         //date-time
         private readonly TimeSpan morningTime = new TimeSpan(10, 0, 0);  //session start
         private readonly TimeSpan eveningTime = new TimeSpan(19, 0, 0);  //session end		
-        private readonly TimeSpan _firstSymbolDateOffset = new TimeSpan(days: 3090, hours: 0, minutes: 0, seconds: 0);
         private DateTime _entryDate;
         private DateTime _expireDate;
         private const bool exitOnEvening = true;
@@ -585,7 +584,7 @@ namespace WealthLabProject.Strategies
 
         private void DataSetProcessingStartHandler()
         {
-            _entryDate = _sw.Date.Last() - _firstSymbolDateOffset;
+            _entryDate = DateTime.MinValue;
             equitySize = startingCapital;
             equitySizeMax = 0;
         }
