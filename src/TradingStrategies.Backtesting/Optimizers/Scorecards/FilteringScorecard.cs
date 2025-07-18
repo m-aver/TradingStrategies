@@ -9,7 +9,7 @@ using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
-    internal class FilteringScorecard : BasicExScorecard
+    internal class FilteringScorecard : CustomScorecard
     {
         public new const string DisplayName = "Filtering Scorecard";
         public override string FriendlyName => DisplayName;
@@ -24,10 +24,10 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private bool FilterResults(ListViewItem resultRow)
         {
-            var sharpe = TryGetNumericalIndicator(resultRow, BasicExScorecard.Sharpe);
-            var avgMonthReturn = TryGetNumericalIndicator(resultRow, BasicExScorecard.AvgMr);
-            var maxDrawdown = TryGetNumericalIndicator(resultRow, BasicExScorecard.MaxDrawdownPercent);
-            var longestDrawdown = TryGetNumericalIndicator(resultRow, BasicExScorecard.LongestDrawdownInDays);
+            var sharpe = TryGetNumericalIndicator(resultRow, CustomScorecard.Sharpe);
+            var avgMonthReturn = TryGetNumericalIndicator(resultRow, CustomScorecard.AvgMr);
+            var maxDrawdown = TryGetNumericalIndicator(resultRow, CustomScorecard.MaxDrawdownPercent);
+            var longestDrawdown = TryGetNumericalIndicator(resultRow, CustomScorecard.LongestDrawdownInDays);
 
             return
                 sharpe < 1 ||

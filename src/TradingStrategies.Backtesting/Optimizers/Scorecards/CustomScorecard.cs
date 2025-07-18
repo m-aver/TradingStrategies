@@ -9,6 +9,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
     {
         public const string DisplayName = "Custom Scorecard";
 
+        //basic
         protected const string NetProfit = "Net Profit";
         protected const string TradesCount = "Trades";
         protected const string NsfTradesCount = "Trades NSF";
@@ -101,7 +102,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
                 return;
             }
 
-            //legacy
+            //basic
             var netProfit = results.NetProfit;
             var trades = results.Positions.Count;
             var tradesNsf = results.TradesNSF;

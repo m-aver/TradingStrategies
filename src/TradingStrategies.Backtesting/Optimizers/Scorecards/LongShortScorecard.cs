@@ -7,7 +7,7 @@ using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards;
 
-internal class LongShortScorecard : BasicExScorecard
+internal class LongShortScorecard : CustomScorecard
 {
     //settings
     private const bool ApplyBaseResults = true;
