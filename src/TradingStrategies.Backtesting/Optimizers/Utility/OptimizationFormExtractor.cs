@@ -23,6 +23,11 @@ internal static class OptimizationFormExtractor
         return (ListView)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[1].Controls[0];
     }
 
+    public static ListView ExtractOptimizationErrorsListView(Optimizer optimizer)
+    {
+        return (ListView)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[2].Controls[0];
+    }
+
     public static ProgressBar ExtractOptimizationProgressBar(Optimizer optimizer)
     {
         return (ProgressBar)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[0].Controls[0].Controls[7];

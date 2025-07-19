@@ -28,6 +28,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
         public Strategy Strategy { get; }
         public List<Bars> BarsSet { get; }
         public List<ListViewItem> ResultRows { get; }
+        public List<OptimizationErrorData> Errors { get; }
         public IStrategyParametersIterator ParametersIterator { get; }
         public List<StrategyParameter> ParameterValues { get; }
         public int Number { get; }
@@ -40,6 +41,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
             Strategy strategy,
             List<Bars> barsSet,
             List<ListViewItem> resultRows,
+            List<OptimizationErrorData> errors,
             IStrategyParametersIterator parametersIterator,
             int number)
         {
@@ -49,6 +51,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
             Strategy = strategy;
             BarsSet = barsSet;
             ResultRows = resultRows;
+            Errors = errors;
             ParametersIterator = parametersIterator;
             ParameterValues = parametersIterator.CurrentParameters.ToList();
             Number = number;
@@ -67,6 +70,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
     private int reportStep = 1;
     private int runsProcessed = 0;
     private ProgressReporter progressReporter;
+    private ErrorReporter errorReporter;
 
     public override string FriendlyName => "Parallel Optimizer (Exhaustive) Own";
     public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. May have inaccurate progress bar";
@@ -89,6 +93,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
 
         numThreads = ThreadsNumber;
         progressReporter = new ProgressReporter(this);
+        errorReporter = new ErrorReporter(this);
     }
 
     public override void RunCompleted(OptimizationResultList results)
@@ -179,6 +184,7 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
                 CopyStrategy(Strategy),
                 dataSetBars.Values.Select((x, j) => x.Prepare(j + 1 + offset)).ToList(),
                 new List<ListViewItem>(runs),
+                new List<OptimizationErrorData>(),
                 iterators[i],
                 i
             );
@@ -230,9 +236,14 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
 
                 PrepareResultsToUI(executors);
             }
-            catch
+            catch (Exception ex)
             {
                 executors.Result = null;
+
+                if (ex is not ResultsFilteredExсeption)
+                {
+                    executors.Errors.Add(new(parameterValues.Select(x => x.Value).ToArray(), ex));
+                }
             }
             finally
             {
@@ -300,6 +311,12 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
 
     private void PopulateUI()
     {
+        ReportResults();
+        ReportErrors();
+    }
+
+    private void ReportResults()
+    {
         var optimizationResultListView = OptimizationFormExtractor.ExtractOptimizationResultListView(this);
 
         var rows = executors.SelectMany(x => x.ResultRows).ToArray();
@@ -318,6 +335,17 @@ public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
         foreach (var executor in executors)
         {
             executor.ResultRows.Clear();
+        }
+    }
+
+    private void ReportErrors()
+    {
+        if (executors.Any(x => x.Errors.Count > 0))
+        {
+            errorReporter.Report(executors.SelectMany(x => x.Errors).ToArray());
+
+            var message = "There are errors occured during optimization, check the errors tab";
+            MessageBox.Show(message);
         }
     }
 

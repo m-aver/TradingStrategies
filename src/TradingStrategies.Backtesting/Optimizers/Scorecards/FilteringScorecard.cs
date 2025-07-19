@@ -9,6 +9,11 @@ using WealthLab;
 
 namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 {
+    internal class ResultsFilteredExсeption() : Exception(msg)
+    {
+        const string msg = $"Results was filtered by {nameof(FilteringScorecard)}";
+    }
+
     internal class FilteringScorecard : CustomScorecard
     {
         public new const string DisplayName = "Filtering Scorecard";
@@ -57,11 +62,15 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
 
         private void RemoveRow(ListViewItem resultRow)
         {
-            //если ListView не привязан, то выбрасывается NRE и вызывающий код должен обработать/проигнорировать строку
-            //актуально в ParallelExhaustive оптимизерах
-
             var listView = resultRow.ListView;
 
+            //если ListView не привязан выбрасываем эксепшен, актуально в ParallelExhaustive оптимизерах
+            if (listView is null)
+            {
+                throw new ResultsFilteredExсeption();
+            }
+
+            //удаляем строку из списка, актуально для встроенных оптимизеров
             if (listView.InvokeRequired)
             {
                 listView.Invoke(
