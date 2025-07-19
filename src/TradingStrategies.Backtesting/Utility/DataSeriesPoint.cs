@@ -23,7 +23,7 @@ namespace TradingStrategies.Backtesting.Utility
         public static DataSeriesPoint operator -(DataSeriesPoint point, double value) => point.WithValue(point.Value - value);
         public static DataSeriesPoint operator +(DataSeriesPoint point, double value) => point.WithValue(point.Value + value);
 
-        public static implicit operator double (DataSeriesPoint point) => point.Value;
+        public static implicit operator double(DataSeriesPoint point) => point.Value;
 
         //for tests, debug visualizing
         public override string ToString()
@@ -38,7 +38,7 @@ namespace TradingStrategies.Backtesting.Utility
 
         public static IEnumerable<DataSeriesPoint> ToPoints(this DataSeries series)
         {
-            using var enumerator = series.GetEnumerator();
+            var enumerator = new DataSeriesPointEnumerator(series);
 
             while (enumerator.MoveNext())
             {
@@ -103,8 +103,9 @@ namespace TradingStrategies.Backtesting.Utility
     //не реагирует на изменения исходной DataSeries
     public struct DataSeriesPointEnumerator : IEnumerator<DataSeriesPoint>
     {
-        private readonly DataSeries _series;
-        private readonly IEnumerator<int> _indexEnumerator;
+        private readonly DataSeries series;
+        private readonly int count;
+        private int index;
 
         public DataSeriesPointEnumerator(DataSeries series)
         {
@@ -113,34 +114,16 @@ namespace TradingStrategies.Backtesting.Utility
                 throw new ArgumentException($"source series has inconsistent number of date and value points, series: {series.Description}");
             }
 
-            _series = series;
-            _indexEnumerator = Enumerable.Range(0, series.Count).GetEnumerator();
+            this.series = series;
+            count = series.Count;
+            index = -1;
         }
 
-        public DataSeriesPoint Current
-        {
-            get
-            {
-                var index = _indexEnumerator.Current;
-                return new DataSeriesPoint(_series[index], _series.Date[index]);
-            }
-        }
-
+        public DataSeriesPoint Current => new(series[index], series.Date[index]);
         object IEnumerator.Current => Current;
 
-        public void Dispose()
-        {
-            _indexEnumerator.Dispose();
-        }
-
-        public bool MoveNext()
-        {
-            return _indexEnumerator.MoveNext();
-        }
-
-        public void Reset()
-        {
-            _indexEnumerator.Reset();
-        }
+        public bool MoveNext() => ++index < count;
+        public void Reset() => index = -1;
+        public void Dispose() { }
     }
 }
