@@ -13,7 +13,7 @@ namespace TradingStrategies.Backtesting.Optimizers;
 /// Implements multithreaded optimization
 /// </summary>
 /// <remarks>
-/// Based on own implementation of optimization, see <see cref="TradingSystemExecutorOwn"/>.
+/// Based on custom implementation of optimization, see <see cref="TradingSystemExecutorOwn"/>.
 /// </remarks>
 public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
 {
@@ -73,8 +73,8 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
     private ProgressReporter progressReporter;
     private ErrorReporter errorReporter;
 
-    public override string FriendlyName => "Parallel Optimizer (Exhaustive) Own";
-    public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. May have inaccurate progress bar";
+    public override string FriendlyName => "Parallel Optimizer (Exhaustive) V2";
+    public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. Based on custom implementation of optimization";
 
     //RunsRequired = NumberOfRuns * datasets-count
     public override double NumberOfRuns
