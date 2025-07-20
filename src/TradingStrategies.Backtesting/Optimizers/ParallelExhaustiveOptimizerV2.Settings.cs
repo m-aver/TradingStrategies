@@ -6,7 +6,7 @@ using TradingStrategies.Backtesting.Optimizers.Own;
 namespace TradingStrategies.Backtesting.Optimizers;
 
 //ui settings provider
-public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
+public partial class ParallelExhaustiveOptimizerV2 : ICustomSettings
 {
     private int ThreadsNumber { get; set; }
     private bool CalcLongResults { get; set; }
@@ -17,7 +17,7 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
 
     public UserControl GetSettingsUI()
     {
-        var settingsControl = new ParallelExhaustiveOptimizerOwnSettings();
+        var settingsControl = new ParallelExhaustiveOptimizerV2Settings();
         settingsControl.ThreadsNumber = ThreadsNumber;
         settingsControl.CalcLongResults = CalcLongResults;
         settingsControl.CalcShortResults = CalcShortResults;
@@ -29,12 +29,12 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
 
     public void ChangeSettings(UserControl ui)
     {
-        if (ui is not ParallelExhaustiveOptimizerOwnSettings)
+        if (ui is not ParallelExhaustiveOptimizerV2Settings)
         {
             throw new ArgumentException($"Control is not settings control, was: {ui.GetType().Name}");
         }
 
-        var settingsControl = (ParallelExhaustiveOptimizerOwnSettings)ui;
+        var settingsControl = (ParallelExhaustiveOptimizerV2Settings)ui;
 
         ThreadsNumber = settingsControl.ThreadsNumber;
         CalcLongResults = settingsControl.CalcLongResults;
@@ -46,26 +46,26 @@ public partial class ParallelExhaustiveOptimizerOwn : ICustomSettings
 
     public void ReadSettings(ISettingsHost host)
     {
-        ThreadsNumber = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.ThreadsNumber), defaultValue: Environment.ProcessorCount);
-        CalcLongResults = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcLongResults), defaultValue: false);
-        CalcShortResults = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcShortResults), defaultValue: false);
-        CalcMfeMae = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcMfeMae), defaultValue: false);
-        CalcOpenPositionsCount = host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcOpenPositionsCount), defaultValue: false);
-        EquityCalcMode = (EquityCalcMode)host.Get(nameof(ParallelExhaustiveOptimizerOwnSettings.EquityCalcMode), defaultValue: (int)EquityCalcMode.Full);
+        ThreadsNumber = host.Get(nameof(ParallelExhaustiveOptimizerV2Settings.ThreadsNumber), defaultValue: Environment.ProcessorCount);
+        CalcLongResults = host.Get(nameof(ParallelExhaustiveOptimizerV2Settings.CalcLongResults), defaultValue: false);
+        CalcShortResults = host.Get(nameof(ParallelExhaustiveOptimizerV2Settings.CalcShortResults), defaultValue: false);
+        CalcMfeMae = host.Get(nameof(ParallelExhaustiveOptimizerV2Settings.CalcMfeMae), defaultValue: false);
+        CalcOpenPositionsCount = host.Get(nameof(ParallelExhaustiveOptimizerV2Settings.CalcOpenPositionsCount), defaultValue: false);
+        EquityCalcMode = (EquityCalcMode)host.Get(nameof(ParallelExhaustiveOptimizerV2Settings.EquityCalcMode), defaultValue: (int)EquityCalcMode.Full);
     }
 
     public void WriteSettings(ISettingsHost host)
     {
-        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.ThreadsNumber), ThreadsNumber);
-        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcLongResults), CalcLongResults);
-        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcShortResults), CalcShortResults);
-        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcMfeMae), CalcMfeMae);
-        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.CalcOpenPositionsCount), CalcOpenPositionsCount);
-        host.Set(nameof(ParallelExhaustiveOptimizerOwnSettings.EquityCalcMode), (int)EquityCalcMode);
+        host.Set(nameof(ParallelExhaustiveOptimizerV2Settings.ThreadsNumber), ThreadsNumber);
+        host.Set(nameof(ParallelExhaustiveOptimizerV2Settings.CalcLongResults), CalcLongResults);
+        host.Set(nameof(ParallelExhaustiveOptimizerV2Settings.CalcShortResults), CalcShortResults);
+        host.Set(nameof(ParallelExhaustiveOptimizerV2Settings.CalcMfeMae), CalcMfeMae);
+        host.Set(nameof(ParallelExhaustiveOptimizerV2Settings.CalcOpenPositionsCount), CalcOpenPositionsCount);
+        host.Set(nameof(ParallelExhaustiveOptimizerV2Settings.EquityCalcMode), (int)EquityCalcMode);
     }
 }
 
-public class ParallelExhaustiveOptimizerOwnSettings : UserControl
+public class ParallelExhaustiveOptimizerV2Settings : UserControl
 {
     private IContainer components;
 
@@ -109,7 +109,7 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         set => cbEquityCalcMode.SelectedValue = EquityCalcMode.Full;
     }
 
-    public ParallelExhaustiveOptimizerOwnSettings()
+    public ParallelExhaustiveOptimizerV2Settings()
     {
         InitializeComponent();
     }
@@ -218,7 +218,7 @@ public class ParallelExhaustiveOptimizerOwnSettings : UserControl
         base.Controls.Add(this.cbEquityCalcMode);
         base.Controls.Add(this.numTreadsNum);
         base.Controls.Add(this.lblTreadsNum);
-        base.Name = nameof(ParallelExhaustiveOptimizerOwnSettings);
+        base.Name = nameof(ParallelExhaustiveOptimizerV2Settings);
         base.Size = new System.Drawing.Size(250, 250);
 
         ((System.ComponentModel.ISupportInitialize)this.numTreadsNum).EndInit();

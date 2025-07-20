@@ -15,7 +15,7 @@ namespace TradingStrategies.Backtesting.Optimizers;
 /// <remarks>
 /// Based on own implementation of optimization, see <see cref="TradingSystemExecutorOwn"/>.
 /// </remarks>
-public partial class ParallelExhaustiveOptimizerOwn : OptimizerBase
+public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
 {
     /// <summary>
     /// Represents scope of data for one separate optimization run
