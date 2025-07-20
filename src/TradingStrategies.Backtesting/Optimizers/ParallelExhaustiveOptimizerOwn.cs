@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using TradingStrategies.Backtesting.Optimizers.Own;
+using TradingStrategies.Backtesting.Optimizers.Scorecards;
 using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
