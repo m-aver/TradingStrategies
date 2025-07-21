@@ -22,4 +22,24 @@ internal static class OptimizationFormExtractor
     {
         return (ListView)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[1].Controls[0];
     }
+
+    public static ListView ExtractOptimizationErrorsListView(Optimizer optimizer)
+    {
+        return (ListView)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[2].Controls[0];
+    }
+
+    public static ProgressBar ExtractOptimizationProgressBar(Optimizer optimizer)
+    {
+        return (ProgressBar)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[0].Controls[0].Controls[7];
+    }
+
+    public static Label ExtractTimeElapsedLabel(Optimizer optimizer)
+    {
+        return (Label)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[0].Controls[0].Controls[4];
+    }
+
+    public static Label ExtractTimeRemainingLabel(Optimizer optimizer)
+    {
+        return (Label)((TabControl)((UserControl)optimizer.Host).Controls[0]).TabPages[0].Controls[0].Controls[2];
+    }
 }

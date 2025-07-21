@@ -5,6 +5,7 @@
 
 		<OutputPath>$(WealthLabDirectoryPath)</OutputPath>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<LangVersion>preview</LangVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -20,6 +21,7 @@
 			<OutputItemType>Analyzer</OutputItemType>
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		</ProjectReference>
+		<ProjectReference Include="..\TradingStrategies.Utilities\TradingStrategies.Utilities.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -40,6 +42,9 @@
 		</Reference>
 		<Reference Include="WealthLab.Visualizers.MS123">
 			<HintPath>$(WealthLabDirectoryPath)WealthLab.Visualizers.MS123.dll</HintPath>
+		</Reference>
+		<Reference Include="TeeChart">
+			<HintPath>$(WealthLabDirectoryPath)TeeChart.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 </Project>

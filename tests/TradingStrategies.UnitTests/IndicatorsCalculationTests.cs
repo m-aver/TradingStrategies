@@ -71,12 +71,15 @@ public class IndicatorsCalculationTests
         var sharpeOfMultipliedSeries = IndicatorsCalculator.SharpeRatio(multipliedMonthReturnSeries, 0);
 
         //assert
-        Assert.Equal(equitySeries.ToPoints().Last(), multipliedEquitySeries.ToPoints().Last(), precision: 5);
+        Assert.Equal(equitySeries.Last(), multipliedEquitySeries.Last(), precision: 5);
         Assert.Equal(sharpe, sharpeOfMultipliedSeries);
     }
 
     //ошибка от экспоненты выглядит более предпочтительным индикатором, т.к. учитывает равномерность распределения доходностей
     //хотя судя по опыту на реальных данных, все же на нее тоже нельзя однозначно ориентироваться при анализе близких значений, но подсветить хорошие стратегии она помогает
+    //upd:
+    //с переработкой расчета на прохождение линии регрессии через стартовую точку, качество метрики выросло
+    //скорректированная квадратичная ошибка стала хорошо себя показывать
     [Theory]
     [MemberData(nameof(GetUniformMonthReturnValues))]
     public void SquaredError_OrderOfReturns_AffectsError(double[] uniformMonthReturnValues)
@@ -97,7 +100,53 @@ public class IndicatorsCalculationTests
         Assert.True(errorOfUniformReturns < errorOfOrderedReturns);
         Assert.True(errorOfUniformReturns < errorOfOrderedDescReturns);
 
-        static double CalculateError(DataSeries errorSeries) => Math.Sqrt(errorSeries.GetValues().Sum(MathHelper.Sqr) / errorSeries.Count);
+        static double CalculateError(IEnumerable<DataSeriesPoint> errorSeries) => Math.Sqrt(errorSeries.Select(x => x.Value).Sum(MathHelper.Sqr) / errorSeries.Count());
+    }
+
+    //переработка sharpe соответствует исходной версии
+    [Theory]
+    [MemberData(nameof(GetRandomMonthReturnValues), 10)]
+    public void SharpeRatio_MatchNative(double[] monthReturnValues)
+    {
+        //arrange
+        var monthReturnSeries = ToMonthlySeries(monthReturnValues);
+
+        //act
+        var sharpeNative = IndicatorsCalculator.SharpeRatio(monthReturnSeries, 0);
+        var sharpe = IndicatorsCalculator.SharpeRatio(monthReturnSeries.ToPoints());
+
+        //assert
+        Assert.Equal(sharpeNative, sharpe, 5);
+    }
+
+    //ошибка вычисленная буфферизированным итератором соответствует "простой" исходной версии
+    [Theory]
+    [MemberData(nameof(GetRandomMonthReturnValues), 10)]
+    public void LogError_Iterator_MatchSource(double[] monthReturnValues)
+    {
+        //arrange
+        var monthReturnSeries = ToMonthlySeries(monthReturnValues);
+
+        const int startingCapital = 100_000;
+        var equitySeries = ToEquity(startingCapital, monthReturnSeries);
+
+        //act
+        var sourceIterator = IndicatorsCalculator.LogError(equitySeries);
+        var bufferedIterator = IndicatorsCalculator.LogError(equitySeries.ToSeries("test-equity-series"));
+
+        var sumSqSource = sourceIterator.Sum(x => x * x);
+        var sumSq = bufferedIterator.Sum(x => x * x);
+
+        var avgSource = sourceIterator.Average(x => x);
+        var avg = bufferedIterator.Average(x => x);
+
+        var cntSource = sourceIterator.Count();
+        var cnt = bufferedIterator.Count();
+
+        //assert
+        Assert.Equal(sumSqSource, sumSq, 5);
+        Assert.Equal(avgSource, avg, 5);
+        Assert.Equal(cntSource, cnt);
     }
 
     //test data
@@ -127,6 +176,21 @@ public class IndicatorsCalculationTests
         static object[] Wrap(object x) => [x];
     }
 
+    public static IEnumerable<object[]> GetRandomMonthReturnValues(int testsCount)
+    {
+        const int maxReturnsCount = 30;
+        const int maxReturnsValue = 100;
+        const int minReturnsValue = -100;
+
+        return Enumerable.Range(0, testsCount)
+            .Select(_ => Wrap(Enumerable.Range(0, Random.Shared.Next(1, maxReturnsCount))
+            .Select(_ => Random.Shared.Next(minReturnsValue, maxReturnsValue))
+            .Select(x => (double)x)
+            .ToArray()));
+
+        static object[] Wrap(object x) => [x];
+    }
+
     private static DataSeries ToMonthlySeries(IEnumerable<double> monthReturnValues)
     {
         var startDate = new DateTime(2000, 12, 1);
@@ -138,7 +202,7 @@ public class IndicatorsCalculationTests
                 "test-month-return-series");
     }
 
-    private static DataSeries ToEquity(double startingCapital, DataSeries monthReturnSeries)
+    private static IEnumerable<DataSeriesPoint> ToEquity(double startingCapital, DataSeries monthReturnSeries)
     {
         var currentEquity = startingCapital;
         return monthReturnSeries
@@ -154,7 +218,6 @@ public class IndicatorsCalculationTests
             .Append(new DataSeriesPoint(
                 value: currentEquity,
                 date: monthReturnSeries.Date[^1].AddMonths(1)))
-            .ToSeries(
-                "test-equity-from-month-returns");
+            .ToArray();
     }
 }

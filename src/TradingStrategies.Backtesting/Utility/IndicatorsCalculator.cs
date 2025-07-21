@@ -1,4 +1,6 @@
-﻿using WealthLab;
+﻿using System.Buffers;
+using System.Collections;
+using WealthLab;
 using WealthLab.Indicators;
 
 namespace TradingStrategies.Backtesting.Utility;
@@ -32,6 +34,84 @@ public static class IndicatorsCalculator
         return regression;
     }
 
+    public static IEnumerable<DataSeriesPoint> LinearRegressionThroughStartPoint(IEnumerable<DataSeriesPoint> points)
+    {
+        var first = points.First();
+
+        var dataset = points.Select(point => ((double)(point.Date.Ticks - first.Date.Ticks), point.Value - first.Value));
+
+        var slope = MathHelper.LinearRegressionThroughOrigin(dataset);
+
+        var regression = points.Select(point =>
+        {
+            var regValue = (point.Date.Ticks - first.Date.Ticks) * slope;
+            return point.WithValue(regValue + first.Value);
+        });
+
+        return regression;
+    }
+
+    public static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries)
+    {
+        return LogError(equitySeries, buffer: null);
+    }
+
+    public static IEnumerable<DataSeriesPoint> LogError(DataSeries equitySeries)
+    {
+        using var iterator = new BufferedLogErrorIterator(equitySeries);
+
+        while (iterator.MoveNext())
+        {
+            yield return iterator.Current;
+        }
+    }
+
+    //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
+    private static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries, DataSeriesPoint[]? buffer)
+    {
+        var logEquity = equitySeries.Select(x => x.WithValue(MathHelper.NaturalLog(x))); //Log довольно затратная операция
+        logEquity = buffer is null ? logEquity : logEquity.ToBuffer(buffer);
+        var linearReg = IndicatorsCalculator.LinearRegressionThroughStartPoint(logEquity);
+        var error = logEquity.Zip(linearReg, (eq, lr) => (eq - lr));
+
+        return error;
+    }
+
+    //to manage buffer lifetime
+    private struct BufferedLogErrorIterator : IEnumerator<DataSeriesPoint>
+    {
+        private readonly DataSeriesPoint[] _buffer;
+        private readonly IEnumerator<DataSeriesPoint> _errorEnumerator;
+
+        public BufferedLogErrorIterator(DataSeries equitySeries)
+        {
+            _buffer = ArrayPool<DataSeriesPoint>.Shared.Rent(equitySeries.Count);
+            var error = IndicatorsCalculator.LogError(equitySeries.ToPoints(), _buffer);
+            _errorEnumerator = error.GetEnumerator();
+        }
+
+        public DataSeriesPoint Current => _errorEnumerator.Current;
+        object IEnumerator.Current => Current;
+        public bool MoveNext() => _errorEnumerator.MoveNext();
+        public void Reset() => _errorEnumerator.Reset();
+        public void Dispose()
+        {
+            ArrayPool<DataSeriesPoint>.Shared.Return(_buffer);
+            _errorEnumerator.Dispose();
+        }
+    }
+
+    public static IEnumerable<DataSeriesPoint> CalculateExponentialRegression(DataSeries equitySeries)
+    {
+        var logErr = IndicatorsCalculator.LogError(equitySeries);
+
+        var expReg = equitySeries.ToPoints().Zip(logErr, (eq, err) =>
+            eq.WithValue(Math.Exp(MathHelper.NaturalLog(eq) - err)));
+
+        return expReg;
+    }
+
+    //from wealthlab
     public static double SharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
     {
         var months = monthReturnSeries.Count;
@@ -46,17 +126,43 @@ public static class IndicatorsCalculator
         //итого: sma отвечает за доходность и знак sharpe, stdDev за скоринг - чем больше скачет доходность, тем меньше sharpe
     }
 
-    //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
-    public static DataSeries LogError(DataSeries equitySeries)
+    //for points
+    public static double SharpeRatio(IEnumerable<DataSeriesPoint> monthReturnSeries)
     {
-        var logEquity = equitySeries
-            .ToPoints()
-            .Select(static x => x.WithValue(MathHelper.NaturalLog(x)))
-            .ToArray();
-        var linearReg = IndicatorsCalculator.LinearRegression(logEquity);
-        var error = logEquity.Zip(linearReg, static (eq, lr) => (eq - lr));
+        var values = monthReturnSeries.Select(x => x.Value);
+        var avg = values.Average();
+        var stdDev = StdDevs(values);
+        var sharpe = Math.Sqrt(12.0) * avg / stdDev;
 
-        return error.ToSeries("log-error");
+        return sharpe;
+    }
+
+    public static double StdDevs(IEnumerable<double> values)
+    {
+        double sum = 0.0;
+        double sumSq = 0.0;
+        var cnt = 0;
+
+        foreach (var val in values)
+        {
+            sum += val;
+            sumSq += val * val;
+            cnt++;
+        }
+
+        if (cnt == 0)
+        {
+            return 0.0;
+        }
+
+        double err = Math.Sqrt((sumSq - sum * sum / cnt) / cnt);
+
+        if (double.IsNaN(err))
+        {
+            return 0.0;
+        }
+
+        return err;
     }
 
     public static IEnumerable<DataSeriesPoint> DrawdownPercentage(IEnumerable<DataSeriesPoint> equitySeries)
@@ -117,7 +223,7 @@ public static class IndicatorsCalculator
 
             var first = enumerator.Current;
 
-            while (enumerator.MoveNext());
+            while (enumerator.MoveNext()) ;
 
             var last = enumerator.Current;
 
@@ -183,6 +289,52 @@ public static class IndicatorsCalculator
 
                 point = seriesIterator.Current;
             }
+        }
+    }
+
+    public static IEnumerable<DataSeriesPoint> CalculateClosedEquity(SystemResults results)
+    {
+        using var equityEnumerator = results.EquityCurve.ToPoints().GetEnumerator();
+        using var positionsEnumerator = results.Positions.Where(x => !x.Active).GetEnumerator();
+
+        //начальная точка
+        if (!equityEnumerator.MoveNext())
+        {
+            yield break;
+        }
+
+        yield return equityEnumerator.Current;
+
+        var equity = equityEnumerator.Current;
+
+        while (positionsEnumerator.MoveNext())
+        {
+            var position = positionsEnumerator.Current;
+
+            //пересечение позиций
+            if (equity.Date >= position.ExitDate)
+            {
+                continue;
+            }
+
+            while (equityEnumerator.MoveNext())
+            {
+                equity = equityEnumerator.Current;
+
+                if (equity.Date >= position.ExitDate)
+                {
+                    yield return equity;
+                    break;
+                }
+            }
+        }
+
+        //конечная точка
+        if (equityEnumerator.MoveNext())
+        {
+            while (equityEnumerator.MoveNext()) ;
+
+            yield return new DataSeriesPoint(equity.Value, equityEnumerator.Current.Date);
         }
     }
 }

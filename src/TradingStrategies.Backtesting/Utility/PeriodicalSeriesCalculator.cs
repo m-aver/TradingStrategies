@@ -7,7 +7,7 @@ namespace TradingStrategies.Backtesting.Utility
 {
     public interface IPeriodicalSeriesCalculator
     {
-        DataSeries CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo);
+        IEnumerable<DataSeriesPoint> CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo);
     }
 
     public enum PeriodCalcType
@@ -43,10 +43,8 @@ namespace TradingStrategies.Backtesting.Utility
             _periodSeparator = periodSeparator;
         }
 
-        public DataSeries CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo)
+        public IEnumerable<DataSeriesPoint> CalculatePercentDiff(DataSeries series, PeriodInfo periodInfo)
         {
-            var byPercentSeries = new DataSeries("percent-diff-by-period");
-
             var byPeriodPoints = ByPeriod(series, periodInfo);
 
             var previousPoint = series.ToPoints().FirstOrDefault();
@@ -55,12 +53,10 @@ namespace TradingStrategies.Backtesting.Utility
             {
                 var income = (point.Value - previousPoint.Value) * 100 / previousPoint.Value;
 
-                byPercentSeries.AddPoint(previousPoint.WithValue(income));
+                yield return previousPoint.WithValue(income);
 
                 previousPoint = point;
             }
-
-            return byPercentSeries;
         }
 
         public DataSeries SeparateByPeriod(DataSeries series, PeriodInfo periodInfo)
@@ -98,6 +94,7 @@ namespace TradingStrategies.Backtesting.Utility
         }
 
         //возвращает последние неграничные точки каждого периода
+        //если период сквозной (не имеет точек исходной серии), возвращает значение последней точки с датой окончания периода
         private static IEnumerable<DataSeriesPoint> ByPeriod(IEnumerable<DataSeriesPoint> points, IEnumerable<DateTimeRange> periods)
         {
             using var periodsEnumerator = periods.GetEnumerator();
@@ -117,21 +114,28 @@ namespace TradingStrategies.Backtesting.Utility
                 {
                     yield return previousPoint; //последняя точка предыдущего периода
 
-                    MovePeriod(point.Date);
+                    while (MovePeriod(point.Date))
+                    {
+                        yield return new DataSeriesPoint(previousPoint.Value, periodsEnumerator.Current.EndDateTime); //последняя точка сквозного периода
+                    }
                 }
 
                 previousPoint = point;
             }
 
-            void MovePeriod(DateTime date)
+            bool MovePeriod(DateTime date)
             {
                 while (periodsEnumerator.MoveNext())
                 {
                     if (periodsEnumerator.Current.IsWithin(date))
                     {
-                        return;
+                        return false;
                     }
+
+                    return true;
                 }
+
+                return false;
             }
         }
     }

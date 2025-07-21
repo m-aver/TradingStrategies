@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
+using TradingStrategies.Backtesting.Optimizers.Own;
+using TradingStrategies.Backtesting.Optimizers.Scorecards;
 using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
@@ -11,34 +13,38 @@ namespace TradingStrategies.Backtesting.Optimizers;
 /// Implements multithreaded optimization
 /// </summary>
 /// <remarks>
-/// Enhanced perfomance of <see cref="ParallelExhaustiveOptimizer"/> but may have broken progress bar.
-/// Specifically with optimization run filtration via <see cref="Strategies.FiltrationStrategyDecorator"/>
+/// Based on custom implementation of optimization, see <see cref="TradingSystemExecutorOwn"/>.
 /// </remarks>
-public class ParallelExhaustiveOptimizerEx : OptimizerBase
+public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
 {
     /// <summary>
     /// Represents scope of data for one separate optimization run
     /// </summary>
     private class ExecutionScope
     {
-        public TradingSystemExecutor Executor { get; }
+        public TradingSystemExecutorOwn Executor { get; }
         public WealthScript Script { get; }
         public StrategyScorecard Scorecard { get; }
         public SystemPerformance Result { get; set; }
         public Strategy Strategy { get; }
         public List<Bars> BarsSet { get; }
         public List<ListViewItem> ResultRows { get; }
+        public List<OptimizationErrorData> Errors { get; }
         public IStrategyParametersIterator ParametersIterator { get; }
         public List<StrategyParameter> ParameterValues { get; }
+        public int Number { get; }
+        public bool IsMain => Number is MainThread;
 
         public ExecutionScope(
-            TradingSystemExecutor executor,
+            TradingSystemExecutorOwn executor,
             WealthScript script,
             StrategyScorecard scorecard,
             Strategy strategy,
             List<Bars> barsSet,
             List<ListViewItem> resultRows,
-            IStrategyParametersIterator parametersIterator)
+            List<OptimizationErrorData> errors,
+            IStrategyParametersIterator parametersIterator,
+            int number)
         {
             Executor = executor;
             Script = script;
@@ -46,21 +52,29 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
             Strategy = strategy;
             BarsSet = barsSet;
             ResultRows = resultRows;
+            Errors = errors;
             ParametersIterator = parametersIterator;
             ParameterValues = parametersIterator.CurrentParameters.ToList();
+            Number = number;
         }
     }
 
     private int numThreads;
     private ExecutionScope[] executors;
     private Task[] executions;
-    private List<StrategyParameter> paramValues;
-    private IStrategyParametersIterator parametersIterator;
     private Dictionary<string, Bars> dataSetBars;
     private TradingSystemExecutor parentExecutor;
 
-    public override string FriendlyName => "Parallel Optimizer (Exhaustive) Enhanced";
-    public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. May have inaccurate progress bar";
+    //progress repost
+    private const int MainThread = 0;
+    private const int ReportRate = 1; //progress %
+    private int reportStep = 1;
+    private int runsProcessed = 0;
+    private ProgressReporter progressReporter;
+    private ErrorReporter errorReporter;
+
+    public override string FriendlyName => "Parallel Optimizer (Exhaustive) V2";
+    public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. Based on custom implementation of optimization";
 
     //RunsRequired = NumberOfRuns * datasets-count
     public override double NumberOfRuns
@@ -78,7 +92,9 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
     {
         base.Initialize();
 
-        numThreads = Environment.ProcessorCount;
+        numThreads = ThreadsNumber;
+        progressReporter = new ProgressReporter(this);
+        errorReporter = new ErrorReporter(this);
     }
 
     public override void RunCompleted(OptimizationResultList results)
@@ -87,7 +103,7 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
 
         if (!isCompleted)
         {
-            var message = "Not all threads have completed their runs. The result set will not be complete";
+            var message = "Not all threads have completed their runs. The result set will not be completed";
             MessageBox.Show(message);
         }
 
@@ -140,6 +156,7 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
 
         try
         {
+            testExecutor.Initialize();
             testExecutor.Execute(testStrategy, testScript, null, testBars);
         }
         catch (Exception e)
@@ -155,10 +172,10 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
         var iterators = CreateSplittedIterators();
 
         //initialize parallel executors
-        executors = new ExecutionScope[numThreads - 1];
+        executors = new ExecutionScope[numThreads];
 
         var runs = (int)NumberOfRuns;
-        Parallel.For(0, numThreads - 1, i =>
+        Parallel.For(0, numThreads, i =>
         {
             var offset = i * dataSetBars.Values.Count;
             executors[i] = new ExecutionScope(
@@ -168,17 +185,20 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
                 CopyStrategy(Strategy),
                 dataSetBars.Values.Select((x, j) => x.Prepare(j + 1 + offset)).ToList(),
                 new List<ListViewItem>(runs),
-                iterators[i]
+                new List<OptimizationErrorData>(),
+                iterators[i],
+                i
             );
             SynchronizeWealthScriptParameters(executors[i].Script, WealthScript);
         });
 
-        //initialize parameters
-        parametersIterator = iterators.Last();
-        paramValues = parametersIterator.CurrentParameters.ToList();
+        //initialize progress reporting
+        runsProcessed = 0;
+        reportStep = (int)(runs * (ReportRate / 100.0));
+        progressReporter.Start();
 
         //run parallel optimization threads
-        executions = executors.Select(RunScope).ToArray();
+        executions = executors.Where(x => !x.IsMain).Select(RunScope).ToArray();
     }
 
     private Task RunScope(ExecutionScope execution)
@@ -191,10 +211,14 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
             scheduler: TaskScheduler.Default);
     }
 
-    private static void RunScopeInternal(ExecutionScope executors, CancellationToken cancellationToken)
+    private void RunScopeInternal(ExecutionScope executors, CancellationToken cancellationToken)
     {
+        int currentRun = 0;
+
         while (executors.ParametersIterator.MoveNext())
         {
+            currentRun++;
+
             if (cancellationToken.IsCancellationRequested)
             {
                 break;
@@ -213,32 +237,46 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
 
                 PrepareResultsToUI(executors);
             }
-            catch
+            catch (Exception ex)
             {
                 executors.Result = null;
+
+                if (ex is not ResultsFilteredExсeption)
+                {
+                    executors.Errors.Add(new(parameterValues.Select(x => x.Value).ToArray(), ex));
+                }
             }
             finally
             {
                 executors.Executor.Clear();
+
+                ReportProgress();
+            }
+        }
+
+        void ReportProgress()
+        {
+            if (currentRun == reportStep)
+            {
+                Interlocked.Add(ref runsProcessed, currentRun);
+
+                if (executors.IsMain)
+                {
+                    progressReporter.ReportProgress(runsProcessed / numThreads);
+                }
+
+                currentRun = 0;
             }
         }
     }
 
     public override bool NextRun(SystemPerformance sp, OptimizationResult or)
     {
-        if (parametersIterator.MoveNext())
-        {
-            for (int j = 0; j < paramValues.Count; j++)
-            {
-                WealthScript.Parameters[j].Value = paramValues[j].Value;
-            }
+        //запускаем один из экзекуторов на родительском потоке
 
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        RunScopeInternal(executors.Single(x => x.IsMain), CancellationTokenSource.Token);
+
+        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -249,7 +287,7 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
         ts.Initialize();
         ts.Execute(executors.Strategy, executors.Script, null, executors.BarsSet);
 
-        executors.Result = ts.Performance;
+        executors.Result = ts.PerformanceNative;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -274,6 +312,12 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
 
     private void PopulateUI()
     {
+        ReportResults();
+        ReportErrors();
+    }
+
+    private void ReportResults()
+    {
         var optimizationResultListView = OptimizationFormExtractor.ExtractOptimizationResultListView(this);
 
         var rows = executors.SelectMany(x => x.ResultRows).ToArray();
@@ -292,6 +336,17 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
         foreach (var executor in executors)
         {
             executor.ResultRows.Clear();
+        }
+    }
+
+    private void ReportErrors()
+    {
+        if (executors.Any(x => x.Errors.Count > 0))
+        {
+            errorReporter.Report(executors.SelectMany(x => x.Errors).ToArray());
+
+            var message = "There are errors occured during optimization, check the errors tab";
+            MessageBox.Show(message);
         }
     }
 
@@ -320,10 +375,24 @@ public class ParallelExhaustiveOptimizerEx : OptimizerBase
         return scorecard;
     }
 
+    private TradingSystemExecutorOwn CopyExecutor(TradingSystemExecutor source)
+    {
+        var native = ParallelExhaustiveOptimizer.CopyExecutor(source);
+
+        var own = new TradingSystemExecutorOwn(
+            nativeExecutor: native,
+            calcResultsLong: CalcLongResults,
+            calcResultsShort: CalcShortResults,
+            calcMfeMae: CalcMfeMae,
+            calcOpenPositionsCount: CalcOpenPositionsCount,
+            equityCalcMode: EquityCalcMode
+        );
+        return own;
+    }
+
     private static void SynchronizeWealthScriptParameters(WealthScript wsTarget, WealthScript wsSource) =>
         ParallelExhaustiveOptimizer.SynchronizeWealthScriptParameters(wsTarget, wsSource);
     private static StrategyParameter CopyParameter(StrategyParameter old) => ParallelExhaustiveOptimizer.CopyParameter(old);
-    private static TradingSystemExecutor CopyExecutor(TradingSystemExecutor source) => ParallelExhaustiveOptimizer.CopyExecutor(source);
     private static PositionSize CopyPositionSize(PositionSize source) => ParallelExhaustiveOptimizer.CopyPositionSize(source);
     private static Strategy CopyStrategy(Strategy source) => ParallelExhaustiveOptimizer.CopyStrategy(source);
     private static void FullCollect() => ParallelExhaustiveOptimizer.FullCollect();
