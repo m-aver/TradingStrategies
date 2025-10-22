@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Drawing;
 using System.Reflection;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
@@ -145,6 +146,11 @@ namespace TradingStrategies.Backtesting.Core
             {
                 throw new Exception(" [symbol processing compete handlers exception] " + ex.Message, ex);
             }
+
+            if (!IsOptimizationRun)
+            {
+                DisplayZeroPositions();
+            }
         }
 
         private void OnDataSetProcessingStart()
@@ -181,6 +187,28 @@ namespace TradingStrategies.Backtesting.Core
                     throw new Exception(" [dataset processing complete handlers exception] " + ex.Message, ex);
                 }
             }
+        }
+
+        //only for script-override mode
+        private void DisplayZeroPositions()
+        {
+            var zeroLongPositionsCountSeries = new DataSeries(base.Bars, "zero-longs");
+            var zeroShortPositionsCountSeries = new DataSeries(base.Bars, "zero-shorts");
+
+            foreach (var zeroPosition in base.Positions.Where(p => p.OverrideShareSize is 0))
+            {
+                for (int bar = zeroPosition.EntryBar; bar <= zeroPosition.ExitBar; bar++)
+                {
+                    if (zeroPosition.PositionType is PositionType.Long)
+                        zeroLongPositionsCountSeries[bar]++;
+                    if (zeroPosition.PositionType is PositionType.Short)
+                        zeroShortPositionsCountSeries[bar]++;
+                }
+            }
+
+            ChartPane panel = base.CreatePane(15, false, true);
+            base.PlotSeries(panel, zeroLongPositionsCountSeries, Color.Red, LineStyle.Solid, 1);
+            base.PlotSeries(panel, zeroShortPositionsCountSeries, Color.Blue, LineStyle.Solid, 1);
         }
 
         private void PrintInvalidBarsWarning()
