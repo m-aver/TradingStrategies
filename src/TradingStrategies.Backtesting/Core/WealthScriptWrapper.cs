@@ -197,7 +197,9 @@ namespace TradingStrategies.Backtesting.Core
 
             foreach (var zeroPosition in base.Positions.Where(p => p.OverrideShareSize is 0))
             {
-                for (int bar = zeroPosition.EntryBar; bar <= zeroPosition.ExitBar; bar++)
+                var exitBar = zeroPosition.Active ? base.Bars.Count - 1 : zeroPosition.ExitBar;
+
+                for (int bar = zeroPosition.EntryBar; bar <= exitBar; bar++)
                 {
                     if (zeroPosition.PositionType is PositionType.Long)
                         zeroLongPositionsCountSeries[bar]++;
