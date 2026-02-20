@@ -82,11 +82,12 @@ namespace TradingStrategies.Backtesting.Visualizers
         {
             equityArea.Opacity = 50;
             openPositionsArea.Opacity = 25;
+            cashArea.Visible = false;
 
             mniShowCash = new ToolStripMenuItem();
             mniShowCash.Click += mniShowCash_Click;
-            mniShowCash.Checked = true;
-            mniShowCash.CheckState = CheckState.Checked;
+            mniShowCash.Checked = false;
+            mniShowCash.CheckState = CheckState.Unchecked;
             mniShowCash.Name = "mniShowCash";
             mniShowCash.Size = new Size(268, 22);
             mniShowCash.Text = "Show Cash";
@@ -101,8 +102,8 @@ namespace TradingStrategies.Backtesting.Visualizers
 
             mniShowExpReg = new ToolStripMenuItem();
             mniShowExpReg.Click += mniShowExpReg_Click;
-            mniShowExpReg.Checked = true;
-            mniShowExpReg.CheckState = CheckState.Checked;
+            mniShowExpReg.Checked = false;
+            mniShowExpReg.CheckState = CheckState.Unchecked;
             mniShowExpReg.Name = "mniShowExpReg";
             mniShowExpReg.Size = new Size(268, 22);
             mniShowExpReg.Text = "Show Equity exponential regression";
@@ -133,6 +134,7 @@ namespace TradingStrategies.Backtesting.Visualizers
             expRegCurve.XValues.DataMember = "X";
             expRegCurve.XValues.Order = (ValueListOrder)1;
             expRegCurve.YValues.DataMember = "Y";
+            expRegCurve.Visible = false;
 
             chart.Series.Add(expRegCurve);
         }
