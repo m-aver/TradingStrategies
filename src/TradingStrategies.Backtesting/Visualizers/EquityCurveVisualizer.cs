@@ -10,6 +10,7 @@ using WealthLab.Visualizers;
 
 //позволяет убрать cash с графика
 //позволяет отобразить кривую экспоненциальной регрессии
+//позволяет добавить метки времени на ось дат
 
 namespace TradingStrategies.Backtesting.Visualizers
 {
@@ -27,6 +28,9 @@ namespace TradingStrategies.Backtesting.Visualizers
         private ToolStripMenuItem mniShowCash;
         private ToolStripMenuItem mniShowGrid;
         private ToolStripMenuItem mniShowExpReg;
+        private ToolStripMenuItem mniShowTimeLabels;
+
+        private SystemPerformance performance;
 
         public EquityCurveVisualizer() : base()
         {
@@ -40,6 +44,8 @@ namespace TradingStrategies.Backtesting.Visualizers
 
         void IPerformanceVisualizer.CreateVisualization(SystemPerformance performance, IVisualizerHost visHost)
         {
+            this.performance = performance;
+
             CreateVisualization(performance, visHost);
 
             CreateExponentialRegressionVisualization(performance);
@@ -71,6 +77,21 @@ namespace TradingStrategies.Backtesting.Visualizers
         private static IEnumerable<DataSeriesPoint> CalculateExponentialRegression(DataSeries equitySeries)
         {
             return IndicatorsCalculator.CalculateExponentialRegression(equitySeries);
+        }
+
+        private void SetEquityDateLabelsFormat(string format)
+        {
+            if (performance is null)
+            {
+                return;
+            }
+
+            foreach (var (equity, i) in performance.Results.EquityCurve.ToPoints().Select((x, i) => (x, i)))
+            {
+                equityArea.Labels[i] = equity.Date.ToString(format);
+            }
+
+            chart.Refresh();
         }
 
         private TChart FetchChart() => (TChart)Controls[1];
@@ -108,10 +129,19 @@ namespace TradingStrategies.Backtesting.Visualizers
             mniShowExpReg.Size = new Size(268, 22);
             mniShowExpReg.Text = "Show Equity exponential regression";
 
+            mniShowTimeLabels = new ToolStripMenuItem();
+            mniShowTimeLabels.Click += mniShowTimeLabels_Click;
+            mniShowTimeLabels.Checked = false;
+            mniShowTimeLabels.CheckState = CheckState.Unchecked;
+            mniShowTimeLabels.Name = "mniShowTimeLabels";
+            mniShowTimeLabels.Size = new Size(268, 22);
+            mniShowTimeLabels.Text = "Show Equity time labels";
+
             var popup = chart.ContextMenuStrip;
             popup.Items.Insert(0, mniShowCash);
             popup.Items.Insert(1, mniShowGrid);
             popup.Items.Insert(2, mniShowExpReg);
+            popup.Items.Insert(3, mniShowTimeLabels);
 
             expRegCurve = new Line();
             expRegCurve.Brush.Color = Color.FromArgb(0, 0, 255);
@@ -156,6 +186,14 @@ namespace TradingStrategies.Backtesting.Visualizers
         {
             mniShowExpReg.Checked = !mniShowExpReg.Checked;
             expRegCurve.Visible = mniShowExpReg.Checked;
+        }
+
+        private void mniShowTimeLabels_Click(object sender, EventArgs e)
+        {
+            mniShowTimeLabels.Checked = !mniShowTimeLabels.Checked;
+
+            var format = mniShowTimeLabels.Checked ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy";
+            SetEquityDateLabelsFormat(format);
         }
     }
 }
