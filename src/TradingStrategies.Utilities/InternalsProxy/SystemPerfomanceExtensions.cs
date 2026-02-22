@@ -14,5 +14,6 @@ public static class SystemperformanceExtensions
         public int BarIntervalProxy { get => performance.BarInterval; set => performance.BarInterval = value; }
         public PositionSize PositionSizeProxy { get => performance.PositionSize; set => performance.PositionSize = value; }
         public List<Position> RawTradesProxy { get => performance.RawTrades; set => performance.RawTrades = value; }
+        public SystemResults ResultsProxy { get => performance.Results; set => performance.Results = value; }
     }
 }

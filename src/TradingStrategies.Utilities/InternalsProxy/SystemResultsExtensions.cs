@@ -24,9 +24,11 @@ public static class SystemResultsExtensions
 
     private static readonly BindingFlags PrivateFlags = BindingFlags.NonPublic | BindingFlags.Instance;
     private static readonly FieldInfo TotalCommissionField = typeof(SystemResults).GetField("double_2", PrivateFlags);
+    private static readonly FieldInfo PositionsField = typeof(SystemResults).GetField("list_0", PrivateFlags);
 
     extension(SystemResults results)
     {
         public double TotalCommissionProxy { get => results.TotalCommission; set => TotalCommissionField.SetValue(results, value); }
+        public List<Position> RawPositions { get => (List<Position>)PositionsField.GetValue(results); set => PositionsField.SetValue(results, value); }
     }
 }
