@@ -189,16 +189,8 @@ namespace TradingStrategies.Backtesting.Visualizers
                 return;
             }
 
-            var eveningClearingTime = new TimeSpan(19, 0, 0);
-
-            //базовая реализация не опирается на сортировку серии эквити, поэтому можно не перезаписывать время смещенных точек
-            var shiftedEquity = performance.Results.EquityCurve.ToPoints()
-                .Select(p => p.Date.TimeOfDay >= eveningClearingTime ? new(p.Value, p.Date.AddDays(1)) : p)
-                .ToSeries("equity-shifted-to-evening-clearing");
-
-            var shiftedCash = performance.Results.CashCurve.ToPoints()
-                .Select(p => p.Date.TimeOfDay >= eveningClearingTime ? new(p.Value, p.Date.AddDays(1)) : p)
-                .ToSeries("cash-shifted-to-evening-clearing");
+            var shiftedEquity = ShiftToEveningClearing(performance.Results.EquityCurve);
+            var shiftedCash = ShiftToEveningClearing(performance.Results.CashCurve);
 
             //тут бы еще даты позиций сместить, чтобы корректно отображалось количество входов/выходов за период, но там не так просто
             var shiftedPerformance = new SystemPerformance(performance.Strategy);
@@ -208,6 +200,36 @@ namespace TradingStrategies.Backtesting.Visualizers
             shiftedPerformance.Results.RawPositions = performance.Results.Positions.ToList();
 
             CreateVisualization(shiftedPerformance, visualizer);
+        }
+
+        private static DataSeries ShiftToEveningClearing(DataSeries series)
+        {
+            if (series.Count == 0)
+            {
+                return series;
+            }
+
+            var eveningClearingTime = new TimeSpan(19, 0, 0);
+
+            var reversedSeries = series.ToPoints().Reverse();
+
+            var shiftedSeries = new Stack<DataSeriesPoint>(); //return reverse order
+
+            var nextPeriodDate = DateTime.MaxValue;
+
+            foreach (var point in reversedSeries)
+            {
+                //базовая реализация не опирается на сортировку серии, поэтому можно не перезаписывать время смещенных точек
+                var shiftedPoint = point.Date.TimeOfDay >= eveningClearingTime 
+                    ? new(point.Value, nextPeriodDate)
+                    : point;
+
+                shiftedSeries.Push(shiftedPoint);
+
+                nextPeriodDate = shiftedPoint.Date;
+            }
+
+            return shiftedSeries.ToSeries($"shifted {series.Description}");
         }
 
         private void chartUnitsBox_SelectedIndexChanged(object sender, EventArgs e)
