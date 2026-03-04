@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Fidelity.Components;
+using System;
+using System.Reflection;
 using WealthLab;
+using WealthLabPro;
 
 #region INFO
 //changed assembly settings
@@ -31,5 +34,22 @@ namespace TradingStrategies.Backtesting.Core
         public override string Name { get; } = "VS_Strategy";
 
         public override Type WealthScriptType { get; } = typeof(WealthScriptWrapper);
+
+        public MyStrategyHelper()
+        {
+            AddCurrentAssemblyToWealthLabFolderTree();
+        }
+
+        //хак отображающий стратегии из текущей сборки в виде внутренней директории WealthLab
+        //открывает доступ к стратегиям сборки в билдере Combination Strategy
+        private void AddCurrentAssemblyToWealthLabFolderTree()
+        {
+            var assemblyDescription = new AssemblyLoader().GetAssemblyDescription(Assembly.GetExecutingAssembly());
+
+            if (!MainModule.Instance.Strategies.FolderNames.Contains(assemblyDescription))
+            {
+                MainModule.Instance.Strategies.FolderNames.Add(assemblyDescription);
+            }
+        }
     }
 }
