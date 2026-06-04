@@ -22,36 +22,25 @@ namespace TradingStrategies.Backtesting.Core
         //there is no guarantee that property was set to true during some optimization process and set to false in some non-optimization processes
         public bool IsOptimizationRun { get; private set; }
 
-        private string _startSymbol;
-        private string _finalSymbol;
-
-        private readonly IEqualityComparer<string> _symbolComparer = StringComparer.OrdinalIgnoreCase;
+        private readonly StringComparer _symbolComparer = StringComparer.OrdinalIgnoreCase;
 
         public string StartSymbol
         {
-            get => _startSymbol;
-            set
-            {
-                if (IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize)))
-                    _startSymbol = value;
-                else
-                    throw new Exception(
+            get;
+            set => field = IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize))
+                ? value
+                : throw new Exception(
                         $"{nameof(StartSymbol)} can be assigned only from {nameof(IStrategyExecuter.Initialize)}" +
                         $"method of implements of {nameof(IStrategyExecuter)} interface");
-            }
         }
         public string FinalSymbol
         {
-            get => _finalSymbol;
-            set
-            {
-                if (IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize)))
-                    _finalSymbol = value;
-                else
-                    throw new Exception(
+            get;
+            set => field = IsCallFromInterface<IStrategyExecuter>(nameof(IStrategyExecuter.Initialize))
+                ? value
+                : throw new Exception(
                         $"{nameof(FinalSymbol)} can be assigned only from {nameof(IStrategyExecuter.Initialize)}" +
                         $"method of implements of {nameof(IStrategyExecuter)} interface");
-            }
         }
 
         private TradingSystemExecutor? _executor;
@@ -73,20 +62,20 @@ namespace TradingStrategies.Backtesting.Core
 
         private bool ValidateSymbol()
         {
-            if (_startSymbol is null && _finalSymbol is null)
+            if (StartSymbol is null && FinalSymbol is null)
             {
                 return true;
             }
 
             //need since DataSetSymbols is null when constructor is called
-            if (_startSymbol != null && !DataSetSymbols.Contains(_startSymbol, _symbolComparer))
+            if (StartSymbol != null && !DataSetSymbols.Contains(StartSymbol, _symbolComparer))
                 throw new Exception($"{nameof(StartSymbol)} not correct symbol name, check existing dataset items");
-            if (_finalSymbol != null && !DataSetSymbols.Contains(_finalSymbol, _symbolComparer))
+            if (FinalSymbol != null && !DataSetSymbols.Contains(FinalSymbol, _symbolComparer))
                 throw new Exception($"{nameof(FinalSymbol)}: not correct symbol name, check existing dataset items");
 
             //check for null to avoid symbol filtering if they is not assigned from outside
-            var inStartRange = _startSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) >= DataSetSymbols.IndexOf(StartSymbol);
-            var inFinalRange = _finalSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) <= DataSetSymbols.IndexOf(FinalSymbol);
+            var inStartRange = StartSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) >= DataSetSymbols.IndexOf(StartSymbol);
+            var inFinalRange = FinalSymbol == null || DataSetSymbols.IndexOf(Bars.Symbol) <= DataSetSymbols.IndexOf(FinalSymbol);
 
             return
                 inStartRange &&
