@@ -13,6 +13,7 @@ using WealthLab.Visualizers;
 //- значения вертикальной оси продублированы справа от диаграммы
 //- возможность вывести значения свечей в аннотациях
 //- возможность пересчитать периоды на момент вечернего клиринга, удобно для согласования результатов тестирования с данными реальных торгов
+//- возможность выбрать одну из побочных стратегий при работе с комбинированной стратегией
 
 namespace TradingStrategies.Backtesting.Visualizers
 {
@@ -27,6 +28,10 @@ namespace TradingStrategies.Backtesting.Visualizers
 
         private readonly Bar returnsBar;
         private readonly Bar returnsBarDuplicate;
+
+        private ToolStrip strategySelectionToolStrip;
+        private ToolStripLabel strategySelectionLabel;
+        private ToolStripComboBox strategySelectionComboBox;
 
         private ToolStripMenuItem mniShowRightAxis;
         private ToolStripMenuItem mniShowAnnotations;
@@ -47,18 +52,63 @@ namespace TradingStrategies.Backtesting.Visualizers
 
             InitializeComponent();
             InitializeBarSeries();
+            InitializeStrategySelector();
         }
 
+        //точка входа для первого вызова из фреймворка
         void IPerformanceVisualizer.CreateVisualization(SystemPerformance performance, IVisualizerHost visHost)
         {
             this.performance = performance;
             this.visualizer = visHost;
 
-            base.CreateVisualization(performance, visHost);
+            ConfigureStrategySelector(performance);
+
+            UpdateVisualization();
 
             byPeriodBox.SelectedIndex = byPeriodBox.Items.IndexOf("Monthly");
+        }
 
+        //для апдейтов из кода контрола
+        private void UpdateVisualization()
+        {
+            if (performance is null || visualizer is null)
+            {
+                return;
+            }
+
+            var targetPerformance = BuildPerformance();
+            base.CreateVisualization(targetPerformance, visualizer);
             RefreshBar();
+        }
+
+        private SystemPerformance BuildPerformance()
+        {
+            var performance = BuildPerformanceByStrategySelection();
+            performance = BuildPerformanceByEveningShifting(performance);
+
+            return performance;
+        }
+
+        private void ConfigureStrategySelector(SystemPerformance performance)
+        {
+            if (performance.Strategy.StrategyType == StrategyType.CombinedStrategy)
+            {
+                strategySelectionToolStrip.Visible = true;
+
+                strategySelectionComboBox.Items.Clear();
+                strategySelectionComboBox.Items.Add("Strategies in Aggregate");
+
+                foreach (var combinedStrategyChild in performance.Strategy.CombinedStrategyChildren)
+                {
+                    strategySelectionComboBox.Items.Add(combinedStrategyChild);
+                }
+
+                strategySelectionComboBox.SelectedIndex = 0;
+            }
+            else
+            {
+                strategySelectionToolStrip.Visible = false;
+            }
         }
 
         private void RefreshBar()
@@ -151,6 +201,37 @@ namespace TradingStrategies.Backtesting.Visualizers
             returnsBarDuplicate.Pen.Visible = false;
         }
 
+        private void InitializeStrategySelector()
+        {
+            strategySelectionToolStrip = new ToolStrip();
+            strategySelectionComboBox = new ToolStripComboBox();
+            strategySelectionLabel = new ToolStripLabel();
+
+            strategySelectionToolStrip.GripStyle = ToolStripGripStyle.Hidden;
+            strategySelectionToolStrip.Items.AddRange([strategySelectionComboBox, strategySelectionLabel]);
+            strategySelectionToolStrip.Location = new Point(0, 0);
+            strategySelectionToolStrip.Name = nameof(strategySelectionToolStrip);
+            strategySelectionToolStrip.Size = new Size(522, 25);
+            strategySelectionToolStrip.Visible = false;
+
+            strategySelectionComboBox.Alignment = ToolStripItemAlignment.Right;
+            strategySelectionComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            strategySelectionComboBox.DropDownWidth = 150;
+            strategySelectionComboBox.Items.Add("Strategies in Aggregate");
+            strategySelectionComboBox.Name = nameof(strategySelectionComboBox);
+            strategySelectionComboBox.Size = new Size(160, 25);
+            strategySelectionComboBox.Visible = true;
+            strategySelectionComboBox.SelectedIndexChanged += strategySelectionComboBox_SelectedIndexChanged;
+
+            strategySelectionLabel.Alignment = ToolStripItemAlignment.Right;
+            strategySelectionLabel.Name = nameof(strategySelectionLabel);
+            strategySelectionLabel.Size = new Size(35, 22);
+            strategySelectionLabel.Text = "View:";
+            strategySelectionLabel.Visible = true;
+
+            Controls.Add(strategySelectionToolStrip);
+        }
+
         private void mniShowRightAxis_Click(object sender, EventArgs e)
         {
             mniShowRightAxis.Checked = !mniShowRightAxis.Checked;
@@ -172,23 +253,23 @@ namespace TradingStrategies.Backtesting.Visualizers
         {
             mniShiftToEveningClearing.Checked = !mniShiftToEveningClearing.Checked;
 
+            UpdateVisualization();
+        }
+
+        private SystemPerformance BuildPerformanceByEveningShifting(SystemPerformance performance)
+        {
             if (mniShiftToEveningClearing.Checked)
             {
-                RecalculateEquityShiftedToEveningClearing();
+                return ShiftToEveningClearing(performance);
             }
             else
             {
-                CreateVisualization(performance, visualizer);
+                return performance;
             }
         }
 
-        private void RecalculateEquityShiftedToEveningClearing()
+        private static SystemPerformance ShiftToEveningClearing(SystemPerformance performance)
         {
-            if (performance is null)
-            {
-                return;
-            }
-
             var shiftedEquity = ShiftToEveningClearing(performance.Results.EquityCurve);
             var shiftedCash = ShiftToEveningClearing(performance.Results.CashCurve);
 
@@ -199,7 +280,7 @@ namespace TradingStrategies.Backtesting.Visualizers
             shiftedPerformance.Results.CashCurveProxy = shiftedCash;
             shiftedPerformance.Results.RawPositions = performance.Results.Positions.ToList();
 
-            CreateVisualization(shiftedPerformance, visualizer);
+            return shiftedPerformance;
         }
 
         private static DataSeries ShiftToEveningClearing(DataSeries series)
@@ -275,6 +356,25 @@ namespace TradingStrategies.Backtesting.Visualizers
                 >= thousand => $"{(amount / thousand):F0} K",
                 _ => $"{amount}"
             };
+        }
+
+        private void strategySelectionComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateVisualization();
+        }
+
+        private SystemPerformance BuildPerformanceByStrategySelection()
+        {
+            if (strategySelectionComboBox.SelectedIndex is 0 or -1)
+            {
+                return performance;
+            }
+            else
+            {
+                var combinedStrategyInfo = (CombinedStrategyInfo)strategySelectionComboBox.SelectedItem;
+                var childPerfomance = performance.GenerateChildStrategyPerformance(combinedStrategyInfo, visualizer.GetExecutor());
+                return childPerfomance;
+            }
         }
     }
 }
