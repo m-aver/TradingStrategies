@@ -11,6 +11,7 @@ using WealthLab.Visualizers;
 //позволяет убрать cash с графика
 //позволяет отобразить кривую экспоненциальной регрессии
 //позволяет добавить метки времени на ось дат
+//позволяет выровнять сетку оси дат на начало дня
 
 namespace TradingStrategies.Backtesting.Visualizers
 {
@@ -22,6 +23,7 @@ namespace TradingStrategies.Backtesting.Visualizers
         private readonly Area cashArea;
         private readonly Area equityArea;
         private readonly Area openPositionsArea;
+        private readonly ToolStripMenuItem mniShowBuyAndHold;
 
         private Line expRegCurve;
 
@@ -29,6 +31,7 @@ namespace TradingStrategies.Backtesting.Visualizers
         private ToolStripMenuItem mniShowGrid;
         private ToolStripMenuItem mniShowExpReg;
         private ToolStripMenuItem mniShowTimeLabels;
+        private ToolStripMenuItem mniAlignGridToStartOfDay;
 
         private SystemPerformance performance;
 
@@ -38,6 +41,7 @@ namespace TradingStrategies.Backtesting.Visualizers
             cashArea = FetchCashArea();
             equityArea = FetchEquityArea();
             openPositionsArea = FetchOpenPositionsArea();
+            mniShowBuyAndHold = FetchShowBuyAndHoldToggle();
 
             InitializeComponent();
         }
@@ -46,9 +50,11 @@ namespace TradingStrategies.Backtesting.Visualizers
         {
             this.performance = performance;
 
-            CreateVisualization(performance, visHost);
+            base.CreateVisualization(performance, visHost);
 
             CreateExponentialRegressionVisualization(performance);
+
+            mniShowBuyAndHold.PerformClick(); //hide B&H
         }
 
         private void CreateExponentialRegressionVisualization(SystemPerformance performance)
@@ -94,10 +100,56 @@ namespace TradingStrategies.Backtesting.Visualizers
             chart.Refresh();
         }
 
+        private void AlignDatesGridToStartOfDay()
+        {
+            if (performance is null)
+            {
+                return;
+            }
+
+            //restore default
+            if (!mniAlignGridToStartOfDay.Checked)
+            {
+                chart.Axes.Bottom.Labels.Items.Clear();
+                chart.Axes.Bottom.Labels.Angle = 0;
+                return;
+            }
+
+            var prev = new DataSeriesPoint(0, DateTime.MinValue);
+            foreach (var (equity, i) in performance.Results.EquityCurve.ToPoints().Select((x, i) => (x, i)))
+            {
+                if (equity.Date.Date > prev.Date.Date)
+                {
+                    var label = new AxisLabelItem(chart.Chart)
+                    {
+                        Value = i,
+                        Text = equity.Date.ToString("dd.MM.yy"),
+                        Color = Color.Transparent,
+                        AutoSize = true,
+                    };
+                    if (equity.Date.Month > prev.Date.Month)
+                    {
+                        label.Font.Color = Color.Red;
+                    }
+                    label.Pen.Color = Color.Transparent;
+                    label.Brush.Color = Color.Transparent;
+                    label.Brush.ForegroundColor = Color.Transparent;
+
+                    chart.Axes.Bottom.Labels.Items.Add(label);
+                    prev = equity;
+                }
+            }
+            chart.Axes.Bottom.Labels.Angle = 90;
+
+            chart.Refresh();
+        }
+
         private TChart FetchChart() => (TChart)Controls[1];
         private Area FetchEquityArea() => (Area)FetchChart().Series[0];
         private Area FetchCashArea() => (Area)FetchChart().Series[1];
         private Area FetchOpenPositionsArea() => (Area)FetchChart().Series[5];
+        private ToolStripMenuItem FetchShowBuyAndHoldToggle() =>
+            FetchChart().ContextMenuStrip.Items.OfType<ToolStripMenuItem>().First(x => x.Name == "mniShowBuyAndHold");
 
         private void InitializeComponent()
         {
@@ -137,11 +189,20 @@ namespace TradingStrategies.Backtesting.Visualizers
             mniShowTimeLabels.Size = new Size(268, 22);
             mniShowTimeLabels.Text = "Show Equity time labels";
 
+            mniAlignGridToStartOfDay = new ToolStripMenuItem();
+            mniAlignGridToStartOfDay.Click += mniAlignGridToStartOfDay_Click; ;
+            mniAlignGridToStartOfDay.Checked = false;
+            mniAlignGridToStartOfDay.CheckState = CheckState.Unchecked;
+            mniAlignGridToStartOfDay.Name = "mniAlignGridToStartOfDay";
+            mniAlignGridToStartOfDay.Size = new Size(268, 22);
+            mniAlignGridToStartOfDay.Text = "Align dates grid to start of day";
+
             var popup = chart.ContextMenuStrip;
             popup.Items.Insert(0, mniShowCash);
             popup.Items.Insert(1, mniShowGrid);
             popup.Items.Insert(2, mniShowExpReg);
             popup.Items.Insert(3, mniShowTimeLabels);
+            popup.Items.Insert(4, mniAlignGridToStartOfDay);
 
             expRegCurve = new Line();
             expRegCurve.Brush.Color = Color.FromArgb(0, 0, 255);
@@ -194,6 +255,12 @@ namespace TradingStrategies.Backtesting.Visualizers
 
             var format = mniShowTimeLabels.Checked ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy";
             SetEquityDateLabelsFormat(format);
+        }
+
+        private void mniAlignGridToStartOfDay_Click(object sender, EventArgs e)
+        {
+            mniAlignGridToStartOfDay.Checked = !mniAlignGridToStartOfDay.Checked;
+            AlignDatesGridToStartOfDay();
         }
     }
 }
