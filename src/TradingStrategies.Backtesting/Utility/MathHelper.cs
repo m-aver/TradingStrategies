@@ -95,6 +95,37 @@ namespace TradingStrategies.Backtesting.Utility
 
             return sumCodeviates / sumOfXSq;
         }
+
+        /// <summary>
+        /// Calculates standard deviation
+        /// </summary>
+        public static double StdDev(IEnumerable<double> values)
+        {
+            double sum = 0.0;
+            double sumSq = 0.0;
+            var cnt = 0;
+
+            foreach (var val in values)
+            {
+                sum += val;
+                sumSq += val * val;
+                cnt++;
+            }
+
+            if (cnt == 0)
+            {
+                return 0.0;
+            }
+
+            double err = Math.Sqrt((sumSq - sum * sum / cnt) / cnt);
+
+            if (double.IsNaN(err))
+            {
+                return 0.0;
+            }
+
+            return err;
+        }
     }
 }
 

@@ -131,38 +131,10 @@ public static class IndicatorsCalculator
     {
         var values = monthReturnSeries.Select(x => x.Value);
         var avg = values.Average();
-        var stdDev = StdDevs(values);
+        var stdDev = MathHelper.StdDev(values);
         var sharpe = Math.Sqrt(12.0) * avg / stdDev;
 
         return sharpe;
-    }
-
-    public static double StdDevs(IEnumerable<double> values)
-    {
-        double sum = 0.0;
-        double sumSq = 0.0;
-        var cnt = 0;
-
-        foreach (var val in values)
-        {
-            sum += val;
-            sumSq += val * val;
-            cnt++;
-        }
-
-        if (cnt == 0)
-        {
-            return 0.0;
-        }
-
-        double err = Math.Sqrt((sumSq - sum * sum / cnt) / cnt);
-
-        if (double.IsNaN(err))
-        {
-            return 0.0;
-        }
-
-        return err;
     }
 
     public static IEnumerable<DataSeriesPoint> DrawdownPercentage(IEnumerable<DataSeriesPoint> equitySeries)
