@@ -46,7 +46,7 @@ namespace TradingStrategies.Backtesting.Utility
             }
         }
 
-        //использовать с острожностью, кроме дат и значений остальные внутренние параметры исходной DateSeries не проставляются
+        //использовать с острожностью, кроме дат и значений остальные внутренние параметры исходной DataSeries не проставляются
         public static DataSeries ToSeries(this IEnumerable<DataSeriesPoint> points, string description = "from points")
         {
             var series = new DataSeries(description);
