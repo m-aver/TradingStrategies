@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 namespace TradingStrategies.Utilities
 {
     //core
-    internal sealed partial class LiteDictionary<TKey, TValue> where TKey : notnull
+    public sealed partial class LiteDictionary<TKey, TValue> where TKey : notnull
     {
         private struct Entry
         {
@@ -74,7 +74,7 @@ namespace TradingStrategies.Utilities
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private TValue Find(TKey key)
+        private bool TryFind(TKey key, out TValue value)
         {
             var hash = key.GetHashCode();
             var bucket = hash % _size;
@@ -88,35 +88,26 @@ namespace TradingStrategies.Utilities
                 }
                 else
                 {
-                    throw new KeyNotFoundException($"key {key} does not exist");
+                    value = default!;
+                    return false;
                 }
             }
-            return entry.value;
+
+            value = entry.value;
+            return true;
         }
     }
 
     //adapter
-    internal sealed partial class LiteDictionary<TKey, TValue> : IReadOnlyDictionary<TKey, TValue>
+    public sealed partial class LiteDictionary<TKey, TValue> : IReadOnlyDictionary<TKey, TValue>
     {
         //hot path
-        public TValue this[TKey key] => Find(key);
+        public TValue this[TKey key] => TryFind(key, out var value) ? value : throw new KeyNotFoundException($"key {key} does not exist");
 
         //appendix
         public int Count => _size;
 
-        public bool TryGetValue(TKey key, out TValue value)
-        {
-            try
-            {
-                value = Find(key);
-                return true;
-            }
-            catch (KeyNotFoundException)
-            {
-                value = default!;
-                return false;
-            }
-        }
+        public bool TryGetValue(TKey key, out TValue value) => TryFind(key, out value);
 
         public bool ContainsKey(TKey key) => TryGetValue(key, out _);
 

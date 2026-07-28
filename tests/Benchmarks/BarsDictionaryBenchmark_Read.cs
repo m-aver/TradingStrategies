@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using TradingStrategies.Utilities;
 using WealthLab;
 
-// LiteDictionary в 4-5 раз быстрее на чтение
+// LiteDictionary в 3-4 раза быстрее на чтение
 // на создание сопоставимо с обычным словарем как по памяти, так и по времени
 
 namespace TradingStrategies.Benchmarks;
