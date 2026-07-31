@@ -12,5 +12,7 @@ namespace TradingStrategies.Backtesting.Utility
         public const int DaysInWeek = 7;
         public const int QuartersInYear = 4;
         public const int MonthsInQuarter = MonthsInYear / QuartersInYear;
+
+        public static readonly long TicksIn30Days = TimeSpan.FromDays(30).Ticks;
     }
 }

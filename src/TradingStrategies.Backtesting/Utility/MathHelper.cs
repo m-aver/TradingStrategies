@@ -11,7 +11,7 @@ namespace TradingStrategies.Backtesting.Utility
         /// <summary>
         /// Calculates square power of number
         /// </summary>
-        public static double Sqr(double value) => Math.Pow(value, 2);
+        public static double Sqr(double value) => value * value;
 
         /// <summary>
         /// Calculates natural logarithm of value

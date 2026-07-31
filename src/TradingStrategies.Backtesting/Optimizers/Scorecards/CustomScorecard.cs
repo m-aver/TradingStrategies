@@ -137,7 +137,7 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             var maxReturnDelta = maxReturn - avgReturnDelta;
 
             //log-error
-            var errorSeries = CalculateError(equitySeries);
+            var errorSeries = IndicatorsCalculator.LogError(equitySeries.ToPoints(), buffer, out var logRegTan);
 
             var squaredError = 0d;
             var moduleError = 0d;
@@ -150,7 +150,8 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             }
             squaredError = Math.Sqrt(squaredError / errorCount);
             moduleError = moduleError / errorCount;
-            var leFactor = avgReturn / squaredError;
+
+            var leFactor = IndicatorsCalculator.LeFactor(logRegTan, squaredError);
 
             //drawdowns
             var drawdownSeries = CalculateDrawdown(equitySeries.ToPoints()).ToBuffer(buffer);
@@ -184,11 +185,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Scorecards
             resultRow.SubItems.Add(drawdownDensity.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(closedMaxDrawdown.ToString(RealNumbersFormat));
             resultRow.SubItems.Add(closedLongestDrawdown.ToString(RealNumbersFormat));
-        }
-
-        private static IEnumerable<DataSeriesPoint> CalculateError(DataSeries equitySeries)
-        {
-            return IndicatorsCalculator.LogError(equitySeries);
         }
 
         private IEnumerable<DataSeriesPoint> CalculateMonthReturns(DataSeries equitySeries)

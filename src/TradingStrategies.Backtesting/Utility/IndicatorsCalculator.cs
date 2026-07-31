@@ -34,7 +34,7 @@ public static class IndicatorsCalculator
         return regression;
     }
 
-    public static IEnumerable<DataSeriesPoint> LinearRegressionThroughStartPoint(IEnumerable<DataSeriesPoint> points)
+    public static IEnumerable<DataSeriesPoint> LinearRegressionThroughStartPoint(IEnumerable<DataSeriesPoint> points, out double tangent)
     {
         var first = points.First();
 
@@ -48,57 +48,34 @@ public static class IndicatorsCalculator
             return point.WithValue(regValue + first.Value);
         });
 
+        tangent = slope;
+
         return regression;
     }
 
     public static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries)
     {
-        return LogError(equitySeries, buffer: null);
+        return LogError(equitySeries, buffer: null, out _);
     }
 
     public static IEnumerable<DataSeriesPoint> LogError(DataSeries equitySeries)
     {
-        using var iterator = new BufferedLogErrorIterator(equitySeries);
+        using var iterator = new BufferedIterator<DataSeriesPoint>(equitySeries.Count, 
+            buffer => LogError(equitySeries.ToPoints(), buffer, out _));
 
-        while (iterator.MoveNext())
-        {
+        while (iterator.MoveNext()) 
             yield return iterator.Current;
-        }
     }
 
     //вычисляет расхождения логарифма переданной серии от линии его линейной регресии
-    private static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries, DataSeriesPoint[]? buffer)
+    public static IEnumerable<DataSeriesPoint> LogError(IEnumerable<DataSeriesPoint> equitySeries, DataSeriesPoint[]? buffer, out double logRegTan)
     {
         var logEquity = equitySeries.Select(x => x.WithValue(MathHelper.NaturalLog(x))); //Log довольно затратная операция
         logEquity = buffer is null ? logEquity : logEquity.ToBuffer(buffer);
-        var linearReg = IndicatorsCalculator.LinearRegressionThroughStartPoint(logEquity);
+        var linearReg = IndicatorsCalculator.LinearRegressionThroughStartPoint(logEquity, out logRegTan);
         var error = logEquity.Zip(linearReg, (eq, lr) => (eq - lr));
 
         return error;
-    }
-
-    //to manage buffer lifetime
-    private struct BufferedLogErrorIterator : IEnumerator<DataSeriesPoint>
-    {
-        private readonly DataSeriesPoint[] _buffer;
-        private readonly IEnumerator<DataSeriesPoint> _errorEnumerator;
-
-        public BufferedLogErrorIterator(DataSeries equitySeries)
-        {
-            _buffer = ArrayPool<DataSeriesPoint>.Shared.Rent(equitySeries.Count);
-            var error = IndicatorsCalculator.LogError(equitySeries.ToPoints(), _buffer);
-            _errorEnumerator = error.GetEnumerator();
-        }
-
-        public DataSeriesPoint Current => _errorEnumerator.Current;
-        object IEnumerator.Current => Current;
-        public bool MoveNext() => _errorEnumerator.MoveNext();
-        public void Reset() => _errorEnumerator.Reset();
-        public void Dispose()
-        {
-            ArrayPool<DataSeriesPoint>.Shared.Return(_buffer);
-            _errorEnumerator.Dispose();
-        }
     }
 
     public static IEnumerable<DataSeriesPoint> CalculateExponentialRegression(DataSeries equitySeries)
@@ -135,6 +112,38 @@ public static class IndicatorsCalculator
         var sharpe = Math.Sqrt(12.0) * avg / stdDev;
 
         return sharpe;
+    }
+
+    //показывает насколько сильно эквити отличается от экспоненты
+    //чем больше, тем более равномерный доход у стратегии, при одинаковом среднем доходе
+    public static double LeFactor(IEnumerable<DataSeriesPoint> equitySeries, DataSeriesPoint[]? buffer)
+    {
+        var logError = IndicatorsCalculator.LogError(equitySeries, buffer, out var regressionTangent);
+
+        var squaredError = 0d;
+        var errorCount = 0;
+        foreach (var error in logError)
+        {
+            squaredError += MathHelper.Sqr(error);
+            errorCount++;
+        }
+        squaredError = Math.Sqrt(squaredError / errorCount);
+
+        var leFactor = LeFactor(regressionTangent, squaredError);
+
+        return leFactor;
+    }
+
+    public static double LeFactor(double logRegressionTangent, double logSquaredError)
+    {
+        //прогнозируемая месячная доходность, предпочтительней чем AvgMr, устраняет проблему сильных выбросов доходности
+        var monthProfit = logRegressionTangent * DateTimeConsts.TicksIn30Days;
+        monthProfit = (Math.Exp(monthProfit) - 1) * 100; //перевод в %
+
+        var leFactor = monthProfit / logSquaredError;
+        leFactor = monthProfit == 0 ? 0 : leFactor; //случай когда ошибка 0 при прямой эквити без сделок
+
+        return leFactor;
     }
 
     public static IEnumerable<DataSeriesPoint> DrawdownPercentage(IEnumerable<DataSeriesPoint> equitySeries)
