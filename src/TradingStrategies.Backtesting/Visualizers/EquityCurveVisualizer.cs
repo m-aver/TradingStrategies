@@ -82,7 +82,7 @@ namespace TradingStrategies.Backtesting.Visualizers
 
         private static IEnumerable<DataSeriesPoint> CalculateExponentialRegression(DataSeries equitySeries)
         {
-            return IndicatorsCalculator.CalculateExponentialRegression(equitySeries);
+            return IndicatorsCalculator.CalculateExponentialRegression(equitySeries.ToPoints());
         }
 
         private void SetEquityDateLabelsFormat(string format)

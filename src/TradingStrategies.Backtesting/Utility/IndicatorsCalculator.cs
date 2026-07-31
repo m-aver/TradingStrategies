@@ -88,6 +88,24 @@ public static class IndicatorsCalculator
         return expReg;
     }
 
+    public static IEnumerable<DataSeriesPoint> CalculateExponentialRegression(IEnumerable<DataSeriesPoint> equitySeries)
+    {
+        var expBase = ExpRegBase(equitySeries);
+        var first = equitySeries.First();
+        var expReg = equitySeries.Select(eq => eq.WithValue(first.Value * Math.Pow(expBase, eq.Date.Ticks - first.Date.Ticks)));
+
+        return expReg;
+    }
+
+    public static double ExpRegBase(IEnumerable<DataSeriesPoint> equitySeries)
+    {
+        var logEquity = equitySeries.Select(x => x.WithValue(MathHelper.NaturalLog(x)));
+        _ = IndicatorsCalculator.LinearRegressionThroughStartPoint(logEquity, out var logRegTan);
+        var expBase = Math.Exp(logRegTan);
+
+        return expBase;
+    }
+
     //from wealthlab
     public static double SharpeRatio(DataSeries monthReturnSeries, double cashReturnRate)
     {
