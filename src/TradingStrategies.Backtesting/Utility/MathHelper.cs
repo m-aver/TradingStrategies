@@ -126,6 +126,40 @@ namespace TradingStrategies.Backtesting.Utility
 
             return err;
         }
+
+        public static double Correlation(IEnumerable<(double x, double y)> values)
+        {
+            int count = 0;
+            double sumX = 0.0;
+            double sumY = 0.0;
+            double sumX2 = 0.0;
+            double sumY2 = 0.0;
+            double sumXY = 0.0;
+
+            foreach (var (x, y) in values)
+            {
+                count++;
+                sumX += x;
+                sumY += y;
+                sumX2 += x * x;
+                sumY2 += y * y;
+                sumXY += x * y;
+            }
+
+            if (count < 2)
+                throw new InvalidOperationException("At least two data points are required to compute correlation.");
+
+            double numerator = count * sumXY - sumX * sumY;
+            double denominatorX = count * sumX2 - sumX * sumX;
+            double denominatorY = count * sumY2 - sumY * sumY;
+
+            if (denominatorX <= 0 || denominatorY <= 0)
+                return double.NaN;
+
+            double denominator = Math.Sqrt(denominatorX) * Math.Sqrt(denominatorY);
+
+            return numerator / denominator;
+        }
     }
 }
 

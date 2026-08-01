@@ -336,4 +336,20 @@ public static class IndicatorsCalculator
             yield return new DataSeriesPoint(equity.Value, equityEnumerator.Current.Date);
         }
     }
+
+    //wrapper for points
+    public static double Correlation(IEnumerable<DataSeriesPoint> first, IEnumerable<DataSeriesPoint> second, bool force = false)
+    {
+        var values = force
+            ? first.Zip(second, (f, s) => (f.Value, s.Value))
+            : first.Zip(second, (f, s) => (f, s))
+                .Select((p, i) => p.f.Date != p.s.Date
+                    ? throw new InvalidOperationException(
+                        $"Can't calc correlation, provided series are based on different dates, idx: {i}, first: {p.f}, second: {p.s}")
+                    : (p.f.Value, p.s.Value));
+
+        var corr = MathHelper.Correlation(values);
+
+        return corr;
+    }
 }
