@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
+using TradingStrategies.Backtesting.Optimizers.Charts;
 using TradingStrategies.Backtesting.Optimizers.Own;
 using TradingStrategies.Backtesting.Optimizers.Scorecards;
 using TradingStrategies.Backtesting.Optimizers.Utility;
@@ -73,6 +74,8 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
     private ProgressReporter progressReporter;
     private ErrorReporter errorReporter;
 
+    private OptResultsGraph1D graph1D;
+
     public override string FriendlyName => "Parallel Optimizer (Exhaustive) V2";
     public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. Based on custom implementation of optimization";
 
@@ -92,9 +95,18 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
     {
         base.Initialize();
 
+        graph1D = new OptResultsGraph1D(this);
+
+        base.Host.CreateTab("1 Parameter Graph", graph1D);
+
         numThreads = ThreadsNumber;
         progressReporter = new ProgressReporter(this);
         errorReporter = new ErrorReporter(this);
+    }
+
+    public override void RefreshViews()
+    {
+        graph1D.RefreshView();
     }
 
     public override void RunCompleted(OptimizationResultList results)
@@ -111,6 +123,34 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
 
         PopulateUI();
         FullCollect();
+
+        FillResultList(results, executors.SelectMany(x => x.ResultRows));
+
+        graph1D.UpdateResults(results, base.WealthScript);
+    }
+
+    internal static void FillResultList(OptimizationResultList results, IEnumerable<ListViewItem> rows)
+    {
+        //очистка резалта, добавленного фреймворком после FirstRun
+        results.Results.Clear();
+        results.Symbols.Clear();
+
+        foreach (var row in rows)
+        {
+            //Tag заполнили в PrepareResultsToUI
+            var result = (OptimizationResult)row.Tag;
+
+            for (int i = result.ParameterValues.Count + 1; i < row.SubItems.Count; i++)
+            {
+                string cell = row.SubItems[i].Text;
+
+                result.Results.Add(double.TryParse(cell, out var value) ? value : 0.0);
+            }
+
+            results.Add(result);
+        }
+
+        //остальные поля заполнены фреймворком
     }
 
     public override void FirstRun()
@@ -331,11 +371,6 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
         else
         {
             optimizationResultListView.Items.AddRange(rows);
-        }
-
-        foreach (var executor in executors)
-        {
-            executor.ResultRows.Clear();
         }
     }
 
