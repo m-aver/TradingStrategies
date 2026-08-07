@@ -3,6 +3,7 @@ using Steema.TeeChart.Styles;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 
@@ -15,11 +16,11 @@ namespace TradingStrategies.Backtesting.Optimizers.Charts;
 
 //TODO:
 //отдельный контрол для слайдера параметров со всей логикой поиска и тп
-//GetParameterValues вынести, также можно вынести поиск через LiteDictionary
 
 public class OptResultsGraph1D : UserControl
 {
     private OptimizationResultList results;
+    private OptimizationResultMap resultsMap;
 
     private ComboBox cmbMetric;
     private ComboBox cmbParameters;
@@ -42,38 +43,6 @@ public class OptResultsGraph1D : UserControl
     private List<double> GetSelectedParameterValues()
     {
         return parameterSliders.Select((x, i) => parameterValues[i][x.Value]).ToList();
-    }
-
-    private static List<double>[] GetParameterValues(OptimizationResultList results)
-    {
-        if (results.Results.Count == 0)
-        {
-            return [];
-        }
-
-        List<HashSet<double>> values = new(results.Results[0].ParameterValues.Count);
-
-        foreach (var result in results.Results)
-        {
-            for (int i = 0; i < result.ParameterValues.Count; i++)
-            {
-                if (i >= values.Count)
-                {
-                    values.Add(new(results.Results.Count));
-                }
-
-                values[i].Add(result.ParameterValues[i]);
-            }
-        }
-
-        List<double>[] output = new List<double>[values.Count];
-
-        for (int i = 0; i < values.Count; i++)
-        {
-            (output[i] = values[i].ToList()).Sort();
-        }
-
-        return output;
     }
 
     public void RefreshView()
@@ -137,8 +106,8 @@ public class OptResultsGraph1D : UserControl
         Clear();
 
         this.results = results;
-
-        parameterValues = GetParameterValues(results);
+        resultsMap = new OptimizationResultMap(results);
+        parameterValues = OptimizationResultHelper.GetParameterValues(results);
 
         foreach (var (parameter, i) in ws.Parameters.WithIndex())
         {
@@ -200,7 +169,7 @@ public class OptResultsGraph1D : UserControl
         foreach (var paramValue in parameterValues[index])
         {
             paramValues[index] = paramValue;
-            var metricValue = results.FindMetric(cmbSymbol.Text, metricName, paramValues);
+            var metricValue = resultsMap.FindMetric(cmbSymbol.Text, metricName, paramValues);
 
             if (!double.IsNaN(metricValue))
             {
