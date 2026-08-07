@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
+using ParameterSlider = TradingStrategies.Backtesting.Optimizers.Charts.Controls.ParameterSlider;
 
 namespace TradingStrategies.Backtesting.Optimizers.Charts;
 
@@ -13,9 +14,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Charts;
 //берет значения параметров из переданного OptimizationResultList, а не высчитывает их сама
 //(были расхождения с конвертацией из double в decimal)
 //добавлены слайдеры для выбора значения параметров
-
-//TODO:
-//отдельный контрол для слайдера параметров со всей логикой поиска и тп
 
 public class OptResultsGraph1D : UserControl
 {
@@ -28,7 +26,7 @@ public class OptResultsGraph1D : UserControl
     private TChart chart;
     private Bar metricsBar;
 
-    private List<TrackBar> parameterSliders = [];
+    private List<ParameterSlider> parameterSliders = [];
     private List<double>[] parameterValues = [];
 
     private IPrintHost printHost { get; set; }
@@ -42,7 +40,7 @@ public class OptResultsGraph1D : UserControl
 
     private List<double> GetSelectedParameterValues()
     {
-        return parameterSliders.Select((x, i) => parameterValues[i][x.Value]).ToList();
+        return parameterSliders.Select(x => x.SelectedValue).ToList();
     }
 
     public void RefreshView()
@@ -55,37 +53,13 @@ public class OptResultsGraph1D : UserControl
         var prevSlider = parameterSliders.LastOrDefault(x => x.Parent is not null);
         var start = prevSlider is null ? new Point(10, 50) : prevSlider.Location + new Size(0, prevSlider.Height);
 
-        var labelName = new Label();
-        labelName.Text = parameter.Name;
-        labelName.Size = new Size(100, 20);
-        labelName.Location = new Point(start.X, start.Y);
-
-        var defaultIndex = parameterValues.IndexOf(parameter.Value);
-
-        var slider = new TrackBar();
-        slider.Size = new Size(140, 20);
-        slider.Minimum = 0;
-        slider.Maximum = parameterValues.Count - 1;
-        slider.SmallChange = 1;
-        slider.TickFrequency = 5;
-        slider.Value = defaultIndex == -1 ? 0 : defaultIndex;
-        slider.Tag = parameter;
-        slider.Location = new Point(start.X, labelName.Location.Y + labelName.Size.Height);
-
-        var labelValue = new Label();
-        labelValue.Text = parameter.Value.ToString();
-        labelValue.Location = new Point(slider.Location.X + slider.Width + 10, slider.Location.Y);
-        labelValue.Size = new Size(50, 20);
-
-        slider.Scroll += (sender, e) =>
-        {
-            labelValue.Text = this.parameterValues[parameterSliders.IndexOf(slider)][slider.Value].ToString();
-            GenerateGraph();
-        };
+        var slider = new ParameterSlider(parameter, parameterValues);
+        slider.Location = new Point(start.X, start.Y);
+        slider.Scroll += ViewUpdated;
 
         if (parameter.IsEnabled)
         {
-            pnlParameters.Controls.AddRange([labelName, slider, labelValue]);
+            pnlParameters.Controls.Add(slider);
         }
 
         parameterSliders.Add(slider);
