@@ -20,7 +20,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Charts;
 public class OptResultsGraph1D : UserControl
 {
     private OptimizationResultList results;
-    private WealthScript ws;
 
     private ComboBox cmbMetric;
     private ComboBox cmbParameters;
@@ -126,8 +125,8 @@ public class OptResultsGraph1D : UserControl
     private void Clear()
     {
         Array.Clear(parameterValues, 0, parameterValues.Length);
+        parameterSliders.ForEach(pnlParameters.Controls.Remove);
         parameterSliders.Clear();
-        pnlParameters.Controls.Clear();
         cmbParameters.Items.Clear();
         cmbMetric.Items.Clear();
         cmbSymbol.Items.Clear();
@@ -138,7 +137,7 @@ public class OptResultsGraph1D : UserControl
         Clear();
 
         this.results = results;
-        this.ws = ws;
+
         parameterValues = GetParameterValues(results);
 
         foreach (var (parameter, i) in ws.Parameters.WithIndex())
@@ -195,7 +194,7 @@ public class OptResultsGraph1D : UserControl
         chart.Axes.Bottom.Title.Text = parameter.Name;
         chart.Axes.Left.Title.Text = metricName;
 
-        var index = ws.Parameters.IndexOf(parameter);
+        var index = cmbParameters.SelectedIndex;
         var paramValues = GetSelectedParameterValues();
 
         foreach (var paramValue in parameterValues[index])
