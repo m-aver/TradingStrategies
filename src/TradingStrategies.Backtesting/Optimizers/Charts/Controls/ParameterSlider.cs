@@ -55,7 +55,7 @@ internal class ParameterSlider : UserControl
         _labelValue.Location = new Point(_slider.Location.X + _slider.Width + 10, _slider.Location.Y);
         _labelValue.Size = new Size(50, 20);
 
-        Size = new Size(300, 60);
+        Size = new Size(200, 60);
         Controls.AddRange([_labelName, _slider, _labelValue]);
     }
 

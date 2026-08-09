@@ -11,6 +11,18 @@ namespace TradingStrategies.Backtesting.Utility
         public static IEnumerable<(T, int)> WithIndex<T>(this IEnumerable<T> source) => source.Select(static (x, i) => (x, i));
         public static IEnumerable<T> Take<T>(this IEnumerable<T> source, int start, int end) => source.Skip(start).Take(end - start);
         public static double MaxOrNaN<T>(this IEnumerable<T> source, Func<T, double> selector) => source.Any() ? source.Max(selector) : double.NaN; 
+        public static double MaxOrDefault (this IEnumerable<double> source) => source.Any() ? source.Max() : default;
+
+        public static IEnumerable<(T1, T2)> FullJoin<T1, T2>(this IEnumerable<T1> first, IEnumerable<T2> second)
+        {
+            foreach (var item1 in first)
+            {
+                foreach(var item2 in second)
+                {
+                    yield return (item1, item2);
+                }
+            }
+        }
 
         //копирует элементы исходной коллекции в переданный буффер и возвращает итератор по этому буфферу в пределах исходной коллекции
         //при переполнении буфера заполняет его последними элементами коллекции, возвращает итератор по начальной части исходной коллекции, а затем по буфферу
