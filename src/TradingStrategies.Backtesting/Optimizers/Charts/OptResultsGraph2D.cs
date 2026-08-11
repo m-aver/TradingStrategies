@@ -24,6 +24,10 @@ namespace TradingStrategies.Backtesting.Optimizers.Charts;
 //TODO:
 
 //можно еще ускорить отрисовку/расчеты распараллеливанием
+//кажется если добавлять точки на поверхность не в цикле, а один раз из предготовленных массивов, то мб будет побыстрее, т.к. внутри вызывается Invalidate
+//можно попробовать искать резалты не черех мапу, а через индексы, вижу два варианта
+// - при получении резалтов один раз стоить многомерный массив - все параметры + инструмент, а поиск точки делать зная индексы выбранных параметров и индекс точки поверхности
+// - каждый раз при перестроении графика заполнять массив текущих резалтов в соответствии с индексами поверхности, проблема мб в том, что придется при построении каждый раз проходится по всем резалтам, фильтруя нужные
 
 //добавить поверхности с max и min результатами по всему датасету, кнопка для вкл/выкл отображение
 //вывести список параметров на которых эти результаты достигаются в конкретной точке
@@ -218,17 +222,22 @@ public class OptResultsGraph2D : UserControl
 
             var result = resultsMap.FindResult(symbolName, paramValues);
 
+            if (result is null)
+            {
+                continue;
+            }
             var metricValue = result is null ? double.NaN : result.Results[metricIndex];
 
-            if (!double.IsNaN(metricValue))
+            if (double.IsNaN(metricValue))
             {
-                if (double.IsInfinity(metricValue))
-                {
-                    metricValue = 0;
-                }
-
-                surface.Add(paramValue1, metricValue, paramValue2);
+                continue;
             }
+            if (double.IsInfinity(metricValue))
+            {
+                metricValue = 0;
+            }
+
+            surface.Add(paramValue1, metricValue, paramValue2);
         }
 
         ColorizeSurface();
@@ -480,6 +489,15 @@ public class OptResultsGraph2D : UserControl
     }
 
     //градиент поверхности в зависимости от высоты точки
+
+    private const int StepsNum = 5;
+    private static readonly double[] StepsPct = Enumerable //[0, 0.01, 20, 40, 60, 80] %
+        .Range(0, StepsNum)
+        .Select(x => x * 100.0 / StepsNum)
+        .Append(0.01) //добавочный уровень, чтобы отличать области от абсолютного 0
+        .OrderBy(x => x)
+        .ToArray();
+
     private void ColorizeSurface()
     {
         var min = surface.GetVertAxis.Minimum;
@@ -487,22 +505,13 @@ public class OptResultsGraph2D : UserControl
 
         var cMin = min < 0 && max > 0 ? 0 : min; //если диапазон разделен на положительную и отрицательную области, то разделяем их
 
-        //var stepsPct = new double[] { 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 }; //%
-        var stepsNum = 5;
-        var stepsPct = Enumerable
-            .Range(0, stepsNum)
-            .Select(x => x * 100.0 / stepsNum)
-            .Append(0.01) //добавочный уровень, чтобы отличать области от абсолютного 0
-            .OrderBy(x => x)
-            .ToArray();
-
-        for (var i = 0; i < surface.Count; i++)
+        for (int i = 0; i < surface.Count; i++)
         {
             var value = surface.YValues[i];
             var cMax = value < 0 ? min : max;
             var percent = 100 * (value - cMin) / (cMax - cMin);
             percent = double.IsNaN(percent) ? 0 : percent;
-            percent = stepsPct.Where(s => s <= percent).MaxOrDefault(); //квантуем по уровням
+            percent = StepsPct.Where(s => s <= percent).MaxOrDefault(); //квантуем по уровням
             var diff = (int)Math.Ceiling(255 * percent / 100);
             diff = diff is >= 1 and <= 11 ? 11 : diff; //меньшую интенсивность сложно разглядеть
             var color = value > 0
@@ -525,7 +534,7 @@ public class OptResultsGraph2D : UserControl
         var param1Value = paramValues[cmbParameter1.SelectedIndex];
         var param2Value = paramValues[cmbParameter2.SelectedIndex];
 
-        for (var i = 0; i < surface.Count; i++)
+        for (int i = 0; i < surface.Count; i++)
         {
             if (surface.XValues[i] == param1Value || surface.ZValues[i] == param2Value)
             {
