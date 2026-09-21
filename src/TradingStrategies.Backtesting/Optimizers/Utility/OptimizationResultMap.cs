@@ -5,7 +5,7 @@ using WealthLab;
 namespace TradingStrategies.Backtesting.Optimizers.Utility;
 
 //оптимизирует поиск по результатам оптимизации
-internal sealed class OptimizationResultMap
+public sealed class OptimizationResultMap
 {
     private readonly OptimizationResultList _results;
     private readonly LiteDictionary<int, ArraySegment<OptimizationResult>> _resultsMap;

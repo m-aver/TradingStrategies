@@ -27,7 +27,7 @@ namespace TradingStrategies.Backtesting.Utility
             {
                 throw new ArgumentException($"{nameof(endDateTime)} and {nameof(dateTime)} must have same kind");
             }
-            
+
             DateTime = dateTime;
             Offset = endDateTime - dateTime;
             EndDateTime = endDateTime;
@@ -55,6 +55,12 @@ namespace TradingStrategies.Backtesting.Utility
             var end = EndDateTime.ToString();
             var str = start + Separator + end;
             return str;
+        }
+
+        public void Deconstruct(out DateTime from, out DateTime to)
+        {
+            from = this.DateTime;
+            to = this.EndDateTime;
         }
     }
 

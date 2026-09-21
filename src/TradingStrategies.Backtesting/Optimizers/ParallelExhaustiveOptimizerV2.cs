@@ -27,6 +27,7 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
         public WealthScript Script { get; }
         public StrategyScorecard Scorecard { get; }
         public SystemPerformance Result { get; set; }
+        public OptimizationResultListEx ResultsEx { get; } = new();
         public Strategy Strategy { get; }
         public List<Bars> BarsSet { get; }
         public List<ListViewItem> ResultRows { get; }
@@ -75,7 +76,7 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
     private ErrorReporter errorReporter;
 
     private OptResultsGraph1D graph1D;
-    private OptResultsGraph2D graph2D;
+    private OptResultsGraph2DEx graph2D;
 
     public override string FriendlyName => "Parallel Optimizer (Exhaustive) V2";
     public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. Based on custom implementation of optimization";
@@ -97,7 +98,7 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
         base.Initialize();
 
         graph1D = new OptResultsGraph1D(this);
-        graph2D = new OptResultsGraph2D(this);
+        graph2D = new OptResultsGraph2DEx(this);
 
         base.Host.CreateTab("1 Parameter Graph", graph1D);
         base.Host.CreateTab("2 Parameter Graph", graph2D);
@@ -131,7 +132,13 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
         FillResultList(results, executors.SelectMany(x => x.ResultRows));
 
         graph1D.UpdateResults(results, base.WealthScript);
-        graph2D.UpdateResults(results, base.WealthScript);
+
+        var optResults = OptimizationResultListEx.Create(
+            source: results,
+            parameters: base.WealthScript.Parameters,
+            results: executors.SelectMany(x => x.ResultsEx.ResultsEx));
+
+        graph2D.UpdateResults(optResults, base.WealthScript, ScorecardProvider.GetSelectedScorecard());
     }
 
     internal static void FillResultList(OptimizationResultList results, IEnumerable<ListViewItem> rows)
@@ -347,12 +354,14 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
         executors.ResultRows.Add(row);
 
         //for executing strategy by double click on result row
-        var optimizationResult = new OptimizationResult()
+        var optimizationResult = new OptimizationResultEx(executors.Result)
         {
             Symbol = executors.Executor.DataSet.Name,
             ParameterValues = executors.Script.Parameters.Select(x => x.Value).ToList(),
         };
         row.Tag = optimizationResult;
+
+        executors.ResultsEx.Add(optimizationResult);
     }
 
     private void PopulateUI()

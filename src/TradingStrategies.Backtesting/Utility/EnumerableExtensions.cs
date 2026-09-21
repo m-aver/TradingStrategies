@@ -24,6 +24,16 @@ namespace TradingStrategies.Backtesting.Utility
             }
         }
 
+        public static IEnumerable<T> ReplaceWith<T>(this IEnumerable<T> source, T replacingItem, int index)
+        {
+            int i = 0;
+            foreach (var item in source)
+            {
+                yield return i == index ? replacingItem : item;
+                i++;
+            }
+        }
+
         //копирует элементы исходной коллекции в переданный буффер и возвращает итератор по этому буфферу в пределах исходной коллекции
         //при переполнении буфера заполняет его последними элементами коллекции, возвращает итератор по начальной части исходной коллекции, а затем по буфферу
         public static IEnumerable<T> ToBuffer<T>(this IEnumerable<T> source, T[] buffer)

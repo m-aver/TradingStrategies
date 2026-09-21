@@ -1,14 +1,15 @@
 ﻿using Steema.TeeChart;
 using Steema.TeeChart.Styles;
 using Steema.TeeChart.Tools;
-using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using TradingStrategies.Backtesting.Optimizers.Charts.Controls;
 using TradingStrategies.Backtesting.Optimizers.Utility;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
+using Panel = System.Windows.Forms.Panel;
 using ParameterSlider = TradingStrategies.Backtesting.Optimizers.Charts.Controls.ParameterSlider;
 
 //переработанная версия встроенного OptResultsGraph2D
@@ -25,9 +26,6 @@ namespace TradingStrategies.Backtesting.Optimizers.Charts;
 
 //можно еще ускорить отрисовку/расчеты распараллеливанием
 //кажется если добавлять точки на поверхность не в цикле, а один раз из предготовленных массивов, то мб будет побыстрее, т.к. внутри вызывается Invalidate
-//можно попробовать искать резалты не черех мапу, а через индексы, вижу два варианта
-// - при получении резалтов один раз стоить многомерный массив - все параметры + инструмент, а поиск точки делать зная индексы выбранных параметров и индекс точки поверхности
-// - каждый раз при перестроении графика заполнять массив текущих резалтов в соответствии с индексами поверхности, проблема мб в том, что придется при построении каждый раз проходится по всем резалтам, фильтруя нужные
 
 //добавить поверхности с max и min результатами по всему датасету, кнопка для вкл/выкл отображение
 //вывести список параметров на которых эти результаты достигаются в конкретной точке
@@ -43,19 +41,19 @@ namespace TradingStrategies.Backtesting.Optimizers.Charts;
 public class OptResultsGraph2D : UserControl
 {
     private Optimizer optimizer;
-    private WealthScript ws;
+    protected WealthScript ws;
     private OptimizationResultList results;
 
-    private System.Windows.Forms.Panel pnlTop;
-    private ComboBox cmbMetric;
-    private ComboBox cmbParameter1;
-    private ComboBox cmbParameter2;
-    private TChart graph;
-    private Surface surface;
-    private ComboBox cmbSymbol;
+    private Panel pnlTop;
+    protected ComboBox cmbMetric;
+    protected ComboBox cmbParameter1;
+    protected ComboBox cmbParameter2;
+    protected TChartEx graph;
+    protected Surface surface;
+    protected ComboBox cmbSymbol;
 
     private ListView resultsListView;
-    private OptimizationResultMap resultsMap;
+    protected OptimizationResultMap resultsMap;
 
     private List<ParameterSlider> parameterSliders = [];
     private List<double>[] parameterValues = [];
@@ -83,7 +81,6 @@ public class OptResultsGraph2D : UserControl
         cmbMetric.Items.Clear();
         cmbSymbol.Items.Clear();
 
-        prevPointIdx = -1;
         lblCurr.Text = string.Empty;
     }
 
@@ -139,12 +136,12 @@ public class OptResultsGraph2D : UserControl
         GenerateGraph();
     }
 
-    private List<double> GetSelectedParameterValues()
+    protected List<double> GetSelectedParameterValues()
     {
         return parameterSliders.Select(x => x.SelectedValue).ToList();
     }
 
-    private List<double> GetSelectedParameterValues(int pointIdx)
+    protected List<double> GetSelectedParameterValues(int pointIdx)
     {
         var paramValues = GetSelectedParameterValues();
 
@@ -185,7 +182,7 @@ public class OptResultsGraph2D : UserControl
         cmbParameter1.SelectedIndex == cmbParameter2.SelectedIndex ||
         cmbSymbol.SelectedIndex == -1;
 
-    private void GenerateGraph()
+    protected virtual void GenerateGraph()
     {
         if (NotInitialized)
         {
@@ -226,7 +223,7 @@ public class OptResultsGraph2D : UserControl
             {
                 continue;
             }
-            var metricValue = result is null ? double.NaN : result.Results[metricIndex];
+            var metricValue = result.Results[metricIndex];
 
             if (double.IsNaN(metricValue))
             {
@@ -245,7 +242,7 @@ public class OptResultsGraph2D : UserControl
 
     private void InitializeComponent()
     {
-        pnlTop = new System.Windows.Forms.Panel();
+        pnlTop = new Panel();
         cmbSymbol = new ComboBox();
         var lblSymbol = new Label();
         var lblBy = new Label();
@@ -254,7 +251,7 @@ public class OptResultsGraph2D : UserControl
         cmbMetric = new ComboBox();
         cmbParameter1 = new ComboBox();
         var lblParameter = new Label();
-        graph = new TChart();
+        graph = new TChartEx();
         var popupGraph2d = new ContextMenuStrip();
         var mniCopyToClipboard = new ToolStripMenuItem();
         var mniPrint = new ToolStripMenuItem();
@@ -381,8 +378,7 @@ public class OptResultsGraph2D : UserControl
 
         graph.MouseDoubleClick += Graph_MouseDoubleClick;
         graph.MouseWheel += Graph_MouseWheel;
-        graph.MouseMove += Graph_MouseMove;
-        MouseHoveredPointChanged += Graph_MouseHoveredPointChanged;
+        graph.MouseHoveredPointChanged += Graph_MouseHoveredPointChanged;
 
         InitializeDetailsPane();
         InitializeOptionsPane();
@@ -432,38 +428,6 @@ public class OptResultsGraph2D : UserControl
         resultsListView.SelectedItems.Clear();
         row.Selected = true;
         resultsListView.OnDoubleClick();
-    }
-
-    //changed hovered point
-    private event EventHandler<MouseHoveredPointChangedEventArgs> MouseHoveredPointChanged;
-    private void OnMouseHoveredPointChanged(MouseHoveredPointChangedEventArgs args) => MouseHoveredPointChanged?.Invoke(this, args);
-
-    private int prevPointIdx = -1;
-    private static SpinLock spinLock = new(Debugger.IsAttached);
-    private void Graph_MouseMove(object sender, MouseEventArgs e)
-    {
-        var pos = e.Location;
-        var idx = surface.Clicked(pos);
-
-        var prevIdx = Interlocked.Exchange(ref prevPointIdx, idx);
-
-        if (prevIdx != idx)
-        {
-            var lockTaken = false;
-            try
-            {
-                spinLock.Enter(ref lockTaken);
-
-                OnMouseHoveredPointChanged(new(idx, prevIdx));
-            }
-            finally
-            {
-                if (lockTaken)
-                {
-                    spinLock.Exit();
-                }
-            }
-        }
     }
 
     private void ViewUpdated(object sender, EventArgs e)
@@ -599,6 +563,11 @@ public class OptResultsGraph2D : UserControl
         var zoomPct = 100 + (sign * stepPct);
         graph.Zoom.ZoomPercent(zoomPct);
         //graph.Zoom.Direction = ZoomDirections.Both;
+
+        //var zoomPct = 1 + (sign * stepPct) / 100.0;
+        //graph.Aspect.ZoomFloat *= zoomPct;
+        //было бы еще не плохо сделать так чтобы зумилось не в центр, а в точку под указателем мыши
+        //можно и самому такое нахуячить, во внутрянке не очень сложные расчеты, там просто нужно выставить правильно SetMinMax на осях
     }
 
     //custom tooltip
@@ -680,7 +649,7 @@ public class OptResultsGraph2D : UserControl
     }
 
     //details pane
-    private System.Windows.Forms.Panel pnlDetails;
+    private Panel pnlDetails;
     private Label lblCurr;
     private ToolStripMenuItem mniShowDetails;
 
@@ -692,7 +661,7 @@ public class OptResultsGraph2D : UserControl
         lblCurr.Size = new Size(39, 13);
         lblCurr.Text = "place for current point info";
 
-        pnlDetails = new System.Windows.Forms.Panel();
+        pnlDetails = new Panel();
         pnlDetails.Controls.Add(lblCurr);
         pnlDetails.Dock = DockStyle.Left;
         pnlDetails.Location = new Point(0, 0);
@@ -711,7 +680,7 @@ public class OptResultsGraph2D : UserControl
         pnlDetails.Visible = false;
         Controls.Add(pnlDetails);
 
-        MouseHoveredPointChanged += Graph_MouseHoveredPointChanged1;
+        graph.MouseHoveredPointChanged += Graph_MouseHoveredPointChanged1;
     }
 
     private void ShowDetails_Click(object sender, EventArgs e)
@@ -723,7 +692,7 @@ public class OptResultsGraph2D : UserControl
     //fill details pane
     private void Graph_MouseHoveredPointChanged1(object sender, MouseHoveredPointChangedEventArgs e)
     {
-        if (mniTrackCursor.Checked == false)
+        if (mniTrackCursor.Checked == false || mniShowDetails.Checked == false)
         {
             return;
         }
@@ -765,14 +734,14 @@ public class OptResultsGraph2D : UserControl
     }
 
     //options pane
-    private System.Windows.Forms.Panel pnlOptions;
+    protected Panel pnlOptions;
     private ToolStripMenuItem mniShowOptions;
     private NumericUpDown nmUpScale;
     private NumericUpDown nmDownScale;
 
     private void InitializeOptionsPane()
     {
-        pnlOptions = new System.Windows.Forms.Panel();
+        pnlOptions = new Panel();
         pnlOptions.Dock = DockStyle.Right;
         pnlOptions.Location = new Point(0, 0);
         pnlOptions.Size = new Size(200, 61);
