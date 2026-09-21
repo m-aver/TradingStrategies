@@ -24,6 +24,13 @@ namespace TradingStrategies.Backtesting.Utility
         public static IEnumerable<double> NaturalLog(IEnumerable<double> values) => values.Select(static x => NaturalLog(x));
 
         /// <summary>
+        /// Returns min if value less than min or max if value greather than max or value if it is beetwen both
+        /// </summary>
+        public static double MinMax(double value, double min, double max) => max < min
+            ? throw new ArgumentException($"{nameof(min)} should be less than {nameof(max)}")
+            : value < min ? min : value > max ? max : value;
+
+        /// <summary>
         /// Fits a line to a collection of (x,y) points.
         /// </summary>
         /// <remarks>
@@ -158,7 +165,8 @@ namespace TradingStrategies.Backtesting.Utility
 
             double denominator = Math.Sqrt(denominatorX) * Math.Sqrt(denominatorY);
 
-            return numerator / denominator;
+            double corr = numerator / denominator;
+            return MinMax(corr, -1.0, 1.0); //doubles floating
         }
     }
 }

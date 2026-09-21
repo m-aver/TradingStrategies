@@ -77,6 +77,7 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
 
     private OptResultsGraph1D graph1D;
     private OptResultsGraph2DEx graph2D;
+    private OptResultsCorrelationMatrix graphMatrix;
 
     public override string FriendlyName => "Parallel Optimizer (Exhaustive) V2";
     public override string Description => "Enhanced version of Exhaustive Parallel Optimizer. Based on custom implementation of optimization";
@@ -99,9 +100,11 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
 
         graph1D = new OptResultsGraph1D(this);
         graph2D = new OptResultsGraph2DEx(this);
+        graphMatrix = new OptResultsCorrelationMatrix();
 
         base.Host.CreateTab("1 Parameter Graph", graph1D);
         base.Host.CreateTab("2 Parameter Graph", graph2D);
+        base.Host.CreateTab("Returns correlation matrix", graphMatrix);
 
         numThreads = ThreadsNumber;
         progressReporter = new ProgressReporter(this);
@@ -139,6 +142,7 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
             results: executors.SelectMany(x => x.ResultsEx.ResultsEx));
 
         graph2D.UpdateResults(optResults, base.WealthScript, ScorecardProvider.GetSelectedScorecard());
+        graphMatrix.UpdateResults(optResults);
     }
 
     internal static void FillResultList(OptimizationResultList results, IEnumerable<ListViewItem> rows)
