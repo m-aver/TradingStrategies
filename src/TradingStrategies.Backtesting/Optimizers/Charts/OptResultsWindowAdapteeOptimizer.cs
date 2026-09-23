@@ -144,27 +144,24 @@ internal class OptResultsWindowAdapteeOptimizer : UserControl
                     .Take(inputData.MaxGroup.Value);
             }
 
+            //инициализируем диапазон концом текущего периода, т.к. в реальных условиях знаем результаты системы только постфактум
+            var initRange = new DateTimeRange(window.EndDateTime, window.EndDateTime);
+
+            //заполняем группу
+            var groupIdx = satisfied.Select(r => results.ResultsEx.IndexOf(r)).ToHashSet();
+            systemIdxGroups.Push((groupIdx, initRange));
+
             if (satisfied.Any())
             {
                 //поиск лучшего результата из удовлетворяющих
                 var best = satisfied.OrderBy(r => r.Results[metricIdx], inputData.MetricComparer).Last();
                 var bestIdx = results.ResultsEx.IndexOf(best);
 
-                //инициализируем диапазон концом текущего периода, т.к. в реальных условиях знаем результаты системы только постфактум
-                var initRange = new DateTimeRange(window.EndDateTime, window.EndDateTime);
-
                 if (systemIdx.Count == 0 ||
                     systemIdx.Peek().isRejected)
                 {
                     systemIdx.Push((bestIdx, initRange, false));
                 }
-
-                //заполняем группу
-                var groupIdx = satisfied.Select(r => results.ResultsEx.IndexOf(r)).ToHashSet();
-                systemIdxGroups.Push((groupIdx, initRange));
-
-                //можно было бы еще дополнить группу системами удовлетворяющими условиям выхода на следующем окне (из выборки предыдущего окна)
-                //чтобы иметь возможность удерживать лидера при дальнейшей оптимизации
             }
         }
 
