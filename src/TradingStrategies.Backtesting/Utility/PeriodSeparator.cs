@@ -168,5 +168,20 @@ namespace TradingStrategies.Backtesting.Utility
 
             yield return new DateTimeRange(currentDate, endDate - currentDate);
         }
+
+        public static TimeSpan GetApproximatedSpan(PeriodInfo period)
+        {
+            return TimeSpan.FromTicks(period.PeriodUnit * GetApproximatedSpan(period.PeriodType).Ticks);
+        }
+
+        public static TimeSpan GetApproximatedSpan(Period period) => period switch
+        {
+            Period.Day => TimeSpan.FromDays(1),
+            Period.Week => TimeSpan.FromDays(DateTimeConsts.DaysInWeek),
+            Period.Month => TimeSpan.FromTicks(DateTimeConsts.TicksIn30Days),
+            Period.Quarter => TimeSpan.FromTicks(DateTimeConsts.TicksIn30Days * DateTimeConsts.MonthsInQuarter),
+            Period.Year => TimeSpan.FromTicks(DateTimeConsts.TicksIn30Days * DateTimeConsts.MonthsInYear),
+            _ => throw new NotImplementedException($"Conversion for {nameof(Period)}.{period} is not implemented"),
+        };
     }
 }

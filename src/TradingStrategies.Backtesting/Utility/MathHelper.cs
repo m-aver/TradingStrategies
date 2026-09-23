@@ -31,6 +31,11 @@ namespace TradingStrategies.Backtesting.Utility
             : value < min ? min : value > max ? max : value;
 
         /// <summary>
+        /// Converts ratio to percent
+        /// </summary>
+        public static double RatioToPercent(double ratio) => (ratio - 1) * 100;
+
+        /// <summary>
         /// Fits a line to a collection of (x,y) points.
         /// </summary>
         /// <remarks>

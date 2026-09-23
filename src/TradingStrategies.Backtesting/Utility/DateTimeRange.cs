@@ -57,6 +57,14 @@ namespace TradingStrategies.Backtesting.Utility
             return str;
         }
 
+        public string ToString(string format)
+        {
+            var start = DateTime.ToString(format);
+            var end = EndDateTime.ToString(format);
+            var str = start + Separator + end;
+            return str;
+        }
+
         public void Deconstruct(out DateTime from, out DateTime to)
         {
             from = this.DateTime;

@@ -45,7 +45,7 @@ internal class OptimizationResultListEx : OptimizationResultList
 
     public DateTimeRange GetDatesRange()
     {
-        var allBars = ResultsEx.SelectMany(r => r.Performance.Bars);
+        var allBars = ResultsEx.SelectMany(r => r.Performance.Bars).Where(b => b.Count > 0);
 
         if (!allBars.Any())
         {
