@@ -1,12 +1,10 @@
-﻿using System;
-using System.Linq;
+﻿using Fidelity.Components;
 using System.ComponentModel;
 using System.Drawing;
-using System.Drawing.Printing;
-using System.Windows.Forms;
-using Fidelity.Components;
-using WealthLab;
 using System.Globalization;
+using System.Text;
+using System.Windows.Forms;
+using WealthLab;
 
 namespace TradingStrategies.Backtesting.Visualizers
 {
@@ -17,6 +15,7 @@ namespace TradingStrategies.Backtesting.Visualizers
         private const string DateColumnsFormat = "dd.MM.yyyy HH:mm";
 
         private IVisualizerHost visualizerHost;
+        private SystemPerformance performance;
 
         private IContainer container;
         private SortableListView tableTrades;
@@ -27,6 +26,7 @@ namespace TradingStrategies.Backtesting.Visualizers
         private ToolStripStatusLabel statusNSF;
         private ContextMenuStrip popup;
         private ToolStripMenuItem mniCopy;
+        private ToolStripMenuItem mniOrdersCopy;
 
         private ColumnHeader strategyIdColumn;
 
@@ -46,6 +46,27 @@ namespace TradingStrategies.Backtesting.Visualizers
             visualizerHost.CopyListViewToClipboard(tableTrades);
         }
 
+        public void CopyOrdersToClipboard()
+        {
+            const string Separator = ",";
+
+            var builder = new StringBuilder();
+            var headerView = string.Join(Separator, OrderData.GetHeader());
+            builder.AppendLine(headerView);
+
+            var orders = performance.Results.Positions
+                .SelectMany(p => OrderData.GetOrders(p, visualizerHost.LookupStrategyName(p.StrategyID)))
+                .OrderBy(o => o.StrategyName)
+                .ThenBy(o => o.Date);
+
+            foreach (var order in orders)
+            {
+                builder.AppendLine(string.Join(Separator, order.GetRow()));
+            }
+
+            Clipboard.SetText(builder.ToString());
+        }
+
         public void CreateVisualization(SystemPerformance performance, IVisualizerHost host)
         {
             if (performance.Strategy.StrategyType != StrategyType.CombinedStrategy)
@@ -54,6 +75,8 @@ namespace TradingStrategies.Backtesting.Visualizers
             }
 
             visualizerHost = host;
+            this.performance = performance;
+
             VisualizePerfomance(performance);
         }
 
@@ -124,7 +147,7 @@ namespace TradingStrategies.Backtesting.Visualizers
 
         private void ColorizeTable()
         {
-            foreach(ListViewItem item in tableTrades.Items)
+            foreach (ListViewItem item in tableTrades.Items)
             {
                 if (item.Tag is Position position)
                 {
@@ -160,6 +183,11 @@ namespace TradingStrategies.Backtesting.Visualizers
             CopyToClipboard();
         }
 
+        private void mniOrdersCopy_Click(object sender, EventArgs e)
+        {
+            CopyOrdersToClipboard();
+        }
+
         private void tableTrades_DoubleClick(object sender, EventArgs e)
         {
             if (tableTrades.SelectedItems.Count > 0)
@@ -181,6 +209,7 @@ namespace TradingStrategies.Backtesting.Visualizers
             tableTrades = new SortableListView();
             popup = new ContextMenuStrip(container);
             mniCopy = new ToolStripMenuItem();
+            mniOrdersCopy = new ToolStripMenuItem();
 
             status.SuspendLayout();
             popup.SuspendLayout();
@@ -334,8 +363,7 @@ namespace TradingStrategies.Backtesting.Visualizers
             popup.Items.AddRange(new ToolStripItem[]
             {
                 mniCopy,
-                //TODO: json
-                //TODO: save to file
+                mniOrdersCopy,
             });
             popup.Name = "popup";
             popup.Size = new Size(122, 70);
@@ -346,6 +374,13 @@ namespace TradingStrategies.Backtesting.Visualizers
             mniCopy.Text = "Copy";
             mniCopy.ToolTipText = "Copy data to the clipboard";
             mniCopy.Click += mniCopy_Click;
+
+            mniOrdersCopy.ImageTransparentColor = Color.Fuchsia;
+            mniOrdersCopy.Name = "mniOrdersCopy";
+            mniOrdersCopy.Size = new Size(121, 22);
+            mniOrdersCopy.Text = "Copy as orders";
+            mniOrdersCopy.ToolTipText = "Copy orders to the clipboard as csv";
+            mniOrdersCopy.Click += mniOrdersCopy_Click;
 
             this.AutoScaleDimensions = new SizeF(6f, 13f);
             this.AutoScaleMode = AutoScaleMode.Font;
@@ -360,6 +395,74 @@ namespace TradingStrategies.Backtesting.Visualizers
             popup.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
+        }
+
+        private class OrderData(string StrategyName, int Quantity, DateTime Date, TradeType Type)
+        {
+            public string StrategyName { get; } = StrategyName;
+            public int Quantity { get; } = Quantity;
+            public DateTime Date { get; } = Date;
+            public string TradeTypeCode { get; } = ConvertToTradeTypeCode(Type);
+
+            public static IEnumerable<string> GetHeader()
+            {
+                yield return nameof(StrategyName);
+                yield return nameof(Quantity);
+                yield return nameof(Date);
+                yield return nameof(TradeTypeCode);
+            }
+
+            public IEnumerable<string> GetRow()
+            {
+                yield return StrategyName;
+                yield return Quantity.ToString();
+                yield return Date.ToString(DateColumnsFormat);
+                yield return TradeTypeCode;
+            }
+
+            private const string BuyTradeTypeCode = "B";
+            private const string SellTradeTypeCode = "S";
+
+            private static string ConvertToTradeTypeCode(TradeType tradeType) => tradeType switch
+            {
+                TradeType.Buy or TradeType.Cover => BuyTradeTypeCode,
+                TradeType.Sell or TradeType.Short => SellTradeTypeCode,
+                _ => throw new ArgumentOutOfRangeException(nameof(tradeType), tradeType, "invalid trade type"),
+            };
+
+            public static IEnumerable<OrderData> GetOrders(Position position, string strategyName)
+            {
+                var entryOrder = new OrderData(
+                    strategyName,
+                    (int)position.Shares,
+                    position.EntryDate,
+                    position.PositionType switch
+                    {
+                        PositionType.Long => TradeType.Buy,
+                        PositionType.Short => TradeType.Short,
+                        _ => throw new ArgumentException($"Invalid {nameof(position.PositionType)}: {position.PositionType}"),
+                    }
+                );
+
+                yield return entryOrder;
+
+                if (!position.Active)
+                {
+                    var exitOrder = new OrderData(
+                        strategyName,
+                        (int)position.Shares,
+                        position.ExitDate,
+                        position.PositionType switch
+                        {
+                            PositionType.Long => TradeType.Sell,
+                            PositionType.Short => TradeType.Cover,
+                            _ => throw new ArgumentException($"Invalid {nameof(position.PositionType)}: {position.PositionType}"),
+                        }
+                    );
+
+                    yield return exitOrder;
+                }
+            }
         }
     }
 }
