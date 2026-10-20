@@ -382,6 +382,9 @@ public partial class ParallelExhaustiveOptimizerV2 : OptimizerBase
     {
         var optimizationResultListView = OptimizationFormExtractor.ExtractOptimizationResultListView(this);
 
+        optimizationResultListView.AsNotable();
+        optimizationResultListView.AsFilterable();
+
         var rows = executors.SelectMany(x => x.ResultRows).ToArray();
 
         if (optimizationResultListView.InvokeRequired)
