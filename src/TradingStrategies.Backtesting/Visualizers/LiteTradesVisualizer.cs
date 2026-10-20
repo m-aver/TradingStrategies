@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Text;
 using System.Windows.Forms;
 using WealthLab;
+using TradingStrategies.Backtesting.Utility;
 
 namespace TradingStrategies.Backtesting.Visualizers
 {
@@ -436,12 +437,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                     strategyName,
                     (int)position.Shares,
                     position.EntryDate,
-                    position.PositionType switch
-                    {
-                        PositionType.Long => TradeType.Buy,
-                        PositionType.Short => TradeType.Short,
-                        _ => throw new ArgumentException($"Invalid {nameof(position.PositionType)}: {position.PositionType}"),
-                    }
+                    position.EntryTradeType
                 );
 
                 yield return entryOrder;
@@ -452,12 +448,7 @@ namespace TradingStrategies.Backtesting.Visualizers
                         strategyName,
                         (int)position.Shares,
                         position.ExitDate,
-                        position.PositionType switch
-                        {
-                            PositionType.Long => TradeType.Sell,
-                            PositionType.Short => TradeType.Cover,
-                            _ => throw new ArgumentException($"Invalid {nameof(position.PositionType)}: {position.PositionType}"),
-                        }
+                        position.ExitTradeType
                     );
 
                     yield return exitOrder;
