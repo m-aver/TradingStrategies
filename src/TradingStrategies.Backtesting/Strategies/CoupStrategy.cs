@@ -42,8 +42,6 @@ internal partial class CoupStrategy : IStrategyExecuter
     private double lotFilterOffset = 0;
 
     //money settings
-    private const double commiss = 2 * 0.15;        //сommission for 1 contract in 2 parties		
-    private const double startingCapital = 100000;
     private double equitySize;
 
     private const double stopPercent = 1;
@@ -62,8 +60,6 @@ internal partial class CoupStrategy : IStrategyExecuter
 
     void IStrategyExecuter.Initialize()
     {
-        equitySize = startingCapital;
-
         //event handlers
         _sw.SymbolProcessingStart += SymbolProcessingStartHandler;
         _sw.SymbolProcessingComplete += SymbolProcessingCompleteHandler;
@@ -151,13 +147,15 @@ internal partial class CoupStrategy : IStrategyExecuter
                 {
                     if (isSignalSell && _sw.LastPosition.PositionType == PositionType.Long)
                     {
+                        _sw.SellAtClose(bar, _sw.LastPosition);
                         equitySize += GetIncomeOfLastTrade(bar);
-                        _sw.SellAtClose(bar, _sw.LastPosition, equitySize.ToString() + "_" + "Sell");
+                        _sw.LastPosition.ExitSignal = $"{equitySize}_Sell";
                     }
                     if (isSignalCover && _sw.LastPosition.PositionType == PositionType.Short)
                     {
+                        _sw.CoverAtClose(bar, _sw.LastPosition);
                         equitySize += GetIncomeOfLastTrade(bar);
-                        _sw.CoverAtClose(bar, _sw.LastPosition, equitySize.ToString() + "_" + "Cover");
+                        _sw.LastPosition.ExitSignal = $"{equitySize}_Cover";
                     }
                 }
                 #endregion
@@ -197,16 +195,18 @@ internal partial class CoupStrategy : IStrategyExecuter
                 _sw.IsLastPositionActive &&
                 currBarDate.TimeOfDay >= eveningTime)
             {
+                _sw.ExitAtClose(bar, Position.AllPositions);
                 equitySize += GetIncomeOfLastTrade(bar);
-                _sw.ExitAtClose(bar, Position.AllPositions, "Exit on evening");
+                _sw.LastPosition.ExitSignal = $"{equitySize}_Exit on evening";
             }
             #endregion
             #region EXIT ON EXPIRING
             if (_sw.IsLastPositionActive &&
                 currBarDate.Date >= expireDate.Date)
             {
+                _sw.ExitAtClose(bar, Position.AllPositions);
                 equitySize += GetIncomeOfLastTrade(bar);
-                _sw.ExitAtClose(bar, Position.AllPositions, equitySize.ToString() + "_" + "Exit on expiring");
+                _sw.LastPosition.ExitSignal = $"{equitySize}_Exit on expiring";
             }
             #endregion
 
@@ -218,7 +218,7 @@ internal partial class CoupStrategy : IStrategyExecuter
 
     private double GetIncomeOfLastTrade(int bar)
     {
-        return _sw.LastPosition.NetProfitAsOfBar(bar) - commiss * _sw.LastPosition.Shares;
+        return _sw.LastPosition.NetProfitAsOfBar(bar) - _sw.Commission.Calculate(_sw.LastPosition);
     }
 
     private LotsFactors CalculateFactors(int bar)
@@ -320,7 +320,7 @@ internal partial class CoupStrategy : IStrategyExecuter
     private void DataSetProcessingStartHandler()
     {
         entryDate = DateTime.MinValue;
-        equitySize = startingCapital;
+        equitySize = _sw.StartingCapital;
     }
 
     private void DataSetProcessingCompleteHandler()
@@ -342,7 +342,7 @@ internal partial class CoupStrategy : IStrategyResultFilter
     public bool FilterResults()
     {
         return
-            equitySize <= startingCapital &&
+            equitySize <= _sw.StartingCapital ||
             _sw.TotalPositionsCount < 10;
     }
 }

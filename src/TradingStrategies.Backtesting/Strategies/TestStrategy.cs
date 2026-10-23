@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using TradingStrategies.Backtesting.Core;
 using TradingStrategies.Backtesting.Indicators;
+using TradingStrategies.Backtesting.Tools;
 using TradingStrategies.Backtesting.Utility;
 using WealthLab;
 using WealthLab.Indicators;
@@ -65,6 +66,7 @@ using WealthLab.Indicators;
 
 namespace WealthLabProject.Strategies;
 
+[StrategyIntegration(nameof(TestStrategy))]
 internal partial class TestStrategy : IStrategyExecuter
 {
     //use the _sw variable to access the WealthScript state
@@ -98,10 +100,7 @@ internal partial class TestStrategy : IStrategyExecuter
     private double lotFilterOffset = 0;
 
     //money settings
-    private const double commiss = 2 * 0.15;        // Комиссия на 1 контракт в 2 стороны		
-    private const double startingCapital = 100000;
     private double equitySize;
-    private double equitySizeMax;
 
     private const double stopPercent = 1;
     private const double riskPercent = 50;
@@ -119,8 +118,6 @@ internal partial class TestStrategy : IStrategyExecuter
 
     void IStrategyExecuter.Initialize()
     {
-        equitySize = startingCapital;
-
         //event handlers
         _sw.SymbolProcessingStart += SymbolProcessingStartHandler;
         _sw.SymbolProcessingComplete += SymbolProcessingCompleteHandler;
@@ -144,8 +141,6 @@ internal partial class TestStrategy : IStrategyExecuter
 
     void IStrategyExecuter.Execute()
     {
-        //place your strategy code here
-
         DataSeries equitySeries = new DataSeries(_sw.Bars, "equity");
         BollingerBands BB = new BollingerBands(_sw.Close, period, variancesFactor, EMACalculation.Modern);
         //DataSeries ADX = GetAdx(period);
@@ -256,23 +251,22 @@ internal partial class TestStrategy : IStrategyExecuter
                 {
                     if (isSignalSell && _sw.LastPosition.PositionType == PositionType.Long)
                     {
-                        equitySize = equitySize + _sw.LastPosition.NetProfitAsOfBar(bar) - commiss * _sw.LastPosition.Shares;
-                        _sw.SellAtClose(bar, _sw.LastPosition, equitySize.ToString() + "_" + "Sell");
+                        _sw.SellAtClose(bar, _sw.LastPosition);
+                        equitySize += GetIncomeOfLastTrade(bar);
+                        _sw.LastPosition.ExitSignal = $"{equitySize}_Sell";
                     }
                     if (isSignalCover && _sw.LastPosition.PositionType == PositionType.Short)
                     {
-                        equitySize = equitySize + _sw.LastPosition.NetProfitAsOfBar(bar) - commiss * _sw.LastPosition.Shares;
-                        _sw.CoverAtClose(bar, _sw.LastPosition, equitySize.ToString() + "_" + "Cover");
+                        _sw.CoverAtClose(bar, _sw.LastPosition);
+                        equitySize += GetIncomeOfLastTrade(bar);
+                        _sw.LastPosition.ExitSignal = $"{equitySize}_Cover";
                     }
                 }
                 #endregion
                 #region ENTRY TO TRADE
                 if (!_sw.IsLastPositionActive)
                 {
-                    if (equitySizeMax < equitySize)
-                        equitySizeMax = equitySize;
-
-                    LotsFactors lf = (isSignalBuy || isSignalShort) ? CalculateFactors(bar) : new LotsFactors();
+                    LotsFactors lf = (isSignalBuy || isSignalShort) ? CalculateFactors(bar) : LotsFactors.Neutral;
 
                     if (isSignalBuy)
                     {
@@ -304,16 +298,18 @@ internal partial class TestStrategy : IStrategyExecuter
                 _sw.IsLastPositionActive &&
                 currBarDate.TimeOfDay >= eveningTime)
             {
-                equitySize = equitySize + _sw.LastPosition.NetProfitAsOfBar(bar) - commiss * _sw.LastPosition.Shares;
-                _sw.ExitAtClose(bar, Position.AllPositions, "Exit on evening");
+                _sw.ExitAtClose(bar, Position.AllPositions);
+                equitySize += GetIncomeOfLastTrade(bar);
+                _sw.LastPosition.ExitSignal = $"{equitySize}_Exit on evening";
             }
             #endregion
             #region EXIT ON EXPIRING
             if (_sw.IsLastPositionActive &&
                 nextBarDate.Date >= _expireDate.Date)
             {
-                equitySize = equitySize + _sw.LastPosition.NetProfitAsOfBar(bar) - commiss * _sw.LastPosition.Shares;
-                _sw.ExitAtClose(bar, Position.AllPositions, equitySize.ToString() + "_" + "Exit on expiring");
+                _sw.ExitAtClose(bar, Position.AllPositions);
+                equitySize += GetIncomeOfLastTrade(bar);
+                _sw.LastPosition.ExitSignal = $"{equitySize}_Exit on expiring";
             }
             #endregion
 
@@ -325,6 +321,10 @@ internal partial class TestStrategy : IStrategyExecuter
         _sw.PlotSeries(equityPane, equitySeries, Color.Green, WealthLab.LineStyle.Histogram, 1);
     } //execute			
 
+    private double GetIncomeOfLastTrade(int bar)
+    {
+        return _sw.LastPosition.NetProfitAsOfBar(bar) - _sw.Commission.Calculate(_sw.LastPosition);
+    }
 
     /// <summary>
     /// Checks whether this bar matchs to trade conditions.
@@ -585,8 +585,7 @@ internal partial class TestStrategy : IStrategyExecuter
     private void DataSetProcessingStartHandler()
     {
         _entryDate = DateTime.MinValue;
-        equitySize = startingCapital;
-        equitySizeMax = 0;
+        equitySize = _sw.StartingCapital;
     }
 
     private void DataSetProcessingCompleteHandler()

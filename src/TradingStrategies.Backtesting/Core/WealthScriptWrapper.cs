@@ -45,6 +45,11 @@ namespace TradingStrategies.Backtesting.Core
 
         private TradingSystemExecutor? _executor;
         public int TotalPositionsCount => _executor?.MasterPositions.Count ?? 0;
+        public Commission Commission => _executor is not null
+            ? _executor.ApplyCommission ? _executor.Commission : NoCommission.Instance
+            : throw new InvalidOperationException($"Cannot extract {nameof(Commission)} before proccessing was run");
+        public double StartingCapital => _executor?.PosSize.StartingCapital 
+            ?? throw new InvalidOperationException($"Cannot extract {nameof(StartingCapital)} before proccessing was run");
 
         public WealthScriptWrapper()
         {
